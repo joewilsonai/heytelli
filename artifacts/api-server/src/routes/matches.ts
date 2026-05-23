@@ -63,7 +63,11 @@ async function loadMatchDetail(matchId: number) {
     .from(screenshots)
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
-  return { ...withNormalizedProfile(match), screenshots: shots };
+  return {
+    ...withNormalizedProfile(match),
+    transcript: normalizeTranscript(match.transcript),
+    screenshots: shots,
+  };
 }
 
 router.get("/matches", async (_req, res): Promise<void> => {
@@ -219,6 +223,9 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     updates.nextDateLocation = body.data.nextDateLocation;
   if (body.data.dateHistory !== undefined)
     updates.dateHistory = normalizeDateHistory(body.data.dateHistory);
+  if (body.data.transcript !== undefined)
+    updates.transcript = normalizeTranscript(body.data.transcript);
+  if (body.data.status !== undefined) updates.status = body.data.status;
 
   if (Object.keys(updates).length === 0) {
     const [existing] = await db

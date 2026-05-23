@@ -7,11 +7,14 @@
  */
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
+import type { MatchStatus } from './matchStatus';
+import type { TranscriptTurn } from './transcriptTurn';
 
 export interface MatchUpdate {
   /** @minLength 1 */
   name?: string;
   notes?: string;
+  status?: MatchStatus;
   vibeTags?: string[];
   extractedProfile?: ExtractedProfile;
   /** @nullable */
@@ -21,4 +24,5 @@ export interface MatchUpdate {
   /** @nullable */
   nextDateLocation?: string | null;
   dateHistory?: DateHistoryEntry[];
+  transcript?: TranscriptTurn[];
 }

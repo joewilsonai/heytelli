@@ -44,6 +44,7 @@ export const ListMatchesResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
@@ -174,6 +175,7 @@ export const GetMatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
@@ -205,6 +207,10 @@ export const GetMatchResponse = zod.object({
   "location": zod.string(),
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -241,6 +247,7 @@ export const updateMatchBodyExtractedProfileScoresChemistryValueOneMax = 10;
 export const UpdateMatchBody = zod.object({
   "name": zod.string().min(1).optional(),
   "notes": zod.string().optional(),
+  "status": zod.enum(['active', 'archived', 'ghosted']).optional(),
   "vibeTags": zod.array(zod.string()).optional(),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
@@ -272,6 +279,10 @@ export const UpdateMatchBody = zod.object({
   "location": zod.string(),
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
+})).optional(),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
 })).optional()
 })
 
@@ -299,6 +310,7 @@ export const UpdateMatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
@@ -396,6 +408,7 @@ export const AddScreenshotResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
@@ -427,6 +440,10 @@ export const AddScreenshotResponse = zod.object({
   "location": zod.string(),
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -463,6 +480,7 @@ export const RescoreMatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
@@ -494,6 +512,10 @@ export const RescoreMatchResponse = zod.object({
   "location": zod.string(),
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
+})),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),

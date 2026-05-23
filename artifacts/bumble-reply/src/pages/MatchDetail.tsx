@@ -35,10 +35,16 @@ import {
   Zap,
   HeartHandshake,
   CalendarClock,
+  CalendarCheck,
   CalendarDays,
   MapPin,
   ChevronDown,
   ChevronUp,
+  Archive,
+  Ghost,
+  Undo2,
+  MessageSquare,
+  ListTree,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -670,6 +676,423 @@ type DateHistoryEntryUI = {
   createdAt: string;
 };
 
+function StatusCard({ match }: { match: MatchDetailType }) {
+  const queryClient = useQueryClient();
+  const mutation = useUpdateMatch({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(match.id) });
+        queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() });
+      },
+    },
+  });
+  const status = match.status ?? "active";
+  const setStatus = (s: "active" | "archived" | "ghosted") =>
+    mutation.mutate({ id: match.id, data: { status: s } });
+
+  const tone =
+    status === "archived"
+      ? "border-slate-500/30 bg-slate-500/5"
+      : status === "ghosted"
+        ? "border-zinc-500/30 bg-zinc-500/5"
+        : "border-emerald-500/30 bg-emerald-500/5";
+  const Icon = status === "ghosted" ? Ghost : status === "archived" ? Archive : Heart;
+  const label =
+    status === "ghosted" ? "Ghosted" : status === "archived" ? "Archived" : "Active";
+
+  return (
+    <Card className={`p-4 rounded-3xl border ${tone}`} data-testid="card-status">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-semibold">Status: {label}</span>
+        </div>
+        <div className="flex gap-1.5">
+          {status !== "active" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full text-xs gap-1"
+              onClick={() => setStatus("active")}
+              disabled={mutation.isPending}
+              data-testid="button-status-active"
+            >
+              <Undo2 className="w-3 h-3" /> Reactivate
+            </Button>
+          )}
+          {status !== "archived" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full text-xs gap-1"
+              onClick={() => setStatus("archived")}
+              disabled={mutation.isPending}
+              data-testid="button-status-archive"
+            >
+              <Archive className="w-3 h-3" /> Archive
+            </Button>
+          )}
+          {status !== "ghosted" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full text-xs gap-1"
+              onClick={() => setStatus("ghosted")}
+              disabled={mutation.isPending}
+              data-testid="button-status-ghosted"
+            >
+              <Ghost className="w-3 h-3" /> Ghosted
+            </Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PostDateDebriefCard({ match }: { match: MatchDetailType }) {
+  const queryClient = useQueryClient();
+  const mutation = useUpdateMatch({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(match.id) });
+        queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() });
+      },
+    },
+  });
+  const [recap, setRecap] = useState("");
+  const [dismissed, setDismissed] = useState(false);
+
+  const next = match.nextDateAt ? new Date(match.nextDateAt) : null;
+  const isPast =
+    next && !Number.isNaN(next.getTime()) && next.getTime() <= Date.now();
+  if (!isPast || dismissed) return null;
+
+  const location = match.nextDateLocation ?? "";
+  const whenIso = next.toISOString();
+
+  const logIt = () => {
+    const entry: DateHistoryEntryUI = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      when: whenIso,
+      location,
+      recap: recap.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    const nextHistory = [...(match.dateHistory ?? []), entry];
+    mutation.mutate(
+      {
+        id: match.id,
+        data: { dateHistory: nextHistory, nextDateAt: null, nextDateLocation: null },
+      },
+      { onSuccess: () => setRecap("") },
+    );
+  };
+
+  const skipIt = () => {
+    mutation.mutate({
+      id: match.id,
+      data: { nextDateAt: null, nextDateLocation: null },
+    });
+  };
+
+  return (
+    <Card
+      className="p-5 rounded-3xl border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-transparent"
+      data-testid="card-post-date-debrief"
+    >
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <h3 className="font-bold text-base flex items-center gap-2">
+            <CalendarCheck className="w-4 h-4 text-emerald-500" />
+            How'd the date go?
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {formatDateLong(whenIso)}
+            {location ? ` · ${location}` : ""}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setDismissed(true)}
+          className="rounded-full -mr-1 -mt-1"
+          aria-label="Hide"
+        >
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+      <Textarea
+        value={recap}
+        onChange={(e) => setRecap(e.target.value)}
+        rows={3}
+        placeholder="Vibe, what you talked about, did anything happen, next steps…"
+        className="mt-2"
+        data-testid="textarea-debrief-recap"
+      />
+      {mutation.isError && (
+        <p className="text-destructive text-xs mt-2 flex items-center gap-1.5">
+          <AlertCircle className="w-3 h-3" />
+          {(mutation.error as Error)?.message || "Failed to save"}
+        </p>
+      )}
+      <div className="flex justify-end gap-2 mt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={skipIt}
+          disabled={mutation.isPending}
+          data-testid="button-debrief-skip"
+        >
+          Didn't happen
+        </Button>
+        <Button
+          size="sm"
+          onClick={logIt}
+          disabled={mutation.isPending || !recap.trim()}
+          className="rounded-full gap-1.5"
+          data-testid="button-debrief-save"
+        >
+          <Save className="w-3.5 h-3.5" /> Log it
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+type TranscriptTurnUI = { speaker: "her" | "me"; text: string };
+
+function TranscriptEditor({ match }: { match: MatchDetailType }) {
+  const queryClient = useQueryClient();
+  const mutation = useUpdateMatch({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(match.id) });
+      },
+    },
+  });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const initial = useMemo<TranscriptTurnUI[]>(
+    () =>
+      Array.isArray(match.transcript)
+        ? (match.transcript as TranscriptTurnUI[]).map((t) => ({
+            speaker: t.speaker,
+            text: t.text,
+          }))
+        : [],
+    [match.transcript],
+  );
+  const [draft, setDraft] = useState<TranscriptTurnUI[]>(initial);
+
+  useEffect(() => {
+    if (!editing) setDraft(initial);
+  }, [initial, editing]);
+
+  const startEdit = () => {
+    setDraft(initial);
+    setEditing(true);
+    setOpen(true);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setDraft(initial);
+  };
+  const save = () => {
+    const cleaned = draft
+      .map((t) => ({ speaker: t.speaker, text: t.text.trim() }))
+      .filter((t) => t.text.length > 0);
+    if (cleaned.length === 0 && initial.length > 0) {
+      const ok = window.confirm(
+        `This will erase all ${initial.length} transcript turns. Are you sure?`,
+      );
+      if (!ok) return;
+    }
+    mutation.mutate(
+      { id: match.id, data: { transcript: cleaned } },
+      { onSuccess: () => setEditing(false) },
+    );
+  };
+  const updateTurn = (i: number, patch: Partial<TranscriptTurnUI>) => {
+    setDraft((d) => d.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+  };
+  const removeTurn = (i: number) => {
+    setDraft((d) => d.filter((_, idx) => idx !== i));
+  };
+  const addTurn = (i: number, speaker: "her" | "me") => {
+    setDraft((d) => {
+      const next = [...d];
+      next.splice(i + 1, 0, { speaker, text: "" });
+      return next;
+    });
+  };
+
+  return (
+    <Card className="p-6 rounded-3xl" data-testid="card-transcript-editor">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-between w-full gap-3 text-left"
+        aria-expanded={open}
+        aria-controls="transcript-region"
+        data-testid="toggle-transcript"
+      >
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <ListTree className="w-5 h-5" /> Transcript
+          {open ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </h2>
+        <span className="text-sm text-muted-foreground text-right">
+          {initial.length} turn{initial.length === 1 ? "" : "s"}
+          <br />
+          <span className="text-xs">Fix OCR mistakes here</span>
+        </span>
+      </button>
+      {open && (
+        <div className="mt-4" id="transcript-region" role="region" aria-label="Transcript turns">
+          <div className="flex justify-end mb-3">
+            {editing ? (
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={cancel}>
+                  <X className="w-4 h-4" /> Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={save}
+                  disabled={mutation.isPending}
+                  data-testid="button-save-transcript"
+                >
+                  <Save className="w-4 h-4" /> Save
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={startEdit}
+                data-testid="button-edit-transcript"
+              >
+                <Pencil className="w-4 h-4" /> Edit
+              </Button>
+            )}
+          </div>
+          {mutation.isError && (
+            <p className="text-destructive text-xs mb-2 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3" />
+              {(mutation.error as Error)?.message || "Failed to save"}
+            </p>
+          )}
+          {(editing ? draft : initial).length === 0 ? (
+            <p className="text-muted-foreground italic text-sm">
+              No transcript yet — upload screenshots so AI can extract the conversation.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {(editing ? draft : initial).map((t, i) => (
+                <div
+                  key={i}
+                  className={`flex gap-2 items-start ${
+                    t.speaker === "me" ? "flex-row-reverse" : ""
+                  }`}
+                  data-testid={`transcript-turn-${i}`}
+                >
+                  <span
+                    className={`text-[10px] uppercase tracking-wide font-bold px-2 py-1 rounded-full flex-shrink-0 ${
+                      t.speaker === "her"
+                        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+                        : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                    }`}
+                  >
+                    {t.speaker === "her" ? "Her" : "Me"}
+                  </span>
+                  {editing ? (
+                    <div className="flex-1 flex flex-col gap-1">
+                      <Textarea
+                        value={t.text}
+                        onChange={(e) => updateTurn(i, { text: e.target.value })}
+                        rows={2}
+                        className="text-sm"
+                      />
+                      <div className="flex justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateTurn(i, { speaker: t.speaker === "her" ? "me" : "her" })
+                          }
+                          className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1"
+                          data-testid={`button-flip-speaker-${i}`}
+                        >
+                          Flip speaker
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeTurn(i)}
+                          className="text-[10px] text-rose-500 hover:text-rose-600 px-2 py-1"
+                          data-testid={`button-remove-turn-${i}`}
+                        >
+                          Remove
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => addTurn(i, "her")}
+                          className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1"
+                        >
+                          + Her below
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => addTurn(i, "me")}
+                          className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1"
+                        >
+                          + Me below
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p
+                      className={`flex-1 text-sm whitespace-pre-wrap rounded-2xl px-3 py-2 ${
+                        t.speaker === "her" ? "bg-muted/60" : "bg-primary/10"
+                      }`}
+                    >
+                      {t.text}
+                    </p>
+                  )}
+                </div>
+              ))}
+              {editing && (
+                <div className="flex justify-center gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDraft((d) => [...d, { speaker: "her", text: "" }])}
+                    data-testid="button-append-her"
+                  >
+                    + Her turn
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDraft((d) => [...d, { speaker: "me", text: "" }])}
+                    data-testid="button-append-me"
+                  >
+                    + My turn
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function DateHistoryCard({ match }: { match: MatchDetailType }) {
   const queryClient = useQueryClient();
   const entries: DateHistoryEntryUI[] = useMemo(
@@ -1290,6 +1713,8 @@ export default function MatchDetail() {
               )}
             </Card>
 
+            <TranscriptEditor match={data} />
+
             <Card className="p-6 rounded-3xl">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
@@ -1330,6 +1755,8 @@ export default function MatchDetail() {
           </div>
 
           <div className="lg:col-span-1 flex flex-col gap-6">
+            <StatusCard match={data} />
+            <PostDateDebriefCard match={data} />
             <PreDateBriefCard match={data} />
             <NextDateCard match={data} />
             <DateHistoryCard match={data} />

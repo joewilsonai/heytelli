@@ -142,10 +142,13 @@ export function normalizeExtractedProfile(
   };
 }
 
+export type MatchStatus = "active" | "archived" | "ghosted";
+
 export const matches = pgTable("matches", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   photoObjectPath: text("photo_object_path"),
+  status: text("status").$type<MatchStatus>().notNull().default("active"),
   vibeTags: text("vibe_tags").array().notNull().default([]),
   extractedProfile: jsonb("extracted_profile")
     .$type<ExtractedProfile>()

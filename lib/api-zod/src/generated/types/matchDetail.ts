@@ -7,13 +7,16 @@
  */
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
+import type { MatchStatus } from './matchStatus';
 import type { Screenshot } from './screenshot';
+import type { TranscriptTurn } from './transcriptTurn';
 
 export interface MatchDetail {
   id: number;
   name: string;
   /** @nullable */
   photoObjectPath: string | null;
+  status: MatchStatus;
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
@@ -22,6 +25,7 @@ export interface MatchDetail {
   /** @nullable */
   nextDateLocation: string | null;
   dateHistory: DateHistoryEntry[];
+  transcript: TranscriptTurn[];
   createdAt: Date;
   updatedAt: Date;
   screenshots: Screenshot[];

@@ -508,12 +508,16 @@ components:
         location: { type: string }
         recap: { type: string }
         createdAt: { type: string, format: date-time }
+    MatchStatus:
+      type: string
+      enum: [active, archived, ghosted]
     Match:
       type: object
       required:
         - id
         - name
         - photoObjectPath
+        - status
         - vibeTags
         - extractedProfile
         - notes
@@ -526,6 +530,8 @@ components:
         id: { type: integer }
         name: { type: string }
         photoObjectPath: { type: ["string", "null"] }
+        status:
+          $ref: "#/components/schemas/MatchStatus"
         vibeTags:
           type: array
           items: { type: string }
@@ -564,18 +570,28 @@ components:
           type: string
           enum: [pending, done, failed]
         extractionError: { type: ["string", "null"] }
+    TranscriptTurn:
+      type: object
+      required: [speaker, text]
+      properties:
+        speaker:
+          type: string
+          enum: [her, me]
+        text: { type: string }
     MatchDetail:
       type: object
       required:
         - id
         - name
         - photoObjectPath
+        - status
         - vibeTags
         - extractedProfile
         - notes
         - nextDateAt
         - nextDateLocation
         - dateHistory
+        - transcript
         - createdAt
         - updatedAt
         - screenshots
@@ -583,6 +599,8 @@ components:
         id: { type: integer }
         name: { type: string }
         photoObjectPath: { type: ["string", "null"] }
+        status:
+          $ref: "#/components/schemas/MatchStatus"
         vibeTags:
           type: array
           items: { type: string }
@@ -595,6 +613,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DateHistoryEntry"
+        transcript:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptTurn"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         screenshots:
@@ -626,6 +648,8 @@ components:
       properties:
         name: { type: string, minLength: 1 }
         notes: { type: string }
+        status:
+          $ref: "#/components/schemas/MatchStatus"
         vibeTags:
           type: array
           items: { type: string }
@@ -638,6 +662,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DateHistoryEntry"
+        transcript:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptTurn"
     ScreenshotInput:
       type: object
       required: [objectPath]

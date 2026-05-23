@@ -8,6 +8,7 @@
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchLastSpeaker } from './matchLastSpeaker';
+import type { MatchStatus } from './matchStatus';
 import type { ScoreHistoryPoint } from './scoreHistoryPoint';
 
 export interface Match {
@@ -15,6 +16,7 @@ export interface Match {
   name: string;
   /** @nullable */
   photoObjectPath: string | null;
+  status: MatchStatus;
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;

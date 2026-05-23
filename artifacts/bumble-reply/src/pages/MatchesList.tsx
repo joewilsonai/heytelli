@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useListMatches } from "@workspace/api-client-react";
 import type { Match, ScoreHistoryPoint } from "@workspace/api-client-react";
-import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare, CalendarClock, CalendarCheck, CalendarX, Inbox, Hourglass } from "lucide-react";
+import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare, CalendarClock, CalendarCheck, CalendarX, Inbox, Hourglass, Archive, Ghost, LayoutGrid, Rows3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -301,7 +301,7 @@ function StaleBadge({ info }: { info: StaleInfo }) {
 }
 
 type SortKey = "recent" | "sex" | "conversion" | "upcoming";
-type FilterKey = "all" | "upcoming" | "hot" | "owe" | "stale";
+type FilterKey = "all" | "upcoming" | "hot" | "owe" | "stale" | "archived" | "ghosted";
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent activity",
@@ -311,16 +311,26 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 const FILTER_LABELS: Record<FilterKey, string> = {
-  all: "All",
+  all: "Active",
   upcoming: "Upcoming dates",
   hot: "Hot",
   owe: "You owe reply",
   stale: "Stale",
+  archived: "Archived",
+  ghosted: "Ghosted",
 };
+
+function matchStatus(m: Match): "active" | "archived" | "ghosted" {
+  return (m.status ?? "active") as "active" | "archived" | "ghosted";
+}
 
 function applySortFilter(matches: Match[], sort: SortKey, filter: FilterKey): Match[] {
   const now = Date.now();
   const filtered = matches.filter((m) => {
+    const s = matchStatus(m);
+    if (filter === "archived") return s === "archived";
+    if (filter === "ghosted") return s === "ghosted";
+    if (s !== "active") return false;
     if (filter === "all") return true;
     if (filter === "upcoming") {
       if (!m.nextDateAt) return false;
@@ -377,12 +387,112 @@ function formatTimeAgo(date: Date | string) {
   return d.toLocaleDateString();
 }
 
+type ViewMode = "cards" | "roster";
+
+function StatusPill({ status }: { status: "active" | "archived" | "ghosted" }) {
+  if (status === "active") return null;
+  const Icon = status === "archived" ? Archive : Ghost;
+  const label = status === "archived" ? "Archived" : "Ghosted";
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[10px] font-medium">
+      <Icon className="w-3 h-3" />
+      {label}
+    </span>
+  );
+}
+
+function RosterTable({ rows }: { rows: Match[] }) {
+  return (
+    <Card className="rounded-2xl overflow-x-auto shadow-sm">
+      <table className="w-full text-sm" data-testid="roster-table">
+        <thead>
+          <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground border-b">
+            <th className="px-3 py-2 font-semibold">Name</th>
+            <th className="px-3 py-2 font-semibold">Sex</th>
+            <th className="px-3 py-2 font-semibold">Conv</th>
+            <th className="px-3 py-2 font-semibold">Chem</th>
+            <th className="px-3 py-2 font-semibold">Date</th>
+            <th className="px-3 py-2 font-semibold">Status</th>
+            <th className="px-3 py-2 font-semibold">Activity</th>
+            <th className="px-3 py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((m) => {
+            const stale = deriveStale(m);
+            const badge = deriveDateBadge(m);
+            const sx = m.extractedProfile.scores.sexPotential.value;
+            const cv = m.extractedProfile.scores.conversionAbility.value;
+            const ch = m.extractedProfile.scores.chemistry.value;
+            const recent = mostRecentActivity(m);
+            return (
+              <tr
+                key={m.id}
+                className="border-b last:border-b-0 hover:bg-muted/40"
+                data-testid={`roster-row-${m.id}`}
+              >
+                <td className="px-3 py-2.5">
+                  <Link href={`/matches/${m.id}`}>
+                    <div className="flex items-center gap-2 cursor-pointer">
+                      <span className="font-semibold">{m.name}</span>
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+                        {m.extractedProfile.job || ""}
+                      </span>
+                    </div>
+                  </Link>
+                </td>
+                <td className={`px-3 py-2.5 tabular-nums ${TIER_STYLES[tierForScore(sx)].text}`}>
+                  {sx != null ? sx : "—"}
+                </td>
+                <td className={`px-3 py-2.5 tabular-nums ${TIER_STYLES[tierForScore(cv)].text}`}>
+                  {cv != null ? cv : "—"}
+                </td>
+                <td className={`px-3 py-2.5 tabular-nums ${TIER_STYLES[tierForScore(ch)].text}`}>
+                  {ch != null ? ch : "—"}
+                </td>
+                <td className="px-3 py-2.5">
+                  <DateBadge info={badge} />
+                </td>
+                <td className="px-3 py-2.5">
+                  {stale ? (
+                    <StaleBadge info={stale} />
+                  ) : (
+                    <StatusPill status={matchStatus(m)} />
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                  {recent ? formatTimeAgo(recent) : "—"}
+                </td>
+                <td className="px-3 py-2.5">
+                  <Link href={`/matches/${m.id}`} aria-label={`Open ${m.name}`}>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-pointer" />
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
 export default function MatchesList() {
   const { data, isLoading } = useListMatches();
   const matches = data ?? [];
   const [sort, setSort] = useState<SortKey>("recent");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [view, setView] = useState<ViewMode>("cards");
   const visible = useMemo(() => applySortFilter(matches, sort, filter), [matches, sort, filter]);
+  const counts = useMemo(() => {
+    let archived = 0, ghosted = 0;
+    for (const m of matches) {
+      const s = matchStatus(m);
+      if (s === "archived") archived++;
+      else if (s === "ghosted") ghosted++;
+    }
+    return { archived, ghosted };
+  }, [matches]);
 
   return (
     <div className="min-h-[100dvh] w-full bg-background relative overflow-hidden">
@@ -462,23 +572,54 @@ export default function MatchesList() {
         {!isLoading && matches.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setFilter(k)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    filter === k
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70"
-                  }`}
-                  data-testid={`filter-${k}`}
-                >
-                  {FILTER_LABELS[k]}
-                </button>
-              ))}
+              {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => {
+                if (k === "archived" && counts.archived === 0) return null;
+                if (k === "ghosted" && counts.ghosted === 0) return null;
+                const suffix =
+                  k === "archived" ? ` (${counts.archived})` :
+                  k === "ghosted" ? ` (${counts.ghosted})` : "";
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setFilter(k)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      filter === k
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    }`}
+                    data-testid={`filter-${k}`}
+                  >
+                    {FILTER_LABELS[k]}{suffix}
+                  </button>
+                );
+              })}
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <div className="flex rounded-full bg-muted p-0.5" role="group" aria-label="View mode">
+                <button
+                  type="button"
+                  onClick={() => setView("cards")}
+                  className={`rounded-full px-2 py-1 text-xs font-medium transition-colors flex items-center gap-1 ${
+                    view === "cards" ? "bg-background shadow-sm" : "text-muted-foreground"
+                  }`}
+                  data-testid="view-cards"
+                  aria-pressed={view === "cards"}
+                >
+                  <LayoutGrid className="w-3 h-3" /> Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("roster")}
+                  className={`rounded-full px-2 py-1 text-xs font-medium transition-colors flex items-center gap-1 ${
+                    view === "roster" ? "bg-background shadow-sm" : "text-muted-foreground"
+                  }`}
+                  data-testid="view-roster"
+                  aria-pressed={view === "roster"}
+                >
+                  <Rows3 className="w-3 h-3" /> Roster
+                </button>
+              </div>
               <label className="text-xs text-muted-foreground" htmlFor="sort-select">
                 Sort
               </label>
@@ -503,7 +644,11 @@ export default function MatchesList() {
           </Card>
         )}
 
-        {!isLoading && visible.length > 0 && (
+        {!isLoading && visible.length > 0 && view === "roster" && (
+          <RosterTable rows={visible} />
+        )}
+
+        {!isLoading && visible.length > 0 && view === "cards" && (
           <Card className="rounded-2xl divide-y divide-border overflow-hidden shadow-sm">
             {visible.map((m) => {
               const photo = objectPathToUrl(m.photoObjectPath);
@@ -543,6 +688,7 @@ export default function MatchesList() {
                         </p>
                       )}
                       <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                        <StatusPill status={matchStatus(m)} />
                         <DateBadge info={deriveDateBadge(m)} />
                         <StaleBadge info={deriveStale(m)} />
                         {m.vibeTags.slice(0, 3).map((t) => (

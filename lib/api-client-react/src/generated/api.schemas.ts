@@ -67,6 +67,15 @@ export interface DateHistoryEntry {
   createdAt: string;
 }
 
+export type MatchStatus = typeof MatchStatus[keyof typeof MatchStatus];
+
+
+export const MatchStatus = {
+  active: 'active',
+  archived: 'archived',
+  ghosted: 'ghosted',
+} as const;
+
 /**
  * Speaker of the most recent transcript turn, if any
  * @nullable
@@ -84,6 +93,7 @@ export interface Match {
   name: string;
   /** @nullable */
   photoObjectPath: string | null;
+  status: MatchStatus;
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
@@ -126,11 +136,25 @@ export interface Screenshot {
   extractionError: string | null;
 }
 
+export type TranscriptTurnSpeaker = typeof TranscriptTurnSpeaker[keyof typeof TranscriptTurnSpeaker];
+
+
+export const TranscriptTurnSpeaker = {
+  her: 'her',
+  me: 'me',
+} as const;
+
+export interface TranscriptTurn {
+  speaker: TranscriptTurnSpeaker;
+  text: string;
+}
+
 export interface MatchDetail {
   id: number;
   name: string;
   /** @nullable */
   photoObjectPath: string | null;
+  status: MatchStatus;
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
@@ -139,6 +163,7 @@ export interface MatchDetail {
   /** @nullable */
   nextDateLocation: string | null;
   dateHistory: DateHistoryEntry[];
+  transcript: TranscriptTurn[];
   createdAt: string;
   updatedAt: string;
   screenshots: Screenshot[];
@@ -162,6 +187,7 @@ export interface MatchUpdate {
   /** @minLength 1 */
   name?: string;
   notes?: string;
+  status?: MatchStatus;
   vibeTags?: string[];
   extractedProfile?: ExtractedProfile;
   /** @nullable */
@@ -171,6 +197,7 @@ export interface MatchUpdate {
   /** @nullable */
   nextDateLocation?: string | null;
   dateHistory?: DateHistoryEntry[];
+  transcript?: TranscriptTurn[];
 }
 
 export interface ScreenshotInput {
