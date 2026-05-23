@@ -54,11 +54,8 @@ export default function Home() {
       if (!dataUrl) return;
       
       setScreenshotDataUrl(dataUrl);
-      
-      // Strip the prefix for the API
-      const base64String = dataUrl.split(',')[1];
       generateReplyMutation.mutate({
-        data: { image: base64String }
+        data: { image: dataUrl }
       });
     };
     reader.readAsDataURL(file);
@@ -215,7 +212,7 @@ export default function Home() {
                     Your wingman got a little distracted. Please try again.
                   </p>
                   <Button 
-                    onClick={() => generateReplyMutation.mutate({ data: { image: screenshotDataUrl.split(',')[1] } })}
+                    onClick={() => generateReplyMutation.mutate({ data: { image: screenshotDataUrl } })}
                     variant="default"
                     className="rounded-full gap-2"
                   >

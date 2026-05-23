@@ -13,6 +13,10 @@ router.post("/bumble-reply", async (req: Request, res: Response) => {
 
   const { image } = parseResult.data;
 
+  const imageUrl = image.startsWith("data:")
+    ? image
+    : `data:image/png;base64,${image}`;
+
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.4",
@@ -40,7 +44,7 @@ Example: ["Reply 1", "Reply 2", "Reply 3"]`,
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${image}`,
+                url: imageUrl,
                 detail: "high",
               },
             },
