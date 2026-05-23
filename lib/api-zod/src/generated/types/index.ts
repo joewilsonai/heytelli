@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './dateBriefResult';
 export * from './dateHistoryEntry';
 export * from './errorEnvelope';
 export * from './extractedProfile';
@@ -14,6 +15,7 @@ export * from './healthStatus';
 export * from './match';
 export * from './matchCreateInput';
 export * from './matchDetail';
+export * from './matchLastSpeaker';
 export * from './matchScore';
 export * from './matchScores';
 export * from './matchUpdate';

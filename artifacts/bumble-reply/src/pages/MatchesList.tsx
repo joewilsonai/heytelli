@@ -1,7 +1,8 @@
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useListMatches } from "@workspace/api-client-react";
-import type { ScoreHistoryPoint } from "@workspace/api-client-react";
-import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare, CalendarClock, CalendarCheck, CalendarX } from "lucide-react";
+import type { Match, ScoreHistoryPoint } from "@workspace/api-client-react";
+import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare, CalendarClock, CalendarCheck, CalendarX, Inbox, Hourglass } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -238,6 +239,131 @@ function DateBadge({ info }: { info: DateBadgeInfo }) {
   );
 }
 
+type StaleInfo =
+  | { kind: "owe"; daysSince: number }
+  | { kind: "waiting"; daysSince: number }
+  | null;
+
+function daysSince(d: Date | string | null | undefined): number | null {
+  if (!d) return null;
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.floor((Date.now() - date.getTime()) / 86_400_000);
+}
+
+function mostRecentActivity(m: Match): Date | null {
+  const candidates: number[] = [];
+  if (m.lastActivityAt) {
+    const a = new Date(m.lastActivityAt).getTime();
+    if (!Number.isNaN(a)) candidates.push(a);
+  }
+  if (m.updatedAt) {
+    const u = new Date(m.updatedAt).getTime();
+    if (!Number.isNaN(u)) candidates.push(u);
+  }
+  if (candidates.length === 0) return null;
+  return new Date(Math.max(...candidates));
+}
+
+function deriveStale(m: Match): StaleInfo {
+  const ref = mostRecentActivity(m);
+  const days = daysSince(ref);
+  if (days == null) return null;
+  if (m.lastSpeaker === "her") {
+    return { kind: "owe", daysSince: days };
+  }
+  if (days >= 3) return { kind: "waiting", daysSince: days };
+  return null;
+}
+
+function StaleBadge({ info }: { info: StaleInfo }) {
+  if (!info) return null;
+  if (info.kind === "owe") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 px-2 py-0.5 text-[11px] font-medium"
+        data-testid="badge-owe-reply"
+      >
+        <Inbox className="w-3 h-3" />
+        You owe her a reply{info.daysSince > 0 ? ` · ${info.daysSince}d` : ""}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium"
+      data-testid="badge-waiting"
+    >
+      <Hourglass className="w-3 h-3" />
+      Waiting {info.daysSince}d
+    </span>
+  );
+}
+
+type SortKey = "recent" | "sex" | "conversion" | "upcoming";
+type FilterKey = "all" | "upcoming" | "hot" | "owe" | "stale";
+
+const SORT_LABELS: Record<SortKey, string> = {
+  recent: "Recent activity",
+  sex: "Sex potential",
+  conversion: "Conversion",
+  upcoming: "Date soonest",
+};
+
+const FILTER_LABELS: Record<FilterKey, string> = {
+  all: "All",
+  upcoming: "Upcoming dates",
+  hot: "Hot",
+  owe: "You owe reply",
+  stale: "Stale",
+};
+
+function applySortFilter(matches: Match[], sort: SortKey, filter: FilterKey): Match[] {
+  const now = Date.now();
+  const filtered = matches.filter((m) => {
+    if (filter === "all") return true;
+    if (filter === "upcoming") {
+      if (!m.nextDateAt) return false;
+      const d = new Date(m.nextDateAt);
+      return !Number.isNaN(d.getTime()) && d.getTime() > now;
+    }
+    if (filter === "hot") {
+      return (m.extractedProfile.scores.sexPotential.value ?? 0) >= 7;
+    }
+    if (filter === "owe") return m.lastSpeaker === "her";
+    if (filter === "stale") {
+      const days = daysSince(mostRecentActivity(m));
+      return days != null && days >= 3;
+    }
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort === "recent") {
+      const ax = mostRecentActivity(a)?.getTime() ?? 0;
+      const bx = mostRecentActivity(b)?.getTime() ?? 0;
+      return bx - ax;
+    }
+    if (sort === "sex") {
+      return (b.extractedProfile.scores.sexPotential.value ?? -1) -
+        (a.extractedProfile.scores.sexPotential.value ?? -1);
+    }
+    if (sort === "conversion") {
+      return (b.extractedProfile.scores.conversionAbility.value ?? -1) -
+        (a.extractedProfile.scores.conversionAbility.value ?? -1);
+    }
+    if (sort === "upcoming") {
+      const av = a.nextDateAt ? new Date(a.nextDateAt).getTime() : null;
+      const bv = b.nextDateAt ? new Date(b.nextDateAt).getTime() : null;
+      const af = av != null && av > now ? av : Infinity;
+      const bf = bv != null && bv > now ? bv : Infinity;
+      return af - bf;
+    }
+    return 0;
+  });
+  return sorted;
+}
+
 function formatTimeAgo(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
   const diff = Date.now() - d.getTime();
@@ -254,6 +380,9 @@ function formatTimeAgo(date: Date | string) {
 export default function MatchesList() {
   const { data, isLoading } = useListMatches();
   const matches = data ?? [];
+  const [sort, setSort] = useState<SortKey>("recent");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const visible = useMemo(() => applySortFilter(matches, sort, filter), [matches, sort, filter]);
 
   return (
     <div className="min-h-[100dvh] w-full bg-background relative overflow-hidden">
@@ -331,8 +460,52 @@ export default function MatchesList() {
         )}
 
         {!isLoading && matches.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(FILTER_LABELS) as FilterKey[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setFilter(k)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    filter === k
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                  data-testid={`filter-${k}`}
+                >
+                  {FILTER_LABELS[k]}
+                </button>
+              ))}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <label className="text-xs text-muted-foreground" htmlFor="sort-select">
+                Sort
+              </label>
+              <select
+                id="sort-select"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="rounded-full bg-muted px-3 py-1 text-xs font-medium border-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                data-testid="sort-select"
+              >
+                {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                  <option key={k} value={k}>{SORT_LABELS[k]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && matches.length > 0 && visible.length === 0 && (
+          <Card className="p-8 rounded-3xl border-dashed text-center text-muted-foreground">
+            No matches in this view. Try a different filter.
+          </Card>
+        )}
+
+        {!isLoading && visible.length > 0 && (
           <Card className="rounded-2xl divide-y divide-border overflow-hidden shadow-sm">
-            {matches.map((m) => {
+            {visible.map((m) => {
               const photo = objectPathToUrl(m.photoObjectPath);
               const subtitle = [m.extractedProfile.job, m.extractedProfile.location]
                 .filter(Boolean)
@@ -371,6 +544,7 @@ export default function MatchesList() {
                       )}
                       <div className="flex flex-wrap items-center gap-1 mt-1.5">
                         <DateBadge info={deriveDateBadge(m)} />
+                        <StaleBadge info={deriveStale(m)} />
                         {m.vibeTags.slice(0, 3).map((t) => (
                           <Badge
                             key={t}

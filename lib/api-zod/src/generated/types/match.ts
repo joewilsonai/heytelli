@@ -7,6 +7,7 @@
  */
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
+import type { MatchLastSpeaker } from './matchLastSpeaker';
 import type { ScoreHistoryPoint } from './scoreHistoryPoint';
 
 export interface Match {
@@ -25,4 +26,14 @@ export interface Match {
   createdAt: Date;
   updatedAt: Date;
   scoreHistory?: ScoreHistoryPoint[];
+  /**
+     * Speaker of the most recent transcript turn, if any
+     * @nullable
+     */
+  lastSpeaker?: MatchLastSpeaker;
+  /**
+     * Timestamp of most recent screenshot upload (or null if none)
+     * @nullable
+     */
+  lastActivityAt?: Date | null;
 }

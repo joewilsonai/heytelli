@@ -67,6 +67,18 @@ export interface DateHistoryEntry {
   createdAt: string;
 }
 
+/**
+ * Speaker of the most recent transcript turn, if any
+ * @nullable
+ */
+export type MatchLastSpeaker = typeof MatchLastSpeaker[keyof typeof MatchLastSpeaker] | null;
+
+
+export const MatchLastSpeaker = {
+  her: 'her',
+  me: 'me',
+} as const;
+
 export interface Match {
   id: number;
   name: string;
@@ -83,6 +95,16 @@ export interface Match {
   createdAt: string;
   updatedAt: string;
   scoreHistory?: ScoreHistoryPoint[];
+  /**
+     * Speaker of the most recent transcript turn, if any
+     * @nullable
+     */
+  lastSpeaker?: MatchLastSpeaker;
+  /**
+     * Timestamp of most recent screenshot upload (or null if none)
+     * @nullable
+     */
+  lastActivityAt?: string | null;
 }
 
 export type ScreenshotExtractionStatus = typeof ScreenshotExtractionStatus[keyof typeof ScreenshotExtractionStatus];
@@ -157,6 +179,12 @@ export interface ScreenshotInput {
 
 export interface ReplyResult {
   replies: string[];
+}
+
+export interface DateBriefResult {
+  /** Markdown-formatted pre-date prep brief */
+  brief: string;
+  generatedAt: string;
 }
 
 export interface UploadUrlRequest {

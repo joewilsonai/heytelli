@@ -250,6 +250,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/date-brief:
+    post:
+      operationId: generateDateBrief
+      tags: [matches]
+      summary: Generate a pre-date prep brief from Grok using full match context
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Date brief markdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DateBriefResult"
+        "400":
+          description: No upcoming date scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /matches/{id}/replies:
     post:
       operationId: generateMatchReplies
@@ -515,6 +544,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScoreHistoryPoint"
+        lastSpeaker:
+          type: ["string", "null"]
+          enum: [her, me, null]
+          description: Speaker of the most recent transcript turn, if any
+        lastActivityAt:
+          type: ["string", "null"]
+          format: date-time
+          description: Timestamp of most recent screenshot upload (or null if none)
     Screenshot:
       type: object
       required: [id, matchId, objectPath, uploadedAt, extractionStatus, extractionError]
@@ -613,6 +650,12 @@ components:
         replies:
           type: array
           items: { type: string }
+    DateBriefResult:
+      type: object
+      required: [brief, generatedAt]
+      properties:
+        brief: { type: string, description: Markdown-formatted pre-date prep brief }
+        generatedAt: { type: string, format: date-time }
     UploadUrlRequest:
       type: object
       required: [name, size, contentType]

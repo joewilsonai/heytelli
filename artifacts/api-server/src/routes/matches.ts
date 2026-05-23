@@ -8,6 +8,7 @@ import {
   emptyExtractedProfile,
   normalizeExtractedProfile,
   normalizeDateHistory,
+  normalizeTranscript,
 } from "@workspace/db";
 import {
   CreateMatchBody,
@@ -81,16 +82,39 @@ router.get("/matches", async (_req, res): Promise<void> => {
     arr.push(h);
     byMatch.set(h.matchId, arr);
   }
+
+  const shotRows = ids.length
+    ? await db
+        .select({
+          matchId: screenshots.matchId,
+          uploadedAt: screenshots.uploadedAt,
+        })
+        .from(screenshots)
+        .where(inArray(screenshots.matchId, ids))
+    : [];
+  const lastActivity = new Map<number, Date>();
+  for (const s of shotRows) {
+    const prev = lastActivity.get(s.matchId);
+    if (!prev || s.uploadedAt > prev) lastActivity.set(s.matchId, s.uploadedAt);
+  }
+
   res.json(
-    rows.map((r) => ({
-      ...withNormalizedProfile(r),
-      scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
-        sexPotential: h.sexPotential,
-        conversionAbility: h.conversionAbility,
-        chemistry: h.chemistry,
-        createdAt: h.createdAt.toISOString(),
-      })),
-    })),
+    rows.map((r) => {
+      const turns = normalizeTranscript(r.transcript);
+      const lastTurn = turns[turns.length - 1];
+      const lastAct = lastActivity.get(r.id) ?? null;
+      return {
+        ...withNormalizedProfile(r),
+        scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
+          sexPotential: h.sexPotential,
+          conversionAbility: h.conversionAbility,
+          chemistry: h.chemistry,
+          createdAt: h.createdAt.toISOString(),
+        })),
+        lastSpeaker: lastTurn ? lastTurn.speaker : null,
+        lastActivityAt: lastAct ? lastAct.toISOString() : null,
+      };
+    }),
   );
 });
 

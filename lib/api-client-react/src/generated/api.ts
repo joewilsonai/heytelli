@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  DateBriefResult,
   ErrorEnvelope,
   ExtractionPreview,
   HealthStatus,
@@ -792,6 +793,76 @@ export const useRescoreMatch = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getRescoreMatchMutationOptions(options));
+    }
+
+export const getGenerateDateBriefUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/date-brief`
+}
+
+/**
+ * @summary Generate a pre-date prep brief from Grok using full match context
+ */
+export const generateDateBrief = async (id: number, options?: RequestInit): Promise<DateBriefResult> => {
+
+  return customFetch<DateBriefResult>(getGenerateDateBriefUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getGenerateDateBriefMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDateBrief>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateDateBrief>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['generateDateBrief'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateDateBrief>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateDateBrief(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateDateBriefMutationResult = NonNullable<Awaited<ReturnType<typeof generateDateBrief>>>
+
+    export type GenerateDateBriefMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Generate a pre-date prep brief from Grok using full match context
+ */
+export const useGenerateDateBrief = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDateBrief>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateDateBrief>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getGenerateDateBriefMutationOptions(options));
     }
 
 export const getGenerateMatchRepliesUrl = (id: number,) => {

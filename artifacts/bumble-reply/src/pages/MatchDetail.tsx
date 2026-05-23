@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,6 +8,7 @@ import {
   useDeleteMatch,
   useAddScreenshot,
   useGenerateMatchReplies,
+  useGenerateDateBrief,
   useRescoreMatch,
   getGetMatchQueryKey,
   getListMatchesQueryKey,
@@ -35,6 +37,8 @@ import {
   CalendarClock,
   CalendarDays,
   MapPin,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -419,6 +423,126 @@ function formatDateLong(iso: string | Date | null): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function renderBriefMarkdown(md: string): React.ReactNode {
+  const lines = md.split("\n");
+  const out: React.ReactNode[] = [];
+  let bulletBuf: string[] = [];
+  const flushBullets = () => {
+    if (bulletBuf.length === 0) return;
+    out.push(
+      <ul key={`ul-${out.length}`} className="list-disc pl-5 my-2 space-y-1 text-sm">
+        {bulletBuf.map((b, i) => (
+          <li key={i}>{b}</li>
+        ))}
+      </ul>,
+    );
+    bulletBuf = [];
+  };
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^##\s+/.test(line)) {
+      flushBullets();
+      out.push(
+        <h4 key={`h-${out.length}`} className="font-bold text-sm mt-3 mb-1 text-primary">
+          {line.replace(/^##\s+/, "")}
+        </h4>,
+      );
+    } else if (/^[*-]\s+/.test(line)) {
+      bulletBuf.push(line.replace(/^[*-]\s+/, ""));
+    } else if (line.trim() === "") {
+      flushBullets();
+    } else {
+      flushBullets();
+      out.push(
+        <p key={`p-${out.length}`} className="text-sm leading-relaxed my-1.5">
+          {line}
+        </p>,
+      );
+    }
+  }
+  flushBullets();
+  return out;
+}
+
+function PreDateBriefCard({ match }: { match: MatchDetailType }) {
+  const [brief, setBrief] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const mutation = useGenerateDateBrief({
+    mutation: {
+      onSuccess: (res) => {
+        setBrief(res.brief);
+        setGeneratedAt(res.generatedAt);
+      },
+    },
+  });
+
+  const nextAt = match.nextDateAt ? new Date(match.nextDateAt) : null;
+  const hasUpcoming =
+    nextAt && !Number.isNaN(nextAt.getTime()) && nextAt.getTime() > Date.now();
+  if (!hasUpcoming) return null;
+
+  const whenStr = nextAt.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return (
+    <Card className="p-5 rounded-3xl border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-transparent">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <h3 className="font-bold text-base flex items-center gap-2">
+            <CalendarClock className="w-4 h-4 text-violet-500" />
+            Pre-date brief
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Date {whenStr}
+            {match.nextDateLocation ? ` · ${match.nextDateLocation}` : ""}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={brief ? "outline" : "default"}
+          onClick={() => mutation.mutate({ id: match.id })}
+          disabled={mutation.isPending}
+          className="rounded-full font-semibold text-xs gap-1.5"
+          data-testid="button-generate-brief"
+        >
+          {mutation.isPending ? (
+            <><RefreshCcw className="w-3 h-3 animate-spin" /> Briefing</>
+          ) : (
+            <><Sparkles className="w-3 h-3" /> {brief ? "Regen" : "Generate"}</>
+          )}
+        </Button>
+      </div>
+      {mutation.isError && (
+        <p className="text-destructive text-xs mt-2 flex items-center gap-1.5">
+          <AlertCircle className="w-3 h-3" />
+          {(mutation.error as Error)?.message || "Failed to generate brief"}
+        </p>
+      )}
+      {brief && (
+        <div className="mt-3 border-t pt-3">
+          {renderBriefMarkdown(brief)}
+          {generatedAt && (
+            <p className="text-[10px] text-muted-foreground mt-3">
+              Generated {new Date(generatedAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+      {!brief && !mutation.isPending && !mutation.isError && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Grok will read her full profile, scores, transcript, and date history
+          to build a tactical prep brief.
+        </p>
+      )}
+    </Card>
+  );
 }
 
 function NextDateCard({ match }: { match: MatchDetailType }) {
@@ -965,6 +1089,7 @@ export default function MatchDetail() {
     },
   });
   const [replies, setReplies] = useState<string[] | null>(null);
+  const [screenshotsOpen, setScreenshotsOpen] = useState(false);
 
   const addScreenshot = useAddScreenshot({
     mutation: {
@@ -1063,8 +1188,22 @@ export default function MatchDetail() {
             <ProfileEditor match={data} />
 
             <Card className="p-6 rounded-3xl">
-              <div className="flex items-center justify-between mb-4 gap-3">
-                <h2 className="text-xl font-bold">Conversation log</h2>
+              <button
+                type="button"
+                onClick={() => setScreenshotsOpen((v) => !v)}
+                className="flex items-center justify-between w-full gap-3 text-left"
+                data-testid="toggle-screenshots"
+                aria-expanded={screenshotsOpen}
+                aria-controls="conversation-log-region"
+              >
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  Conversation log
+                  {screenshotsOpen ? (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </h2>
                 <span className="text-sm text-muted-foreground text-right">
                   {data.screenshots.length} screenshot{data.screenshots.length === 1 ? "" : "s"}
                   {data.screenshots.length > 0 && (
@@ -1074,7 +1213,9 @@ export default function MatchDetail() {
                     </>
                   )}
                 </span>
-              </div>
+              </button>
+              {screenshotsOpen && (
+              <div className="mt-4" id="conversation-log-region" role="region" aria-label="Conversation screenshots">
               {data.screenshots.length === 0 ? (
                 <p className="text-muted-foreground italic">No screenshots yet.</p>
               ) : (
@@ -1145,6 +1286,8 @@ export default function MatchDetail() {
                   {(addScreenshot.error as Error)?.message || "Failed to add screenshot"}
                 </p>
               )}
+              </div>
+              )}
             </Card>
 
             <Card className="p-6 rounded-3xl">
@@ -1187,6 +1330,7 @@ export default function MatchDetail() {
           </div>
 
           <div className="lg:col-span-1 flex flex-col gap-6">
+            <PreDateBriefCard match={data} />
             <NextDateCard match={data} />
             <DateHistoryCard match={data} />
             <NotesField match={data} />

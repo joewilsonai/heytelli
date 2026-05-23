@@ -83,7 +83,9 @@ export const ListMatchesResponseItem = zod.object({
   "conversionAbility": zod.number().min(listMatchesResponseScoreHistoryItemConversionAbilityMin).max(listMatchesResponseScoreHistoryItemConversionAbilityMax).nullable(),
   "chemistry": zod.number().min(listMatchesResponseScoreHistoryItemChemistryMin).max(listMatchesResponseScoreHistoryItemChemistryMax).nullable(),
   "createdAt": zod.coerce.date()
-})).optional()
+})).optional(),
+  "lastSpeaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullish().describe('Speaker of the most recent transcript turn, if any'),
+  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)')
 })
 export const ListMatchesResponse = zod.array(ListMatchesResponseItem)
 
@@ -336,7 +338,9 @@ export const UpdateMatchResponse = zod.object({
   "conversionAbility": zod.number().min(updateMatchResponseScoreHistoryItemConversionAbilityMin).max(updateMatchResponseScoreHistoryItemConversionAbilityMax).nullable(),
   "chemistry": zod.number().min(updateMatchResponseScoreHistoryItemChemistryMin).max(updateMatchResponseScoreHistoryItemChemistryMax).nullable(),
   "createdAt": zod.coerce.date()
-})).optional()
+})).optional(),
+  "lastSpeaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullish().describe('Speaker of the most recent transcript turn, if any'),
+  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)')
 })
 
 
@@ -501,6 +505,19 @@ export const RescoreMatchResponse = zod.object({
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
 }))
+})
+
+
+/**
+ * @summary Generate a pre-date prep brief from Grok using full match context
+ */
+export const GenerateDateBriefParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GenerateDateBriefResponse = zod.object({
+  "brief": zod.string().describe('Markdown-formatted pre-date prep brief'),
+  "generatedAt": zod.coerce.date()
 })
 
 
