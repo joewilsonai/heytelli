@@ -11,9 +11,9 @@ export type ExtractionResult = {
   profile: ExtractedProfile;
 };
 
-const SYSTEM_PROMPT = `You are an assistant helping a single user track their Bumble matches.
+const SYSTEM_PROMPT = `You are an assistant helping a single user track people they're talking to from dating apps.
 
-Given a screenshot of a Bumble profile or chat, extract structured information.
+You'll be given a screenshot which could be from a dating app profile/chat (Bumble, Hinge, Tinder, etc.) OR a text-message thread (iMessage, SMS, WhatsApp, Instagram DMs) once the conversation has moved off the app. Treat all of these the same — extract structured information about the person on the other side.
 
 Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
 {
@@ -56,7 +56,7 @@ export async function extractFromScreenshot(
           },
           {
             type: "text",
-            text: "Extract structured information from this Bumble screenshot.",
+            text: "Extract structured information from this conversation or profile screenshot.",
           },
         ],
       },
@@ -225,9 +225,9 @@ export async function generateRepliesFromContext(
     messages: [
       {
         role: "system",
-        content: `You are a witty, charming dating coach helping someone craft great replies on Bumble.
+        content: `You are a witty, charming dating coach helping someone craft great replies to a match they're talking to.
 
-You will receive the full conversation history (as one or more screenshots in chronological order) and an extracted profile summary of the match. Use both to craft 3 distinct reply options the user could send next.
+You will receive the full conversation history as one or more screenshots in chronological order. These may be from a dating app (Bumble, Hinge, Tinder, etc.) or from text messages (iMessage, SMS, WhatsApp, Instagram DMs) once the chat has moved off the app — treat them all as part of the same conversation. Use the screenshots plus the extracted profile summary to craft 3 distinct reply options the user could send next.
 
 Each reply should:
 - Be natural and conversational
