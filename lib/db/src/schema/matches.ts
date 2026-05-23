@@ -39,6 +39,27 @@ export const emptyExtractedProfile: ExtractedProfile = {
   scores: emptyScores,
 };
 
+export type TranscriptTurn = {
+  speaker: "her" | "me";
+  text: string;
+};
+
+export const emptyTranscript: TranscriptTurn[] = [];
+
+export function normalizeTranscript(input: unknown): TranscriptTurn[] {
+  if (!Array.isArray(input)) return [];
+  const out: TranscriptTurn[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") continue;
+    const obj = raw as Record<string, unknown>;
+    const speaker = obj.speaker === "her" || obj.speaker === "me" ? obj.speaker : null;
+    const text = typeof obj.text === "string" ? obj.text.trim() : "";
+    if (!speaker || !text) continue;
+    out.push({ speaker, text });
+  }
+  return out;
+}
+
 function normalizeScore(input: unknown): MatchScore {
   if (!input || typeof input !== "object") return { ...emptyScore };
   const obj = input as Record<string, unknown>;
@@ -87,6 +108,10 @@ export const matches = pgTable("matches", {
     .$type<ExtractedProfile>()
     .notNull()
     .default(emptyExtractedProfile),
+  transcript: jsonb("transcript")
+    .$type<TranscriptTurn[]>()
+    .notNull()
+    .default(emptyTranscript),
   notes: text("notes").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

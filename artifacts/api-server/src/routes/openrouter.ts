@@ -10,6 +10,8 @@ import {
   matches,
   screenshots,
   normalizeExtractedProfile,
+  normalizeTranscript,
+  type TranscriptTurn,
 } from "@workspace/db";
 import {
   CreateOpenrouterConversationBody,
@@ -42,17 +44,25 @@ async function objectPathToCompressedDataUrl(objectPath: string): Promise<string
   }
 }
 
+function formatTranscript(turns: TranscriptTurn[], matchName: string): string {
+  if (turns.length === 0) return "";
+  const her = matchName.trim() || "Her";
+  const lines = turns.map((t) => `${t.speaker === "her" ? her : "Me"}: ${t.text}`);
+  return lines.join("\n");
+}
+
 function profileSummary(match: {
   name: string;
   notes: string;
   vibeTags: string[];
   extractedProfile: ReturnType<typeof normalizeExtractedProfile>;
+  transcript: TranscriptTurn[];
 }): string {
   const p = match.extractedProfile;
   const s = p.scores;
   const fmt = (v: { value: number | null; rationale: string | null }) =>
     v.value == null ? "n/a" : `${v.value}/10${v.rationale ? ` — ${v.rationale}` : ""}`;
-  return [
+  const facts = [
     `Name: ${match.name}`,
     p.job ? `Job: ${p.job}` : null,
     p.location ? `Location: ${p.location}` : null,
@@ -67,6 +77,10 @@ function profileSummary(match: {
   ]
     .filter(Boolean)
     .join("\n");
+
+  const transcript = formatTranscript(match.transcript, match.name);
+  if (!transcript) return facts;
+  return `${facts}\n\nFull chat transcript (chronological):\n${transcript}`;
 }
 
 // Path to the editable prompt template at the monorepo root.
@@ -131,7 +145,11 @@ async function buildSystemPrompt(matchId: number | null): Promise<string> {
     }
     const roster = all
       .map((m, i) => {
-        const norm = { ...m, extractedProfile: normalizeExtractedProfile(m.extractedProfile) };
+        const norm = {
+          ...m,
+          extractedProfile: normalizeExtractedProfile(m.extractedProfile),
+          transcript: normalizeTranscript(m.transcript),
+        };
         return `--- Match #${i + 1} (id=${m.id}) ---\n${profileSummary(norm)}`;
       })
       .join("\n\n");
@@ -140,11 +158,23 @@ async function buildSystemPrompt(matchId: number | null): Promise<string> {
 
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
   if (!match) return base;
-  const norm = { ...match, extractedProfile: normalizeExtractedProfile(match.extractedProfile) };
+  const norm = {
+    ...match,
+    extractedProfile: normalizeExtractedProfile(match.extractedProfile),
+    transcript: normalizeTranscript(match.transcript),
+  };
   return render(sections.singleMatch, {
     BASE: base,
     MATCH_SUMMARY: profileSummary(norm),
   });
+}
+
+async function hasTranscript(matchId: number): Promise<boolean> {
+  const [m] = await db
+    .select({ transcript: matches.transcript })
+    .from(matches)
+    .where(eq(matches.id, matchId));
+  return !!m && normalizeTranscript(m.transcript).length > 0;
 }
 
 async function loadMatchImages(matchId: number): Promise<string[]> {
@@ -270,7 +300,14 @@ router.post("/openrouter/conversations/:id/messages", async (req, res): Promise<
     .orderBy(asc(messages.createdAt));
 
   const systemPrompt = await buildSystemPrompt(conv.matchId);
-  const images = conv.matchId != null ? await loadMatchImages(conv.matchId) : [];
+  // We now persist the parsed chat transcript on each match (see extraction.ts),
+  // so the chat history is already inside the system prompt as text. Only fall
+  // back to attaching screenshots when no transcript exists yet (e.g. legacy
+  // matches that haven't been re-extracted).
+  const images =
+    conv.matchId != null && !(await hasTranscript(conv.matchId))
+      ? await loadMatchImages(conv.matchId)
+      : [];
 
   // Build chat history. Most messages are plain text. The most recent user
   // message is augmented with the current screenshots so the model can re-read

@@ -1,13 +1,19 @@
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import type { ExtractedProfile, MatchScore, MatchScores } from "@workspace/db";
+import type {
+  ExtractedProfile,
+  MatchScore,
+  MatchScores,
+  TranscriptTurn,
+} from "@workspace/db";
 import {
   db,
   matchScoreHistory,
   emptyExtractedProfile,
   emptyScore,
   matches,
+  normalizeTranscript,
   screenshots,
 } from "@workspace/db";
 import { ObjectStorageService } from "./objectStorage";
@@ -17,11 +23,25 @@ export type ExtractionResult = {
   suggestedName: string | null;
   vibeTags: string[];
   profile: ExtractedProfile;
+  transcript: TranscriptTurn[];
 };
 
-const SYSTEM_PROMPT = `You are an assistant helping a single user track people they're talking to from dating apps.
+const SYSTEM_PROMPT = `You are an assistant helping a single MALE user (referred to as "me") track women he's talking to from dating apps.
 
-You'll be given a screenshot which could be from a dating app profile/chat (Bumble, Hinge, Tinder, etc.) OR a text-message thread (iMessage, SMS, WhatsApp, Instagram DMs) once the conversation has moved off the app. Treat all of these the same — extract structured information about the person on the other side.
+You'll be given screenshots from a dating app profile/chat (Bumble, Hinge, Tinder, etc.) OR a text-message thread (iMessage, SMS, WhatsApp, Instagram DMs) once the conversation has moved off the app. Treat all of these the same.
+
+## Identifying who is speaking — READ CAREFULLY
+
+In every chat UI on these platforms, message bubbles are visually divided by author:
+
+- The OTHER PERSON (the woman, "her") = bubbles on the LEFT side of the screen, usually grey/white background, often with her name or profile photo next to them at the top of the thread.
+- THE USER ("me") = bubbles on the RIGHT side of the screen, usually a colored/branded background (Bumble yellow, iMessage blue/green, Hinge dark, WhatsApp green, Instagram gradient, etc.). Never has her name next to them.
+
+If a screenshot is ONLY her dating-app profile (no chat bubbles), there is no transcript — return an empty transcript array.
+
+Do not guess. If a bubble's side or color is genuinely ambiguous, omit it from the transcript rather than mis-attributing it.
+
+## Output
 
 Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
 {
@@ -32,6 +52,13 @@ Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
   "interests": string[],                 // Hobbies / interests they've mentioned (concise nouns/phrases)
   "mentionedTopics": string[],           // Specific things they brought up (e.g. "their dog Milo", "trip to Lisbon", "coffee snob")
   "conversationTone": string | null,     // Brief description of overall tone (e.g. "warm and playful", "dry witty banter") - null if no chat visible
+
+  // Full chat transcript across ALL screenshots, in chronological order (top-to-bottom within each screenshot, earliest screenshot first).
+  // Each turn is { "speaker": "her" | "me", "text": "<exact message text>" }.
+  // Combine consecutive bubbles from the same speaker into one turn separated by " / " ONLY when they're clearly the same message broken across bubbles; otherwise keep them as separate turns.
+  // Strip timestamps, reactions, and read receipts. Keep emojis. Use [photo], [voice note], [gif], [link] inline for non-text content.
+  // Return [] if no chat bubbles are visible (e.g. profile-only screenshot).
+  "transcript": [{ "speaker": "her" | "me", "text": string }],
 
   // Scores: each is an integer 0-10 plus a short rationale (1 sentence).
   // Return null for both value and rationale if there is not enough signal to judge.
@@ -102,7 +129,7 @@ export async function extractFromScreenshots(
   );
   const completion = await openai.chat.completions.create({
     model: "gpt-5.4",
-    max_completion_tokens: 1024,
+    max_completion_tokens: 4096,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -143,6 +170,7 @@ export async function extractFromScreenshots(
   return {
     suggestedName: toStringOrNull(parsed.suggestedName),
     vibeTags: toStringArray(parsed.vibeTags),
+    transcript: normalizeTranscript(parsed.transcript),
     profile: {
       job: toStringOrNull(parsed.job),
       location: toStringOrNull(parsed.location),
@@ -271,6 +299,13 @@ export function runExtractionInBackground(
         extractedProfile: mergedProfile,
         vibeTags: mergedTags,
       };
+      // Transcript is re-extracted from ALL screenshots each time, so replace
+      // wholesale rather than merge — but only if we actually got turns back
+      // (avoid wiping an existing transcript when a profile-only upload
+      // returns []).
+      if (extraction.transcript.length > 0) {
+        updates.transcript = extraction.transcript;
+      }
       if (
         options.applySuggestedName &&
         extraction.suggestedName &&

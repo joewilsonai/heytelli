@@ -310,9 +310,16 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       extraction.profile,
     );
     const mergedTags = mergeVibeTags(detail.vibeTags, extraction.vibeTags);
+    const updates: Record<string, unknown> = {
+      extractedProfile: mergedProfile,
+      vibeTags: mergedTags,
+    };
+    if (extraction.transcript.length > 0) {
+      updates.transcript = extraction.transcript;
+    }
     await db
       .update(matches)
-      .set({ extractedProfile: mergedProfile, vibeTags: mergedTags })
+      .set(updates)
       .where(eq(matches.id, detail.id));
     await recordScoreHistory(detail.id, mergedProfile.scores);
     // Clear any prior per-screenshot failure badges — we just successfully

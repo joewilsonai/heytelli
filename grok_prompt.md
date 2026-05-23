@@ -32,8 +32,6 @@ Here is the full roster he's working with:
 
 {{BASE}}
 
-This conversation is focused on ONE specific match. Her profile:
+This conversation is focused on ONE specific match. Her profile and the full chronological transcript of their chat (parsed from his screenshots) is below. In the transcript, "Me" = the user and her name = her. When the user asks "what did she say about X" or "how should I reply to her last message", refer to the transcript directly — you don't need new screenshots.
 
 {{MATCH_SUMMARY}}
-
-The user's most recent screenshots of their chat will be attached to his next message so you can read the actual conversation.
