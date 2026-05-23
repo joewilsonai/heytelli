@@ -120,7 +120,7 @@ function NewChatComposer({
   );
 }
 
-function ConversationView({ id }: { id: number }) {
+function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
   const { data: conv, refetch } = useGetOpenrouterConversation(id);
   const qc = useQueryClient();
   const [, navigate] = useLocation();
@@ -204,7 +204,18 @@ function ConversationView({ id }: { id: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between gap-2 p-4 border-b border-border bg-card/60 backdrop-blur">
-        <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden flex-shrink-0"
+            onClick={onBack}
+            aria-label="Back to conversations"
+            data-testid="button-back-to-conversations"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div className="min-w-0">
           <h2 className="font-semibold truncate" data-testid="text-conversation-title">
             {conv?.title ?? "…"}
           </h2>
@@ -212,6 +223,7 @@ function ConversationView({ id }: { id: number }) {
             {conv?.matchId == null ? "All matches" : `Match #${conv?.matchId}`} ·
             Powered by Grok
           </p>
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -330,7 +342,12 @@ export default function ChatPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4 flex-1 min-h-0">
-          <aside className="flex flex-col gap-3 min-h-0">
+          <aside
+            className={cn(
+              "flex-col gap-3 min-h-0",
+              selectedId == null ? "flex" : "hidden md:flex",
+            )}
+          >
             <NewChatComposer onCreated={(id) => navigate(`/chat?id=${id}`)} />
             <Card className="rounded-2xl overflow-hidden flex-1 min-h-0 flex flex-col">
               <div className="px-4 py-3 border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -360,14 +377,14 @@ export default function ChatPage() {
             </Card>
           </aside>
 
-          <main className="min-h-0">
+          <main className={cn("min-h-0", selectedId == null && "hidden md:block")}>
             <Card className="rounded-2xl h-full overflow-hidden flex flex-col min-h-[60vh]">
               {selectedId == null ? (
                 <div className="flex-1 flex items-center justify-center text-center p-8 text-muted-foreground text-sm">
                   Pick a conversation from the list or start a new one.
                 </div>
               ) : (
-                <ConversationView id={selectedId} />
+                <ConversationView id={selectedId} onBack={() => navigate("/chat")} />
               )}
             </Card>
           </main>
