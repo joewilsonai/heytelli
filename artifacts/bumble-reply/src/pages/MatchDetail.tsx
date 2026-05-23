@@ -559,6 +559,15 @@ export default function MatchDetail() {
     },
   });
 
+  const rescoreAfterUpload = useRescoreMatch({
+    mutation: {
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() });
+      },
+    },
+  });
+
   const generateReplies = useGenerateMatchReplies({
     mutation: {
       onSuccess: (res) => setReplies(res.replies),
@@ -684,9 +693,16 @@ export default function MatchDetail() {
                 onUploaded={(objectPath) =>
                   addScreenshot.mutateAsync({ id, data: { objectPath } })
                 }
+                onComplete={() => rescoreAfterUpload.mutate({ id })}
                 label="Add more screenshots"
-                hint="Click, drop, or paste — reads in the background"
+                hint="Click, drop, or paste — AI re-reads after upload"
               />
+              {rescoreAfterUpload.isPending && (
+                <p className="text-muted-foreground text-sm mt-3 flex items-center gap-2">
+                  <RefreshCcw className="w-4 h-4 animate-spin" />
+                  Reading the full conversation…
+                </p>
+              )}
               {addScreenshot.isError && (
                 <p className="text-destructive text-sm mt-3 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />

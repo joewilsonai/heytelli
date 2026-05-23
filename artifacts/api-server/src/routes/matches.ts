@@ -241,16 +241,17 @@ router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
     return;
   }
 
-  const [shot] = await db
+  // Mark the screenshot as "done" immediately. The client batches uploads
+  // and triggers a single /rescore call after the batch, which analyzes
+  // every screenshot together — much cheaper and avoids rate limits.
+  await db
     .insert(screenshots)
     .values({
       matchId: match.id,
       objectPath: body.data.objectPath,
-      extractionStatus: "pending",
+      extractionStatus: "done",
     })
     .returning();
-
-  runExtractionInBackground(match.id, shot.id, body.data.objectPath);
 
   const detail = await loadMatchDetail(match.id);
   res.json(detail);
@@ -287,6 +288,12 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       .update(matches)
       .set({ extractedProfile: mergedProfile, vibeTags: mergedTags })
       .where(eq(matches.id, detail.id));
+    // Clear any prior per-screenshot failure badges — we just successfully
+    // read the whole conversation in one shot.
+    await db
+      .update(screenshots)
+      .set({ extractionStatus: "done", extractionError: null })
+      .where(eq(screenshots.matchId, detail.id));
     const refreshed = await loadMatchDetail(detail.id);
     res.json(refreshed);
   } catch (err) {
