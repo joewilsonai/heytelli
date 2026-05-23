@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type {
+  DateHistoryEntry,
   ExtractedProfile,
   MatchScore,
   MatchScores,
@@ -90,6 +91,53 @@ function toScore(v: unknown): MatchScore {
   return { value, rationale: toStringOrNull(obj.rationale) };
 }
 
+export type MatchContext = {
+  nextDateAt: Date | string | null;
+  nextDateLocation: string | null;
+  dateHistory: DateHistoryEntry[];
+};
+
+function formatMatchContext(ctx: MatchContext | undefined): string {
+  if (!ctx) return "";
+  const lines: string[] = [];
+  if (ctx.nextDateAt) {
+    const when = new Date(ctx.nextDateAt);
+    if (!Number.isNaN(when.getTime())) {
+      const whenStr = when.toLocaleString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      lines.push(
+        `Upcoming date scheduled: ${whenStr}${ctx.nextDateLocation ? ` at ${ctx.nextDateLocation}` : ""}.`,
+      );
+    }
+  } else if (ctx.nextDateLocation) {
+    lines.push(`Planned date location (no time set yet): ${ctx.nextDateLocation}.`);
+  }
+  if (ctx.dateHistory.length > 0) {
+    const sorted = [...ctx.dateHistory].sort((a, b) => a.when.localeCompare(b.when));
+    lines.push(`Past dates with her (${sorted.length}):`);
+    for (const entry of sorted) {
+      const when = new Date(entry.when);
+      const whenStr = Number.isNaN(when.getTime())
+        ? entry.when
+        : when.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+      const loc = entry.location ? ` @ ${entry.location}` : "";
+      const recap = entry.recap ? ` — ${entry.recap}` : "";
+      lines.push(`  - ${whenStr}${loc}${recap}`);
+    }
+  }
+  if (lines.length === 0) return "";
+  return `\n\nReal-world dating context (NOT from the chat — provided by the user):\n${lines.join("\n")}\n\nFactor this into the scores: an upcoming/past in-person date is strong evidence she's interested. Past date recaps describe what actually happened IRL — weight them heavily over chat banter when judging chemistry, sex potential, and conversion ability.`;
+}
+
 export async function extractFromScreenshot(
   imageDataUrl: string,
 ): Promise<ExtractionResult> {
@@ -116,6 +164,7 @@ async function compressForVision(dataUrl: string): Promise<string> {
 
 export async function extractFromScreenshots(
   imageDataUrls: string[],
+  context?: MatchContext,
 ): Promise<ExtractionResult> {
   // Cap to most-recent 12 to keep the request shape sane even for very long threads.
   const capped = imageDataUrls.slice(-12);
@@ -127,6 +176,11 @@ export async function extractFromScreenshots(
         image_url: { url, detail: "high" as const },
       }) as const,
   );
+  const baseText =
+    imageDataUrls.length > 1
+      ? `Extract structured information from these ${imageDataUrls.length} screenshots, which together form one continuous conversation (chronological order). Score the conversation as a whole.`
+      : "Extract structured information from this conversation or profile screenshot.";
+  const userText = baseText + formatMatchContext(context);
   const completion = await openai.chat.completions.create({
     model: "gpt-5.4",
     max_completion_tokens: 4096,
@@ -136,12 +190,7 @@ export async function extractFromScreenshots(
         role: "user",
         content: [
           ...imageParts,
-          {
-            type: "text",
-            text: imageDataUrls.length > 1
-              ? `Extract structured information from these ${imageDataUrls.length} screenshots, which together form one continuous conversation (chronological order). Score the conversation as a whole.`
-              : "Extract structured information from this conversation or profile screenshot.",
-          },
+          { type: "text", text: userText },
         ],
       },
     ],
@@ -282,16 +331,20 @@ export function runExtractionInBackground(
         (a, b) => a.uploadedAt.getTime() - b.uploadedAt.getTime(),
       );
 
-      const dataUrls = await Promise.all(
-        allShots.map((s) => objectPathToDataUrl(s.objectPath)),
-      );
-      const extraction = await extractFromScreenshots(dataUrls);
-
       const [match] = await db
         .select()
         .from(matches)
         .where(eq(matches.id, matchId));
       if (!match) return;
+
+      const dataUrls = await Promise.all(
+        allShots.map((s) => objectPathToDataUrl(s.objectPath)),
+      );
+      const extraction = await extractFromScreenshots(dataUrls, {
+        nextDateAt: match.nextDateAt,
+        nextDateLocation: match.nextDateLocation,
+        dateHistory: Array.isArray(match.dateHistory) ? match.dateHistory : [],
+      });
 
       const mergedProfile = mergeExtraction(match.extractedProfile, extraction.profile);
       const mergedTags = mergeVibeTags(match.vibeTags, extraction.vibeTags);

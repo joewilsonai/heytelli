@@ -67,6 +67,15 @@ export const ListMatchesResponseItem = zod.object({
 })
 }),
   "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "scoreHistory": zod.array(zod.object({
@@ -186,6 +195,15 @@ export const GetMatchResponse = zod.object({
 })
 }),
   "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "screenshots": zod.array(zod.object({
@@ -243,7 +261,16 @@ export const UpdateMatchBody = zod.object({
 })
 })
 }).optional(),
-  "photoObjectPath": zod.string().nullish()
+  "photoObjectPath": zod.string().nullish(),
+  "nextDateAt": zod.coerce.date().nullish(),
+  "nextDateLocation": zod.string().nullish(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})).optional()
 })
 
 export const updateMatchResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
@@ -293,6 +320,15 @@ export const UpdateMatchResponse = zod.object({
 })
 }),
   "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "scoreHistory": zod.array(zod.object({
@@ -379,6 +415,15 @@ export const AddScreenshotResponse = zod.object({
 })
 }),
   "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "screenshots": zod.array(zod.object({
@@ -437,6 +482,15 @@ export const RescoreMatchResponse = zod.object({
 })
 }),
   "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
   "screenshots": zod.array(zod.object({

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 import type { Screenshot } from './screenshot';
 
@@ -16,6 +17,11 @@ export interface MatchDetail {
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
+  /** @nullable */
+  nextDateAt: Date | null;
+  /** @nullable */
+  nextDateLocation: string | null;
+  dateHistory: DateHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
   screenshots: Screenshot[];

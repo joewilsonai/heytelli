@@ -32,6 +32,9 @@ import {
   Flame,
   Zap,
   HeartHandshake,
+  CalendarClock,
+  CalendarDays,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -390,6 +393,397 @@ function ProfileListField({ label, items }: { label: string; items: string[] }) 
   );
 }
 
+function toLocalInputValue(iso: string | Date | null): string {
+  if (!iso) return "";
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromLocalInputValue(s: string): string | null {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function formatDateLong(iso: string | Date | null): string {
+  if (!iso) return "";
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function NextDateCard({ match }: { match: MatchDetailType }) {
+  const queryClient = useQueryClient();
+  const [when, setWhen] = useState(toLocalInputValue(match.nextDateAt));
+  const [location, setLocation] = useState(match.nextDateLocation ?? "");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentRef = useRef({
+    when: toLocalInputValue(match.nextDateAt),
+    location: match.nextDateLocation ?? "",
+  });
+
+  useEffect(() => {
+    const incoming = {
+      when: toLocalInputValue(match.nextDateAt),
+      location: match.nextDateLocation ?? "",
+    };
+    if (
+      incoming.when !== lastSentRef.current.when ||
+      incoming.location !== lastSentRef.current.location
+    ) {
+      setWhen(incoming.when);
+      setLocation(incoming.location);
+      lastSentRef.current = incoming;
+    }
+  }, [match.nextDateAt, match.nextDateLocation]);
+
+  const updateMatch = useUpdateMatch({
+    mutation: {
+      onSuccess: () => {
+        setSavedAt(new Date());
+        queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(match.id) });
+      },
+    },
+  });
+
+  useEffect(() => {
+    if (
+      when === lastSentRef.current.when &&
+      location === lastSentRef.current.location
+    ) {
+      return;
+    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      lastSentRef.current = { when, location };
+      updateMatch.mutate({
+        id: match.id,
+        data: {
+          nextDateAt: fromLocalInputValue(when),
+          nextDateLocation: location.trim() ? location.trim() : null,
+        },
+      });
+    }, 800);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [when, location, match.id, updateMatch]);
+
+  const clear = () => {
+    setWhen("");
+    setLocation("");
+  };
+
+  return (
+    <Card className="p-6 rounded-3xl">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <CalendarClock className="w-5 h-5" /> Next date
+        </h2>
+        <span className="text-xs text-muted-foreground">
+          {updateMatch.isPending
+            ? "Saving..."
+            : savedAt
+              ? `Saved ${savedAt.toLocaleTimeString()}`
+              : "Autosaves"}
+        </span>
+      </div>
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Day & time</span>
+          <Input
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+            data-testid="input-next-date-at"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Location</span>
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g. Flight Club, downtown"
+            data-testid="input-next-date-location"
+          />
+        </label>
+        {(when || location) && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              {when ? formatDateLong(fromLocalInputValue(when)) : "No time set"}
+              {location ? ` · ${location}` : ""}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clear}
+              data-testid="button-clear-next-date"
+            >
+              <X className="w-4 h-4" /> Clear
+            </Button>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+type DateHistoryEntryUI = {
+  id: string;
+  when: string;
+  location: string;
+  recap: string;
+  createdAt: string;
+};
+
+function DateHistoryCard({ match }: { match: MatchDetailType }) {
+  const queryClient = useQueryClient();
+  const entries: DateHistoryEntryUI[] = useMemo(
+    () => (Array.isArray(match.dateHistory) ? (match.dateHistory as DateHistoryEntryUI[]) : []),
+    [match.dateHistory],
+  );
+  const [adding, setAdding] = useState(false);
+  const [newWhen, setNewWhen] = useState("");
+  const [newLocation, setNewLocation] = useState("");
+  const [newRecap, setNewRecap] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editWhen, setEditWhen] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editRecap, setEditRecap] = useState("");
+
+  const updateMatch = useUpdateMatch({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(match.id) });
+      },
+    },
+  });
+
+  const save = (next: DateHistoryEntryUI[]) => {
+    updateMatch.mutate({ id: match.id, data: { dateHistory: next } });
+  };
+
+  const startAdd = () => {
+    setAdding(true);
+    setNewWhen(toLocalInputValue(new Date()));
+    setNewLocation("");
+    setNewRecap("");
+  };
+
+  const cancelAdd = () => {
+    setAdding(false);
+    setNewWhen("");
+    setNewLocation("");
+    setNewRecap("");
+  };
+
+  const submitAdd = () => {
+    const whenIso = fromLocalInputValue(newWhen);
+    if (!whenIso) return;
+    const entry: DateHistoryEntryUI = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      when: whenIso,
+      location: newLocation.trim(),
+      recap: newRecap.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    save([...entries, entry]);
+    cancelAdd();
+  };
+
+  const startEdit = (e: DateHistoryEntryUI) => {
+    setEditingId(e.id);
+    setEditWhen(toLocalInputValue(e.when));
+    setEditLocation(e.location);
+    setEditRecap(e.recap);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const submitEdit = () => {
+    if (!editingId) return;
+    const whenIso = fromLocalInputValue(editWhen);
+    if (!whenIso) return;
+    const next = entries.map((e) =>
+      e.id === editingId
+        ? {
+            ...e,
+            when: whenIso,
+            location: editLocation.trim(),
+            recap: editRecap.trim(),
+          }
+        : e,
+    );
+    save(next);
+    setEditingId(null);
+  };
+
+  const removeEntry = (id: string) => {
+    if (!window.confirm("Delete this date entry?")) return;
+    save(entries.filter((e) => e.id !== id));
+  };
+
+  const sorted = [...entries].sort((a, b) => b.when.localeCompare(a.when));
+
+  return (
+    <Card className="p-6 rounded-3xl">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <CalendarDays className="w-5 h-5" /> Date history
+        </h2>
+        {!adding && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={startAdd}
+            data-testid="button-add-date-entry"
+          >
+            <Plus className="w-4 h-4" /> Log date
+          </Button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="border border-dashed rounded-2xl p-3 mb-3 flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground">When</span>
+            <Input
+              type="datetime-local"
+              value={newWhen}
+              onChange={(e) => setNewWhen(e.target.value)}
+              data-testid="input-new-date-when"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground">Location</span>
+            <Input
+              value={newLocation}
+              onChange={(e) => setNewLocation(e.target.value)}
+              placeholder="Where did you go?"
+              data-testid="input-new-date-location"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted-foreground">How did it go?</span>
+            <Textarea
+              value={newRecap}
+              onChange={(e) => setNewRecap(e.target.value)}
+              rows={3}
+              placeholder="Vibe, what you talked about, did anything happen, next steps…"
+              data-testid="textarea-new-date-recap"
+            />
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={cancelAdd}>
+              <X className="w-4 h-4" /> Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={submitAdd}
+              disabled={!newWhen || updateMatch.isPending}
+              data-testid="button-save-date-entry"
+            >
+              <Save className="w-4 h-4" /> Save
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {sorted.length === 0 && !adding ? (
+        <p className="text-muted-foreground italic text-sm">
+          No dates logged yet. After each date, add what happened so Grok and the scores stay current.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {sorted.map((e) => (
+            <div
+              key={e.id}
+              className="rounded-2xl border p-3"
+              data-testid={`date-entry-${e.id}`}
+            >
+              {editingId === e.id ? (
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="datetime-local"
+                    value={editWhen}
+                    onChange={(ev) => setEditWhen(ev.target.value)}
+                  />
+                  <Input
+                    value={editLocation}
+                    onChange={(ev) => setEditLocation(ev.target.value)}
+                    placeholder="Location"
+                  />
+                  <Textarea
+                    value={editRecap}
+                    onChange={(ev) => setEditRecap(ev.target.value)}
+                    rows={3}
+                    placeholder="Recap"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                      <X className="w-4 h-4" /> Cancel
+                    </Button>
+                    <Button size="sm" onClick={submitEdit} disabled={!editWhen}>
+                      <Save className="w-4 h-4" /> Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="text-sm font-semibold">{formatDateLong(e.when)}</div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => startEdit(e)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeEntry(e.id)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  {e.location && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                      <MapPin className="w-3 h-3" /> {e.location}
+                    </div>
+                  )}
+                  {e.recap && (
+                    <p className="text-sm whitespace-pre-wrap">{e.recap}</p>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function NotesField({ match }: { match: MatchDetailType }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState(match.notes);
@@ -732,9 +1126,9 @@ export default function MatchDetail() {
               <UploadDropzone
                 compact
                 multiple
-                onUploaded={(objectPath) =>
-                  addScreenshot.mutateAsync({ id, data: { objectPath } })
-                }
+                onUploaded={async (objectPath) => {
+                  await addScreenshot.mutateAsync({ id, data: { objectPath } });
+                }}
                 onComplete={() => rescoreAfterUpload.mutate({ id })}
                 label="Add more screenshots"
                 hint="Click, drop, or paste — AI re-reads after upload"
@@ -793,6 +1187,8 @@ export default function MatchDetail() {
           </div>
 
           <div className="lg:col-span-1 flex flex-col gap-6">
+            <NextDateCard match={data} />
+            <DateHistoryCard match={data} />
             <NotesField match={data} />
           </div>
         </div>

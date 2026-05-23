@@ -7,6 +7,7 @@ import {
   screenshots,
   emptyExtractedProfile,
   normalizeExtractedProfile,
+  normalizeDateHistory,
 } from "@workspace/db";
 import {
   CreateMatchBody,
@@ -43,8 +44,14 @@ async function objectPathToDataUrl(objectPath: string): Promise<string> {
   return `data:${contentType};base64,${buf.toString("base64")}`;
 }
 
-function withNormalizedProfile<T extends { extractedProfile: unknown }>(m: T) {
-  return { ...m, extractedProfile: normalizeExtractedProfile(m.extractedProfile) };
+function withNormalizedProfile<
+  T extends { extractedProfile: unknown; dateHistory?: unknown },
+>(m: T) {
+  return {
+    ...m,
+    extractedProfile: normalizeExtractedProfile(m.extractedProfile),
+    dateHistory: normalizeDateHistory(m.dateHistory),
+  };
 }
 
 async function loadMatchDetail(matchId: number) {
@@ -180,6 +187,14 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     updates.extractedProfile = body.data.extractedProfile;
   if (body.data.photoObjectPath !== undefined)
     updates.photoObjectPath = body.data.photoObjectPath;
+  if (body.data.nextDateAt !== undefined)
+    updates.nextDateAt = body.data.nextDateAt
+      ? new Date(body.data.nextDateAt)
+      : null;
+  if (body.data.nextDateLocation !== undefined)
+    updates.nextDateLocation = body.data.nextDateLocation;
+  if (body.data.dateHistory !== undefined)
+    updates.dateHistory = normalizeDateHistory(body.data.dateHistory);
 
   if (Object.keys(updates).length === 0) {
     const [existing] = await db
@@ -304,7 +319,11 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
     const dataUrls = await Promise.all(
       detail.screenshots.map((s) => objectPathToDataUrl(s.objectPath)),
     );
-    const extraction = await extractFromScreenshots(dataUrls);
+    const extraction = await extractFromScreenshots(dataUrls, {
+      nextDateAt: detail.nextDateAt,
+      nextDateLocation: detail.nextDateLocation,
+      dateHistory: detail.dateHistory,
+    });
     const mergedProfile = mergeExtraction(
       detail.extractedProfile,
       extraction.profile,

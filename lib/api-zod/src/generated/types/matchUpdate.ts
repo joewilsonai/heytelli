@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 
 export interface MatchUpdate {
@@ -15,4 +16,9 @@ export interface MatchUpdate {
   extractedProfile?: ExtractedProfile;
   /** @nullable */
   photoObjectPath?: string | null;
+  /** @nullable */
+  nextDateAt?: Date | null;
+  /** @nullable */
+  nextDateLocation?: string | null;
+  dateHistory?: DateHistoryEntry[];
 }

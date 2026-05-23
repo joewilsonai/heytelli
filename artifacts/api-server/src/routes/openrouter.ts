@@ -11,7 +11,9 @@ import {
   screenshots,
   normalizeExtractedProfile,
   normalizeTranscript,
+  normalizeDateHistory,
   type TranscriptTurn,
+  type DateHistoryEntry,
 } from "@workspace/db";
 import {
   CreateOpenrouterConversationBody,
@@ -51,12 +53,58 @@ function formatTranscript(turns: TranscriptTurn[], matchName: string): string {
   return lines.join("\n");
 }
 
+function formatDateInfo(
+  nextDateAt: Date | string | null,
+  nextDateLocation: string | null,
+  history: DateHistoryEntry[],
+): string {
+  const lines: string[] = [];
+  if (nextDateAt) {
+    const d = new Date(nextDateAt);
+    if (!Number.isNaN(d.getTime())) {
+      const whenStr = d.toLocaleString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      lines.push(
+        `Next date scheduled: ${whenStr}${nextDateLocation ? ` at ${nextDateLocation}` : ""}`,
+      );
+    }
+  } else if (nextDateLocation) {
+    lines.push(`Planned date location (no time set): ${nextDateLocation}`);
+  }
+  if (history.length > 0) {
+    const sorted = [...history].sort((a, b) => a.when.localeCompare(b.when));
+    lines.push(`Date history (${sorted.length}, oldest first):`);
+    for (const e of sorted) {
+      const d = new Date(e.when);
+      const whenStr = Number.isNaN(d.getTime())
+        ? e.when
+        : d.toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+      const loc = e.location ? ` @ ${e.location}` : "";
+      const recap = e.recap ? ` — ${e.recap}` : "";
+      lines.push(`  - ${whenStr}${loc}${recap}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 function profileSummary(match: {
   name: string;
   notes: string;
   vibeTags: string[];
   extractedProfile: ReturnType<typeof normalizeExtractedProfile>;
   transcript: TranscriptTurn[];
+  nextDateAt: Date | string | null;
+  nextDateLocation: string | null;
+  dateHistory: DateHistoryEntry[];
 }): string {
   const p = match.extractedProfile;
   const s = p.scores;
@@ -78,9 +126,17 @@ function profileSummary(match: {
     .filter(Boolean)
     .join("\n");
 
+  const dateInfo = formatDateInfo(
+    match.nextDateAt,
+    match.nextDateLocation,
+    match.dateHistory,
+  );
   const transcript = formatTranscript(match.transcript, match.name);
-  if (!transcript) return facts;
-  return `${facts}\n\nFull chat transcript (chronological):\n${transcript}`;
+
+  let out = facts;
+  if (dateInfo) out += `\n\n${dateInfo}`;
+  if (transcript) out += `\n\nFull chat transcript (chronological):\n${transcript}`;
+  return out;
 }
 
 // Path to the editable prompt template at the monorepo root.
@@ -191,6 +247,7 @@ async function buildSystemPrompt(
           ...m,
           extractedProfile: normalizeExtractedProfile(m.extractedProfile),
           transcript: normalizeTranscript(m.transcript),
+          dateHistory: normalizeDateHistory(m.dateHistory),
         };
         return `--- Match #${i + 1} (id=${m.id}) ---\n${profileSummary(norm)}`;
       })
@@ -204,6 +261,7 @@ async function buildSystemPrompt(
     ...match,
     extractedProfile: normalizeExtractedProfile(match.extractedProfile),
     transcript: normalizeTranscript(match.transcript),
+    dateHistory: normalizeDateHistory(match.dateHistory),
   };
 
   let summary = profileSummary(norm);

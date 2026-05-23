@@ -46,6 +46,49 @@ export type TranscriptTurn = {
 
 export const emptyTranscript: TranscriptTurn[] = [];
 
+export type DateHistoryEntry = {
+  id: string;
+  /** ISO timestamp of when the date actually happened. */
+  when: string;
+  location: string;
+  recap: string;
+  /** ISO timestamp of when the entry was logged. */
+  createdAt: string;
+};
+
+export const emptyDateHistory: DateHistoryEntry[] = [];
+
+function toIsoString(v: unknown): string | null {
+  if (v instanceof Date) {
+    return Number.isNaN(v.getTime()) ? null : v.toISOString();
+  }
+  if (typeof v === "string" && v) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  return null;
+}
+
+export function normalizeDateHistory(input: unknown): DateHistoryEntry[] {
+  if (!Array.isArray(input)) return [];
+  const out: DateHistoryEntry[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") continue;
+    const obj = raw as Record<string, unknown>;
+    const id = typeof obj.id === "string" && obj.id ? obj.id : null;
+    const when = toIsoString(obj.when);
+    if (!id || !when) continue;
+    out.push({
+      id,
+      when,
+      location: typeof obj.location === "string" ? obj.location : "",
+      recap: typeof obj.recap === "string" ? obj.recap : "",
+      createdAt: toIsoString(obj.createdAt) ?? new Date().toISOString(),
+    });
+  }
+  return out;
+}
+
 export function normalizeTranscript(input: unknown): TranscriptTurn[] {
   if (!Array.isArray(input)) return [];
   const out: TranscriptTurn[] = [];
@@ -113,6 +156,12 @@ export const matches = pgTable("matches", {
     .notNull()
     .default(emptyTranscript),
   notes: text("notes").notNull().default(""),
+  nextDateAt: timestamp("next_date_at", { withTimezone: true }),
+  nextDateLocation: text("next_date_location"),
+  dateHistory: jsonb("date_history")
+    .$type<DateHistoryEntry[]>()
+    .notNull()
+    .default(emptyDateHistory),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

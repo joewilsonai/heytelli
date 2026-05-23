@@ -59,6 +59,14 @@ export interface ScoreHistoryPoint {
   createdAt: string;
 }
 
+export interface DateHistoryEntry {
+  id: string;
+  when: string;
+  location: string;
+  recap: string;
+  createdAt: string;
+}
+
 export interface Match {
   id: number;
   name: string;
@@ -67,6 +75,11 @@ export interface Match {
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
+  /** @nullable */
+  nextDateAt: string | null;
+  /** @nullable */
+  nextDateLocation: string | null;
+  dateHistory: DateHistoryEntry[];
   createdAt: string;
   updatedAt: string;
   scoreHistory?: ScoreHistoryPoint[];
@@ -99,6 +112,11 @@ export interface MatchDetail {
   vibeTags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
+  /** @nullable */
+  nextDateAt: string | null;
+  /** @nullable */
+  nextDateLocation: string | null;
+  dateHistory: DateHistoryEntry[];
   createdAt: string;
   updatedAt: string;
   screenshots: Screenshot[];
@@ -126,6 +144,11 @@ export interface MatchUpdate {
   extractedProfile?: ExtractedProfile;
   /** @nullable */
   photoObjectPath?: string | null;
+  /** @nullable */
+  nextDateAt?: string | null;
+  /** @nullable */
+  nextDateLocation?: string | null;
+  dateHistory?: DateHistoryEntry[];
 }
 
 export interface ScreenshotInput {

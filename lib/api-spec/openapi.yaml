@@ -470,6 +470,15 @@ components:
         conversionAbility: { type: ["integer", "null"], minimum: 0, maximum: 10 }
         chemistry: { type: ["integer", "null"], minimum: 0, maximum: 10 }
         createdAt: { type: string, format: date-time }
+    DateHistoryEntry:
+      type: object
+      required: [id, when, location, recap, createdAt]
+      properties:
+        id: { type: string }
+        when: { type: string, format: date-time }
+        location: { type: string }
+        recap: { type: string }
+        createdAt: { type: string, format: date-time }
     Match:
       type: object
       required:
@@ -479,6 +488,9 @@ components:
         - vibeTags
         - extractedProfile
         - notes
+        - nextDateAt
+        - nextDateLocation
+        - dateHistory
         - createdAt
         - updatedAt
       properties:
@@ -491,6 +503,12 @@ components:
         extractedProfile:
           $ref: "#/components/schemas/ExtractedProfile"
         notes: { type: string }
+        nextDateAt: { type: ["string", "null"], format: date-time }
+        nextDateLocation: { type: ["string", "null"] }
+        dateHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/DateHistoryEntry"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         scoreHistory:
@@ -518,6 +536,9 @@ components:
         - vibeTags
         - extractedProfile
         - notes
+        - nextDateAt
+        - nextDateLocation
+        - dateHistory
         - createdAt
         - updatedAt
         - screenshots
@@ -531,6 +552,12 @@ components:
         extractedProfile:
           $ref: "#/components/schemas/ExtractedProfile"
         notes: { type: string }
+        nextDateAt: { type: ["string", "null"], format: date-time }
+        nextDateLocation: { type: ["string", "null"] }
+        dateHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/DateHistoryEntry"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         screenshots:
@@ -568,6 +595,12 @@ components:
         extractedProfile:
           $ref: "#/components/schemas/ExtractedProfile"
         photoObjectPath: { type: ["string", "null"] }
+        nextDateAt: { type: ["string", "null"], format: date-time }
+        nextDateLocation: { type: ["string", "null"] }
+        dateHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/DateHistoryEntry"
     ScreenshotInput:
       type: object
       required: [objectPath]
