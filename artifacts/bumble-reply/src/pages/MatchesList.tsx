@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useListMatches } from "@workspace/api-client-react";
-import { Sparkles, Plus, Heart } from "lucide-react";
+import { Sparkles, Plus, Heart, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +11,11 @@ function formatTimeAgo(date: Date | string) {
   const diff = Date.now() - d.getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `${h}h`;
   const days = Math.floor(h / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return `${days}d`;
   return d.toLocaleDateString();
 }
 
@@ -28,36 +28,45 @@ export default function MatchesList() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/30 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto p-6 md:p-12 relative z-10">
-        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10">
-          <div>
-            <div className="inline-flex items-center justify-center p-3 bg-primary/20 rounded-2xl mb-3">
-              <Sparkles className="w-6 h-6 text-primary" />
+      <div className="max-w-3xl mx-auto p-6 md:p-10 relative z-10">
+        <header className="flex items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center justify-center p-2.5 bg-primary/20 rounded-xl">
+              <Sparkles className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-              Your Matches
-            </h1>
-            <p className="text-muted-foreground text-lg mt-2">
-              Keep track of every match. Smarter replies, every time.
-            </p>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground leading-tight">
+                Your Matches
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                {matches.length > 0
+                  ? `${matches.length} ${matches.length === 1 ? "match" : "matches"}`
+                  : "Smarter replies, every time."}
+              </p>
+            </div>
           </div>
           <Link href="/new">
             <Button
-              size="lg"
-              className="gap-2 rounded-full font-semibold h-12 px-6"
+              className="gap-2 rounded-full font-semibold"
               data-testid="button-add-match"
             >
-              <Plus className="w-5 h-5" /> Add match
+              <Plus className="w-4 h-4" /> Add match
             </Button>
           </Link>
         </header>
 
         {isLoading && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="h-64 animate-pulse bg-muted/40" />
+          <Card className="rounded-2xl divide-y divide-border overflow-hidden">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-4 animate-pulse">
+                <div className="w-14 h-14 rounded-full bg-muted/60" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 bg-muted/60 rounded" />
+                  <div className="h-3 w-2/3 bg-muted/40 rounded" />
+                </div>
+              </div>
             ))}
-          </div>
+          </Card>
         )}
 
         {!isLoading && matches.length === 0 && (
@@ -79,56 +88,65 @@ export default function MatchesList() {
         )}
 
         {!isLoading && matches.length > 0 && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="rounded-2xl divide-y divide-border overflow-hidden shadow-sm">
             {matches.map((m) => {
               const photo = objectPathToUrl(m.photoObjectPath);
+              const subtitle = [m.extractedProfile.job, m.extractedProfile.location]
+                .filter(Boolean)
+                .join(" · ");
               return (
                 <Link key={m.id} href={`/matches/${m.id}`}>
-                  <Card
-                    className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer rounded-3xl group h-full flex flex-col"
-                    data-testid={`card-match-${m.id}`}
+                  <div
+                    className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors cursor-pointer group"
+                    data-testid={`row-match-${m.id}`}
                   >
-                    <div className="aspect-[4/3] bg-muted relative overflow-hidden">
+                    <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 bg-muted ring-2 ring-background shadow-sm">
                       {photo ? (
                         <img
                           src={photo}
                           alt={m.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/40">
-                          <Heart className="w-12 h-12 text-primary" />
+                          <Heart className="w-6 h-6 text-primary" />
                         </div>
                       )}
                     </div>
-                    <div className="p-5 flex flex-col flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-xl">{m.name}</h3>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <h3 className="font-semibold text-base truncate">{m.name}</h3>
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {formatTimeAgo(m.updatedAt)}
                         </span>
                       </div>
-                      {m.extractedProfile.job && (
-                        <p className="text-muted-foreground text-sm mt-1">
-                          {m.extractedProfile.job}
-                          {m.extractedProfile.location ? ` · ${m.extractedProfile.location}` : ""}
+                      {subtitle && (
+                        <p className="text-muted-foreground text-sm truncate">
+                          {subtitle}
                         </p>
                       )}
                       {m.vibeTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {m.vibeTags.slice(0, 4).map((t) => (
-                            <Badge key={t} variant="secondary" className="rounded-full font-normal">
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {m.vibeTags.slice(0, 3).map((t) => (
+                            <Badge
+                              key={t}
+                              variant="secondary"
+                              className="rounded-full font-normal text-[10px] px-2 py-0 h-5"
+                            >
                               {t}
                             </Badge>
                           ))}
                         </div>
                       )}
                     </div>
-                  </Card>
+
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  </div>
                 </Link>
               );
             })}
-          </div>
+          </Card>
         )}
       </div>
     </div>
