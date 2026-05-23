@@ -219,6 +219,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/rescore:
+    post:
+      operationId: rescoreMatch
+      tags: [matches]
+      summary: Re-run AI extraction on the latest screenshot to refresh scores
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Match with refreshed extraction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+        "400":
+          description: No screenshots to score from
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /matches/{id}/replies:
     post:
       operationId: generateMatchReplies

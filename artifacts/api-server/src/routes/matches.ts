@@ -18,11 +18,14 @@ import {
   GenerateMatchRepliesParams,
   PreviewMatchExtractionBody,
   ListScreenshotsParams,
+  RescoreMatchParams,
 } from "@workspace/api-zod";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
   extractFromScreenshot,
+  extractFromScreenshots,
   mergeExtraction,
+  mergeVibeTags,
   generateRepliesFromContext,
   runExtractionInBackground,
 } from "../lib/extraction";
@@ -251,6 +254,45 @@ router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
 
   const detail = await loadMatchDetail(match.id);
   res.json(detail);
+});
+
+router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
+  const params = RescoreMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const detail = await loadMatchDetail(params.data.id);
+  if (!detail) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  if (detail.screenshots.length === 0) {
+    res.status(400).json({ error: "Match has no screenshots yet" });
+    return;
+  }
+
+  try {
+    const dataUrls = await Promise.all(
+      detail.screenshots.map((s) => objectPathToDataUrl(s.objectPath)),
+    );
+    const extraction = await extractFromScreenshots(dataUrls);
+    const mergedProfile = mergeExtraction(
+      detail.extractedProfile,
+      extraction.profile,
+    );
+    const mergedTags = mergeVibeTags(detail.vibeTags, extraction.vibeTags);
+    await db
+      .update(matches)
+      .set({ extractedProfile: mergedProfile, vibeTags: mergedTags })
+      .where(eq(matches.id, detail.id));
+    const refreshed = await loadMatchDetail(detail.id);
+    res.json(refreshed);
+  } catch (err) {
+    req.log.error({ err }, "Rescore failed");
+    res.status(500).json({ error: "Failed to rescore match" });
+  }
 });
 
 router.post("/matches/:id/replies", async (req, res): Promise<void> => {

@@ -7,6 +7,7 @@ import {
   useDeleteMatch,
   useAddScreenshot,
   useGenerateMatchReplies,
+  useRescoreMatch,
   getGetMatchQueryKey,
   getListMatchesQueryKey,
 } from "@workspace/api-client-react";
@@ -111,18 +112,46 @@ function ScoresCard({ match }: { match: MatchDetailType }) {
   const allEmpty = SCORE_DEFS.every(
     (def) => scores[def.key].value === null,
   );
+  const hasScreenshots = match.screenshots.length > 0;
+  const qc = useQueryClient();
+  const rescore = useRescoreMatch({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getGetMatchQueryKey(match.id) });
+        qc.invalidateQueries({ queryKey: getListMatchesQueryKey() });
+      },
+    },
+  });
   return (
     <Card className="p-6 rounded-3xl" data-testid="scores-card">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-3">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" /> Scores
         </h2>
-        {allEmpty && (
-          <span className="text-xs text-muted-foreground">
-            Add more chat screenshots to unlock
-          </span>
+        {hasScreenshots && (
+          <Button
+            size="sm"
+            variant={allEmpty ? "default" : "outline"}
+            onClick={() => rescore.mutate({ id: match.id })}
+            disabled={rescore.isPending}
+            data-testid="button-rescore"
+          >
+            <RefreshCcw
+              className={`w-4 h-4 mr-1.5 ${rescore.isPending ? "animate-spin" : ""}`}
+            />
+            {rescore.isPending
+              ? "Scoring…"
+              : allEmpty
+                ? "Generate scores"
+                : "Re-score"}
+          </Button>
         )}
       </div>
+      {rescore.isError && (
+        <p className="text-destructive text-sm mb-3 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" /> Couldn't generate scores — try again.
+        </p>
+      )}
       <div className="grid sm:grid-cols-3 gap-4">
         {SCORE_DEFS.map((def) => {
           const s: MatchScore = scores[def.key];

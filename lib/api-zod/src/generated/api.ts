@@ -363,6 +363,64 @@ export const AddScreenshotResponse = zod.object({
 
 
 /**
+ * @summary Re-run AI extraction on the latest screenshot to refresh scores
+ */
+export const RescoreMatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const rescoreMatchResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const rescoreMatchResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const rescoreMatchResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const rescoreMatchResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const rescoreMatchResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const rescoreMatchResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
+export const RescoreMatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(rescoreMatchResponseExtractedProfileScoresSexPotentialValueOneMin).max(rescoreMatchResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(rescoreMatchResponseExtractedProfileScoresConversionAbilityValueOneMin).max(rescoreMatchResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(rescoreMatchResponseExtractedProfileScoresChemistryValueOneMin).max(rescoreMatchResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
+}),
+  "notes": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "screenshots": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string(),
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable()
+}))
+})
+
+
+/**
  * @summary Generate 3 reply suggestions using full conversation history and extracted profile
  */
 export const GenerateMatchRepliesParams = zod.object({

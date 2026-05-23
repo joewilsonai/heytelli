@@ -719,6 +719,76 @@ export const useAddScreenshot = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getAddScreenshotMutationOptions(options));
     }
 
+export const getRescoreMatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/rescore`
+}
+
+/**
+ * @summary Re-run AI extraction on the latest screenshot to refresh scores
+ */
+export const rescoreMatch = async (id: number, options?: RequestInit): Promise<MatchDetail> => {
+
+  return customFetch<MatchDetail>(getRescoreMatchUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRescoreMatchMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rescoreMatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rescoreMatch>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['rescoreMatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rescoreMatch>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  rescoreMatch(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RescoreMatchMutationResult = NonNullable<Awaited<ReturnType<typeof rescoreMatch>>>
+
+    export type RescoreMatchMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Re-run AI extraction on the latest screenshot to refresh scores
+ */
+export const useRescoreMatch = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rescoreMatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rescoreMatch>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRescoreMatchMutationOptions(options));
+    }
+
 export const getGenerateMatchRepliesUrl = (id: number,) => {
 
 

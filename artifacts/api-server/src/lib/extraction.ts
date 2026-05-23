@@ -64,6 +64,19 @@ function toScore(v: unknown): MatchScore {
 export async function extractFromScreenshot(
   imageDataUrl: string,
 ): Promise<ExtractionResult> {
+  return extractFromScreenshots([imageDataUrl]);
+}
+
+export async function extractFromScreenshots(
+  imageDataUrls: string[],
+): Promise<ExtractionResult> {
+  const imageParts = imageDataUrls.map(
+    (url) =>
+      ({
+        type: "image_url" as const,
+        image_url: { url, detail: "high" as const },
+      }) as const,
+  );
   const completion = await openai.chat.completions.create({
     model: "gpt-5.4",
     max_completion_tokens: 1024,
@@ -72,13 +85,12 @@ export async function extractFromScreenshot(
       {
         role: "user",
         content: [
-          {
-            type: "image_url",
-            image_url: { url: imageDataUrl, detail: "high" },
-          },
+          ...imageParts,
           {
             type: "text",
-            text: "Extract structured information from this conversation or profile screenshot.",
+            text: imageDataUrls.length > 1
+              ? `Extract structured information from these ${imageDataUrls.length} screenshots, which together form one continuous conversation (chronological order). Score the conversation as a whole.`
+              : "Extract structured information from this conversation or profile screenshot.",
           },
         ],
       },
