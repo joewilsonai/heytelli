@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and, ne } from "drizzle-orm";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
@@ -134,7 +134,49 @@ function render(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
 }
 
-async function buildSystemPrompt(matchId: number | null): Promise<string> {
+async function loadPriorWingmanChats(
+  matchId: number,
+  excludeConversationId: number,
+): Promise<string> {
+  const pastConvs = await db
+    .select()
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.matchId, matchId),
+        ne(conversations.id, excludeConversationId),
+      ),
+    )
+    .orderBy(asc(conversations.createdAt));
+  if (pastConvs.length === 0) return "";
+
+  const blocks: string[] = [];
+  for (const c of pastConvs) {
+    const msgs = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, c.id))
+      .orderBy(asc(messages.createdAt));
+    if (msgs.length === 0) continue;
+    const when = new Date(c.createdAt).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const body = msgs
+      .map((m) => `${m.role === "user" ? "User" : "You (Wingman)"}: ${m.content}`)
+      .join("\n");
+    blocks.push(`--- "${c.title}" (${when}) ---\n${body}`);
+  }
+  return blocks.join("\n\n");
+}
+
+async function buildSystemPrompt(
+  matchId: number | null,
+  currentConversationId: number | null = null,
+): Promise<string> {
   const sections = await loadPromptSections();
   const base = sections.base;
 
@@ -163,9 +205,18 @@ async function buildSystemPrompt(matchId: number | null): Promise<string> {
     extractedProfile: normalizeExtractedProfile(match.extractedProfile),
     transcript: normalizeTranscript(match.transcript),
   };
+
+  let summary = profileSummary(norm);
+  if (currentConversationId != null) {
+    const priorChats = await loadPriorWingmanChats(matchId, currentConversationId);
+    if (priorChats) {
+      summary += `\n\nPrevious wingman chats about ${match.name} (oldest first). The user's strategy or read on her may have evolved across these — treat the newest chat as the most current take, but consider the full arc:\n\n${priorChats}`;
+    }
+  }
+
   return render(sections.singleMatch, {
     BASE: base,
-    MATCH_SUMMARY: profileSummary(norm),
+    MATCH_SUMMARY: summary,
   });
 }
 
@@ -299,7 +350,7 @@ router.post("/openrouter/conversations/:id/messages", async (req, res): Promise<
     .where(eq(messages.conversationId, conv.id))
     .orderBy(asc(messages.createdAt));
 
-  const systemPrompt = await buildSystemPrompt(conv.matchId);
+  const systemPrompt = await buildSystemPrompt(conv.matchId, conv.id);
   // We now persist the parsed chat transcript on each match (see extraction.ts),
   // so the chat history is already inside the system prompt as text. Only fall
   // back to attaching screenshots when no transcript exists yet (e.g. legacy
