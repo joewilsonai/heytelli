@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import sharp from "sharp";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile, MatchScore, MatchScores } from "@workspace/db";
 import {
@@ -67,10 +68,31 @@ export async function extractFromScreenshot(
   return extractFromScreenshots([imageDataUrl]);
 }
 
+// Downscale + recompress images so we don't blow past the vision API's
+// per-request payload limit when feeding many screenshots at once.
+async function compressForVision(dataUrl: string): Promise<string> {
+  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if (!m) return dataUrl;
+  const buf = Buffer.from(m[2], "base64");
+  try {
+    const out = await sharp(buf)
+      .rotate()
+      .resize({ width: 1280, height: 1280, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${out.toString("base64")}`;
+  } catch {
+    return dataUrl; // fall back to original if sharp can't decode
+  }
+}
+
 export async function extractFromScreenshots(
   imageDataUrls: string[],
 ): Promise<ExtractionResult> {
-  const imageParts = imageDataUrls.map(
+  // Cap to most-recent 12 to keep the request shape sane even for very long threads.
+  const capped = imageDataUrls.slice(-12);
+  const compressed = await Promise.all(capped.map(compressForVision));
+  const imageParts = compressed.map(
     (url) =>
       ({
         type: "image_url" as const,
@@ -284,7 +306,9 @@ export async function generateRepliesFromContext(
     .filter(Boolean)
     .join("\n");
 
-  const imageParts = imageDataUrls.map(
+  const capped = imageDataUrls.slice(-12);
+  const compressed = await Promise.all(capped.map(compressForVision));
+  const imageParts = compressed.map(
     (url) =>
       ({
         type: "image_url" as const,
