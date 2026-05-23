@@ -151,3 +151,40 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface OpenrouterConversation {
+  id: number;
+  title: string;
+  /** @nullable */
+  matchId: number | null;
+  createdAt: string;
+}
+
+export interface OpenrouterMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface OpenrouterConversationInput {
+  /** @minLength 1 */
+  title: string;
+  /** @nullable */
+  matchId?: number | null;
+}
+
+export interface OpenrouterMessageInput {
+  /** @minLength 1 */
+  content: string;
+}
+
+export interface OpenrouterConversationWithMessages {
+  id: number;
+  title: string;
+  /** @nullable */
+  matchId: number | null;
+  createdAt: string;
+  messages: OpenrouterMessage[];
+}
+

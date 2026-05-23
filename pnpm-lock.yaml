@@ -178,6 +178,9 @@ importers:
       '@workspace/integrations-openai-ai-server':
         specifier: workspace:*
         version: link:../../lib/integrations-openai-ai-server
+      '@workspace/integrations-openrouter-ai':
+        specifier: workspace:*
+        version: link:../../lib/integrations-openrouter-ai
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -669,6 +672,22 @@ importers:
         version: 19.2.14
 
   lib/integrations-openai-ai-server:
+    dependencies:
+      openai:
+        specifier: ^6.27.0
+        version: 6.39.0(zod@3.25.76)
+      p-limit:
+        specifier: ^7.3.0
+        version: 7.3.0
+      p-retry:
+        specifier: ^7.1.1
+        version: 7.1.1
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+
+  lib/integrations-openrouter-ai:
     dependencies:
       openai:
         specifier: ^6.27.0

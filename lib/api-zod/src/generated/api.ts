@@ -463,6 +463,92 @@ export const GenerateMatchRepliesResponse = zod.object({
 
 
 /**
+ * @summary List all chat conversations
+ */
+export const ListOpenrouterConversationsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "matchId": zod.number().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListOpenrouterConversationsResponse = zod.array(ListOpenrouterConversationsResponseItem)
+
+
+/**
+ * @summary Create a new chat conversation
+ */
+
+
+
+export const CreateOpenrouterConversationBody = zod.object({
+  "title": zod.string().min(1),
+  "matchId": zod.number().nullish()
+})
+
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetOpenrouterConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetOpenrouterConversationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "matchId": zod.number().nullable(),
+  "createdAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteOpenrouterConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListOpenrouterMessagesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListOpenrouterMessagesResponseItem = zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListOpenrouterMessagesResponse = zod.array(ListOpenrouterMessagesResponseItem)
+
+
+/**
+ * @summary Send a message and stream the AI response (SSE)
+ */
+export const SendOpenrouterMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const SendOpenrouterMessageBody = zod.object({
+  "content": zod.string().min(1)
+})
+
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

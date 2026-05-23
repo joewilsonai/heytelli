@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import MatchesList from "@/pages/MatchesList";
 import AddMatch from "@/pages/AddMatch";
 import MatchDetail from "@/pages/MatchDetail";
+import ChatPage from "@/pages/Chat";
 
 const queryClient = new QueryClient();
 
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={MatchesList} />
       <Route path="/new" component={AddMatch} />
       <Route path="/matches/:id" component={MatchDetail} />
+      <Route path="/chat" component={ChatPage} />
       <Route component={NotFound} />
     </Switch>
   );

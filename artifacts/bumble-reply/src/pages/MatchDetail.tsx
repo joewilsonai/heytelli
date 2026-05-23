@@ -619,11 +619,22 @@ export default function MatchDetail() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[35%] h-[35%] bg-accent/30 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-5xl mx-auto p-6 md:p-12 relative z-10">
-        <Link href="/">
-          <Button variant="ghost" className="gap-2 mb-6 -ml-3" data-testid="button-back">
-            <ArrowLeft className="w-4 h-4" /> All matches
-          </Button>
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link href="/">
+            <Button variant="ghost" className="gap-2 -ml-3" data-testid="button-back">
+              <ArrowLeft className="w-4 h-4" /> All matches
+            </Button>
+          </Link>
+          <Link href={`/chat?match=${data.id}`}>
+            <Button
+              variant="outline"
+              className="gap-2 rounded-full font-semibold"
+              data-testid="button-chat-about-match"
+            >
+              <Sparkles className="w-4 h-4" /> Chat about her
+            </Button>
+          </Link>
+        </div>
 
         <NameHeader match={data} />
 

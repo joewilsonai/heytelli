@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useListMatches } from "@workspace/api-client-react";
 import type { ScoreHistoryPoint } from "@workspace/api-client-react";
-import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -169,14 +169,25 @@ export default function MatchesList() {
               </p>
             </div>
           </div>
-          <Link href="/new">
-            <Button
-              className="gap-2 rounded-full font-semibold"
-              data-testid="button-add-match"
-            >
-              <Plus className="w-4 h-4" /> Add match
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/chat">
+              <Button
+                variant="outline"
+                className="gap-2 rounded-full font-semibold"
+                data-testid="button-open-chat"
+              >
+                <MessageSquare className="w-4 h-4" /> Chat
+              </Button>
+            </Link>
+            <Link href="/new">
+              <Button
+                className="gap-2 rounded-full font-semibold"
+                data-testid="button-add-match"
+              >
+                <Plus className="w-4 h-4" /> Add match
+              </Button>
+            </Link>
+          </div>
         </header>
 
         {isLoading && (
