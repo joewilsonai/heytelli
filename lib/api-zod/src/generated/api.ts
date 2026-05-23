@@ -29,6 +29,15 @@ export const listMatchesResponseExtractedProfileScoresConversionAbilityValueOneM
 export const listMatchesResponseExtractedProfileScoresChemistryValueOneMin = 0;
 export const listMatchesResponseExtractedProfileScoresChemistryValueOneMax = 10;
 
+export const listMatchesResponseScoreHistoryItemSexPotentialMin = 0;
+export const listMatchesResponseScoreHistoryItemSexPotentialMax = 10;
+
+export const listMatchesResponseScoreHistoryItemConversionAbilityMin = 0;
+export const listMatchesResponseScoreHistoryItemConversionAbilityMax = 10;
+
+export const listMatchesResponseScoreHistoryItemChemistryMin = 0;
+export const listMatchesResponseScoreHistoryItemChemistryMax = 10;
+
 
 
 export const ListMatchesResponseItem = zod.object({
@@ -59,7 +68,13 @@ export const ListMatchesResponseItem = zod.object({
 }),
   "notes": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "scoreHistory": zod.array(zod.object({
+  "sexPotential": zod.number().min(listMatchesResponseScoreHistoryItemSexPotentialMin).max(listMatchesResponseScoreHistoryItemSexPotentialMax).nullable(),
+  "conversionAbility": zod.number().min(listMatchesResponseScoreHistoryItemConversionAbilityMin).max(listMatchesResponseScoreHistoryItemConversionAbilityMax).nullable(),
+  "chemistry": zod.number().min(listMatchesResponseScoreHistoryItemChemistryMin).max(listMatchesResponseScoreHistoryItemChemistryMax).nullable(),
+  "createdAt": zod.coerce.date()
+})).optional()
 })
 export const ListMatchesResponse = zod.array(ListMatchesResponseItem)
 
@@ -240,6 +255,15 @@ export const updateMatchResponseExtractedProfileScoresConversionAbilityValueOneM
 export const updateMatchResponseExtractedProfileScoresChemistryValueOneMin = 0;
 export const updateMatchResponseExtractedProfileScoresChemistryValueOneMax = 10;
 
+export const updateMatchResponseScoreHistoryItemSexPotentialMin = 0;
+export const updateMatchResponseScoreHistoryItemSexPotentialMax = 10;
+
+export const updateMatchResponseScoreHistoryItemConversionAbilityMin = 0;
+export const updateMatchResponseScoreHistoryItemConversionAbilityMax = 10;
+
+export const updateMatchResponseScoreHistoryItemChemistryMin = 0;
+export const updateMatchResponseScoreHistoryItemChemistryMax = 10;
+
 
 
 export const UpdateMatchResponse = zod.object({
@@ -270,7 +294,13 @@ export const UpdateMatchResponse = zod.object({
 }),
   "notes": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "scoreHistory": zod.array(zod.object({
+  "sexPotential": zod.number().min(updateMatchResponseScoreHistoryItemSexPotentialMin).max(updateMatchResponseScoreHistoryItemSexPotentialMax).nullable(),
+  "conversionAbility": zod.number().min(updateMatchResponseScoreHistoryItemConversionAbilityMin).max(updateMatchResponseScoreHistoryItemConversionAbilityMax).nullable(),
+  "chemistry": zod.number().min(updateMatchResponseScoreHistoryItemChemistryMin).max(updateMatchResponseScoreHistoryItemChemistryMax).nullable(),
+  "createdAt": zod.coerce.date()
+})).optional()
 })
 
 

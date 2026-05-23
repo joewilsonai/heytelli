@@ -349,6 +349,14 @@ components:
         conversationTone: { type: ["string", "null"] }
         scores:
           $ref: "#/components/schemas/MatchScores"
+    ScoreHistoryPoint:
+      type: object
+      required: [sexPotential, conversionAbility, chemistry, createdAt]
+      properties:
+        sexPotential: { type: ["integer", "null"], minimum: 0, maximum: 10 }
+        conversionAbility: { type: ["integer", "null"], minimum: 0, maximum: 10 }
+        chemistry: { type: ["integer", "null"], minimum: 0, maximum: 10 }
+        createdAt: { type: string, format: date-time }
     Match:
       type: object
       required:
@@ -372,6 +380,10 @@ components:
         notes: { type: string }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        scoreHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreHistoryPoint"
     Screenshot:
       type: object
       required: [id, matchId, objectPath, uploadedAt, extractionStatus, extractionError]

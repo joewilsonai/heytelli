@@ -37,6 +37,28 @@ export interface ExtractedProfile {
   scores: MatchScores;
 }
 
+export interface ScoreHistoryPoint {
+  /**
+     * @minimum 0
+     * @maximum 10
+     * @nullable
+     */
+  sexPotential: number | null;
+  /**
+     * @minimum 0
+     * @maximum 10
+     * @nullable
+     */
+  conversionAbility: number | null;
+  /**
+     * @minimum 0
+     * @maximum 10
+     * @nullable
+     */
+  chemistry: number | null;
+  createdAt: string;
+}
+
 export interface Match {
   id: number;
   name: string;
@@ -47,6 +69,7 @@ export interface Match {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  scoreHistory?: ScoreHistoryPoint[];
 }
 
 export type ScreenshotExtractionStatus = typeof ScreenshotExtractionStatus[keyof typeof ScreenshotExtractionStatus];

@@ -17,6 +17,7 @@ export * from './matchScore';
 export * from './matchScores';
 export * from './matchUpdate';
 export * from './replyResult';
+export * from './scoreHistoryPoint';
 export * from './screenshot';
 export * from './screenshotExtractionStatus';
 export * from './screenshotInput';

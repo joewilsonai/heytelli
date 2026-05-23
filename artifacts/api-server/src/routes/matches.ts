@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, inArray } from "drizzle-orm";
 import {
   db,
   matches,
+  matchScoreHistory,
   screenshots,
   emptyExtractedProfile,
   normalizeExtractedProfile,
@@ -27,6 +28,7 @@ import {
   mergeExtraction,
   mergeVibeTags,
   generateRepliesFromContext,
+  recordScoreHistory,
   runExtractionInBackground,
 } from "../lib/extraction";
 
@@ -58,7 +60,31 @@ async function loadMatchDetail(matchId: number) {
 
 router.get("/matches", async (_req, res): Promise<void> => {
   const rows = await db.select().from(matches).orderBy(desc(matches.updatedAt));
-  res.json(rows.map(withNormalizedProfile));
+  const ids = rows.map((r) => r.id);
+  const history = ids.length
+    ? await db
+        .select()
+        .from(matchScoreHistory)
+        .where(inArray(matchScoreHistory.matchId, ids))
+        .orderBy(asc(matchScoreHistory.createdAt))
+    : [];
+  const byMatch = new Map<number, typeof history>();
+  for (const h of history) {
+    const arr = byMatch.get(h.matchId) ?? [];
+    arr.push(h);
+    byMatch.set(h.matchId, arr);
+  }
+  res.json(
+    rows.map((r) => ({
+      ...withNormalizedProfile(r),
+      scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
+        sexPotential: h.sexPotential,
+        conversionAbility: h.conversionAbility,
+        chemistry: h.chemistry,
+        createdAt: h.createdAt.toISOString(),
+      })),
+    })),
+  );
 });
 
 router.post("/matches/preview", async (req, res): Promise<void> => {
@@ -288,6 +314,7 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       .update(matches)
       .set({ extractedProfile: mergedProfile, vibeTags: mergedTags })
       .where(eq(matches.id, detail.id));
+    await recordScoreHistory(detail.id, mergedProfile.scores);
     // Clear any prior per-screenshot failure badges — we just successfully
     // read the whole conversation in one shot.
     await db

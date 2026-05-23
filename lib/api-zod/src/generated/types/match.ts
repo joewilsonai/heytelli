@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExtractedProfile } from './extractedProfile';
+import type { ScoreHistoryPoint } from './scoreHistoryPoint';
 
 export interface Match {
   id: number;
@@ -17,4 +18,5 @@ export interface Match {
   notes: string;
   createdAt: Date;
   updatedAt: Date;
+  scoreHistory?: ScoreHistoryPoint[];
 }

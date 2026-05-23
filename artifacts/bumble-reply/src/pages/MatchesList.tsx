@@ -1,10 +1,134 @@
 import { Link } from "wouter";
 import { useListMatches } from "@workspace/api-client-react";
-import { Sparkles, Plus, Heart, ChevronRight } from "lucide-react";
+import type { ScoreHistoryPoint } from "@workspace/api-client-react";
+import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { objectPathToUrl } from "@/lib/storage";
+
+type SexTier = "green" | "yellow" | "red" | "gray";
+
+function tierForScore(value: number | null | undefined): SexTier {
+  if (value == null) return "gray";
+  if (value >= 7) return "green";
+  if (value >= 4) return "yellow";
+  return "red";
+}
+
+const TIER_STYLES: Record<
+  SexTier,
+  { dot: string; stroke: string; fill: string; label: string; text: string }
+> = {
+  green: {
+    dot: "bg-emerald-500",
+    stroke: "stroke-emerald-500",
+    fill: "fill-emerald-500/15",
+    label: "Hot",
+    text: "text-emerald-600 dark:text-emerald-400",
+  },
+  yellow: {
+    dot: "bg-amber-500",
+    stroke: "stroke-amber-500",
+    fill: "fill-amber-500/15",
+    label: "Warm",
+    text: "text-amber-600 dark:text-amber-400",
+  },
+  red: {
+    dot: "bg-rose-500",
+    stroke: "stroke-rose-500",
+    fill: "fill-rose-500/15",
+    label: "Cold",
+    text: "text-rose-600 dark:text-rose-400",
+  },
+  gray: {
+    dot: "bg-muted-foreground/40",
+    stroke: "stroke-muted-foreground/50",
+    fill: "fill-muted-foreground/10",
+    label: "No data",
+    text: "text-muted-foreground",
+  },
+};
+
+function SexTrendCell({
+  history,
+  current,
+}: {
+  history: ScoreHistoryPoint[];
+  current: number | null;
+}) {
+  // Build the sparkline series from history's sexPotential values, plus the
+  // current score as the final point if history is empty or stale.
+  const points = history
+    .map((h) => h.sexPotential)
+    .filter((v): v is number => typeof v === "number");
+  if (points.length === 0 && current != null) points.push(current);
+
+  const tier = tierForScore(current);
+  const style = TIER_STYLES[tier];
+
+  const w = 72;
+  const h = 28;
+  let path = "";
+  let area = "";
+  if (points.length >= 2) {
+    const stepX = w / (points.length - 1);
+    const coords = points.map((v, i) => {
+      const x = i * stepX;
+      const y = h - (v / 10) * h;
+      return [x, y] as const;
+    });
+    path = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+    area = `${path} L${w},${h} L0,${h} Z`;
+  }
+
+  const delta =
+    points.length >= 2 ? points[points.length - 1] - points[0] : 0;
+  const TrendIcon =
+    points.length < 2 ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+
+  return (
+    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+      <div className="flex items-center gap-1.5">
+        <span className={`w-2 h-2 rounded-full ${style.dot}`} aria-hidden />
+        <span className={`text-xs font-semibold tabular-nums ${style.text}`}>
+          {current != null ? `${current}/10` : "—"}
+        </span>
+      </div>
+      <div className="flex items-center gap-1">
+        {points.length >= 2 ? (
+          <svg
+            width={w}
+            height={h}
+            viewBox={`0 0 ${w} ${h}`}
+            className="overflow-visible"
+            aria-hidden
+          >
+            <path d={area} className={style.fill} stroke="none" />
+            <path
+              d={path}
+              className={style.stroke}
+              strokeWidth={1.75}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : (
+          <div
+            className="rounded"
+            style={{ width: w, height: h }}
+            aria-hidden
+          />
+        )}
+        <TrendIcon className={`w-3 h-3 ${style.text}`} />
+      </div>
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        Sex · {style.label}
+      </span>
+    </div>
+  );
+}
 
 function formatTimeAgo(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
@@ -140,6 +264,11 @@ export default function MatchesList() {
                         </div>
                       )}
                     </div>
+
+                    <SexTrendCell
+                      history={m.scoreHistory ?? []}
+                      current={m.extractedProfile.scores.sexPotential.value}
+                    />
 
                     <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                   </div>

@@ -4,6 +4,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile, MatchScore, MatchScores } from "@workspace/db";
 import {
   db,
+  matchScoreHistory,
   emptyExtractedProfile,
   emptyScore,
   matches,
@@ -220,6 +221,22 @@ async function objectPathToDataUrl(objectPath: string): Promise<string> {
   return `data:${contentType};base64,${buf.toString("base64")}`;
 }
 
+export async function recordScoreHistory(
+  matchId: number,
+  scores: MatchScores,
+): Promise<void> {
+  try {
+    await db.insert(matchScoreHistory).values({
+      matchId,
+      sexPotential: scores.sexPotential.value,
+      conversionAbility: scores.conversionAbility.value,
+      chemistry: scores.chemistry.value,
+    });
+  } catch (err) {
+    logger.error({ err, matchId }, "Failed to record score history");
+  }
+}
+
 export function runExtractionInBackground(
   matchId: number,
   screenshotId: number,
@@ -263,6 +280,7 @@ export function runExtractionInBackground(
       }
 
       await db.update(matches).set(updates).where(eq(matches.id, matchId));
+      await recordScoreHistory(matchId, mergedProfile.scores);
       await db
         .update(screenshots)
         .set({ extractionStatus: "done", extractionError: null })
