@@ -40,21 +40,31 @@ export function UploadDropzone({
       setQueueError(null);
       setQueue({ done: 0, total: imgs.length });
       let successes = 0;
+      let failures = 0;
+      let lastError: Error | null = null;
       for (let i = 0; i < imgs.length; i++) {
         try {
           const res = await uploadFile(imgs[i]);
           if (res) {
             await onUploaded(res.objectPath);
             successes++;
+          } else {
+            failures++;
           }
         } catch (err) {
-          setQueueError(
-            err instanceof Error ? err : new Error("Upload failed"),
-          );
+          failures++;
+          lastError = err instanceof Error ? err : new Error("Upload failed");
         }
         setQueue({ done: i + 1, total: imgs.length });
       }
       setQueue({ done: 0, total: 0 });
+      if (failures > 0 && lastError) {
+        const prefix =
+          imgs.length > 1
+            ? `${failures} of ${imgs.length} failed — `
+            : "";
+        setQueueError(new Error(prefix + lastError.message));
+      }
       if (successes > 0) onComplete?.(successes);
     },
     [uploadFile, onUploaded, onComplete],

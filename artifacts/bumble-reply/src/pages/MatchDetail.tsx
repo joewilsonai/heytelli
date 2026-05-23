@@ -549,7 +549,10 @@ export default function MatchDetail() {
 
   const addScreenshot = useAddScreenshot({
     mutation: {
-      onSuccess: () => {
+      // Use onSettled so we refetch even if the response errored — the
+      // server may have actually persisted the screenshot before failing
+      // to reply, and we want the UI to reflect the truth in the DB.
+      onSettled: () => {
         queryClient.invalidateQueries({ queryKey: getGetMatchQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() });
       },
