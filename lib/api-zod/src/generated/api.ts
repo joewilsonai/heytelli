@@ -18,14 +18,246 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Generate reply suggestions from a Bumble screenshot
+ * @summary List all matches
  */
-export const GenerateBumbleReplyBody = zod.object({
-  "image": zod.string().describe('Base64-encoded image of the Bumble conversation')
+export const ListMatchesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+}),
+  "notes": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMatchesResponse = zod.array(ListMatchesResponseItem)
+
+
+/**
+ * Creates a new match record from an uploaded screenshot. The server
+runs vision extraction on the screenshot to suggest a name and
+initial profile. The screenshot is appended to the match's conversation log.
+
+ * @summary Create a match from an initial screenshot
+ */
+
+
+
+export const CreateMatchBody = zod.object({
+  "screenshotObjectPath": zod.string().describe('Object path returned from \/storage\/uploads\/request-url after upload'),
+  "name": zod.string().min(1).describe('Confirmed\/edited match name (originally suggested by preview)'),
+  "vibeTags": zod.array(zod.string()).describe('Confirmed\/edited vibe tags'),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+})
 })
 
-export const GenerateBumbleReplyResponse = zod.object({
+
+/**
+ * Given the object path of an already-uploaded screenshot, runs the AI
+vision model and returns the suggested name, vibe tags, and extracted
+profile so the user can review and edit before the match is created.
+
+ * @summary Run vision extraction on an uploaded screenshot without persisting a match
+ */
+export const PreviewMatchExtractionBody = zod.object({
+  "objectPath": zod.string()
+})
+
+export const PreviewMatchExtractionResponse = zod.object({
+  "suggestedName": zod.string().nullable(),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+})
+})
+
+
+/**
+ * @summary Get a match with its screenshots
+ */
+export const GetMatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetMatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+}),
+  "notes": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "screenshots": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string(),
+  "uploadedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Update a match's editable fields
+ */
+export const UpdateMatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateMatchBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "notes": zod.string().optional(),
+  "vibeTags": zod.array(zod.string()).optional(),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+}).optional(),
+  "photoObjectPath": zod.string().nullish()
+})
+
+export const UpdateMatchResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+}),
+  "notes": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a match
+ */
+export const DeleteMatchParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List all screenshots for a match in chronological order
+ */
+export const ListScreenshotsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListScreenshotsResponseItem = zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string(),
+  "uploadedAt": zod.coerce.date()
+})
+export const ListScreenshotsResponse = zod.array(ListScreenshotsResponseItem)
+
+
+/**
+ * @summary Add a screenshot to a match and update the extracted profile
+ */
+export const AddScreenshotParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AddScreenshotBody = zod.object({
+  "objectPath": zod.string()
+})
+
+export const AddScreenshotResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable()
+}),
+  "notes": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "screenshots": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string(),
+  "uploadedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Generate 3 reply suggestions using full conversation history and extracted profile
+ */
+export const GenerateMatchRepliesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GenerateMatchRepliesResponse = zod.object({
   "replies": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+
+
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+})
+
+
+
+
+
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string(),
+  "metadata": zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+}).optional()
 })
 
 

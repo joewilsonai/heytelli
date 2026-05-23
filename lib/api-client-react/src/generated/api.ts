@@ -20,10 +20,18 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  BumbleReplyResult,
-  BumbleScreenshotInput,
-  ErrorResponse,
-  HealthStatus
+  ErrorEnvelope,
+  ExtractionPreview,
+  HealthStatus,
+  Match,
+  MatchCreateInput,
+  MatchDetail,
+  MatchUpdate,
+  ReplyResult,
+  Screenshot,
+  ScreenshotInput,
+  UploadUrlRequest,
+  UploadUrlResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -116,37 +124,118 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
-export const getGenerateBumbleReplyUrl = () => {
+export const getListMatchesUrl = () => {
 
 
 
 
-  return `/api/bumble-reply`
+  return `/api/matches`
 }
 
 /**
- * @summary Generate reply suggestions from a Bumble screenshot
+ * @summary List all matches
  */
-export const generateBumbleReply = async (bumbleScreenshotInput: BumbleScreenshotInput, options?: RequestInit): Promise<BumbleReplyResult> => {
+export const listMatches = async ( options?: RequestInit): Promise<Match[]> => {
 
-  return customFetch<BumbleReplyResult>(getGenerateBumbleReplyUrl(),
+  return customFetch<Match[]>(getListMatchesUrl(),
   {
     ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      bumbleScreenshotInput,)
+    method: 'GET'
+
+
   }
 );}
 
 
 
 
-export const getGenerateBumbleReplyMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateBumbleReply>>, TError,{data: BodyType<BumbleScreenshotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof generateBumbleReply>>, TError,{data: BodyType<BumbleScreenshotInput>}, TContext> => {
 
-const mutationKey = ['generateBumbleReply'];
+export const getListMatchesQueryKey = () => {
+    return [
+    `/api/matches`
+    ] as const;
+    }
+
+
+export const getListMatchesQueryOptions = <TData = Awaited<ReturnType<typeof listMatches>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMatchesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMatches>>> = ({ signal }) => listMatches({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMatches>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMatchesQueryResult = NonNullable<Awaited<ReturnType<typeof listMatches>>>
+export type ListMatchesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all matches
+ */
+
+export function useListMatches<TData = Awaited<ReturnType<typeof listMatches>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMatches>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMatchesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateMatchUrl = () => {
+
+
+
+
+  return `/api/matches`
+}
+
+/**
+ * Creates a new match record from an uploaded screenshot. The server
+runs vision extraction on the screenshot to suggest a name and
+initial profile. The screenshot is appended to the match's conversation log.
+
+ * @summary Create a match from an initial screenshot
+ */
+export const createMatch = async (matchCreateInput: MatchCreateInput, options?: RequestInit): Promise<Match> => {
+
+  return customFetch<Match>(getCreateMatchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      matchCreateInput,)
+  }
+);}
+
+
+
+
+export const getCreateMatchMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMatch>>, TError,{data: BodyType<MatchCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMatch>>, TError,{data: BodyType<MatchCreateInput>}, TContext> => {
+
+const mutationKey = ['createMatch'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -156,10 +245,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateBumbleReply>>, {data: BodyType<BumbleScreenshotInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMatch>>, {data: BodyType<MatchCreateInput>}> = (props) => {
           const {data} = props ?? {};
 
-          return  generateBumbleReply(data,requestOptions)
+          return  createMatch(data,requestOptions)
         }
 
 
@@ -169,21 +258,605 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type GenerateBumbleReplyMutationResult = NonNullable<Awaited<ReturnType<typeof generateBumbleReply>>>
-    export type GenerateBumbleReplyMutationBody = BodyType<BumbleScreenshotInput>
-    export type GenerateBumbleReplyMutationError = ErrorType<ErrorResponse>
+    export type CreateMatchMutationResult = NonNullable<Awaited<ReturnType<typeof createMatch>>>
+    export type CreateMatchMutationBody = BodyType<MatchCreateInput>
+    export type CreateMatchMutationError = ErrorType<ErrorEnvelope>
 
     /**
- * @summary Generate reply suggestions from a Bumble screenshot
+ * @summary Create a match from an initial screenshot
  */
-export const useGenerateBumbleReply = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateBumbleReply>>, TError,{data: BodyType<BumbleScreenshotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useCreateMatch = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMatch>>, TError,{data: BodyType<MatchCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof generateBumbleReply>>,
+        Awaited<ReturnType<typeof createMatch>>,
         TError,
-        {data: BodyType<BumbleScreenshotInput>},
+        {data: BodyType<MatchCreateInput>},
         TContext
       > => {
-      return useMutation(getGenerateBumbleReplyMutationOptions(options));
+      return useMutation(getCreateMatchMutationOptions(options));
+    }
+
+export const getPreviewMatchExtractionUrl = () => {
+
+
+
+
+  return `/api/matches/preview`
+}
+
+/**
+ * Given the object path of an already-uploaded screenshot, runs the AI
+vision model and returns the suggested name, vibe tags, and extracted
+profile so the user can review and edit before the match is created.
+
+ * @summary Run vision extraction on an uploaded screenshot without persisting a match
+ */
+export const previewMatchExtraction = async (screenshotInput: ScreenshotInput, options?: RequestInit): Promise<ExtractionPreview> => {
+
+  return customFetch<ExtractionPreview>(getPreviewMatchExtractionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      screenshotInput,)
+  }
+);}
+
+
+
+
+export const getPreviewMatchExtractionMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewMatchExtraction>>, TError,{data: BodyType<ScreenshotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewMatchExtraction>>, TError,{data: BodyType<ScreenshotInput>}, TContext> => {
+
+const mutationKey = ['previewMatchExtraction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewMatchExtraction>>, {data: BodyType<ScreenshotInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewMatchExtraction(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewMatchExtractionMutationResult = NonNullable<Awaited<ReturnType<typeof previewMatchExtraction>>>
+    export type PreviewMatchExtractionMutationBody = BodyType<ScreenshotInput>
+    export type PreviewMatchExtractionMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Run vision extraction on an uploaded screenshot without persisting a match
+ */
+export const usePreviewMatchExtraction = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewMatchExtraction>>, TError,{data: BodyType<ScreenshotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewMatchExtraction>>,
+        TError,
+        {data: BodyType<ScreenshotInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewMatchExtractionMutationOptions(options));
+    }
+
+export const getGetMatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}`
+}
+
+/**
+ * @summary Get a match with its screenshots
+ */
+export const getMatch = async (id: number, options?: RequestInit): Promise<MatchDetail> => {
+
+  return customFetch<MatchDetail>(getGetMatchUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMatchQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}`
+    ] as const;
+    }
+
+
+export const getGetMatchQueryOptions = <TData = Awaited<ReturnType<typeof getMatch>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMatch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMatchQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMatch>>> = ({ signal }) => getMatch(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMatch>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMatchQueryResult = NonNullable<Awaited<ReturnType<typeof getMatch>>>
+export type GetMatchQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get a match with its screenshots
+ */
+
+export function useGetMatch<TData = Awaited<ReturnType<typeof getMatch>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMatch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMatchQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateMatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}`
+}
+
+/**
+ * @summary Update a match's editable fields
+ */
+export const updateMatch = async (id: number,
+    matchUpdate: MatchUpdate, options?: RequestInit): Promise<Match> => {
+
+  return customFetch<Match>(getUpdateMatchUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      matchUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateMatchMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMatch>>, TError,{id: number;data: BodyType<MatchUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMatch>>, TError,{id: number;data: BodyType<MatchUpdate>}, TContext> => {
+
+const mutationKey = ['updateMatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMatch>>, {id: number;data: BodyType<MatchUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMatch(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMatchMutationResult = NonNullable<Awaited<ReturnType<typeof updateMatch>>>
+    export type UpdateMatchMutationBody = BodyType<MatchUpdate>
+    export type UpdateMatchMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Update a match's editable fields
+ */
+export const useUpdateMatch = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMatch>>, TError,{id: number;data: BodyType<MatchUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMatch>>,
+        TError,
+        {id: number;data: BodyType<MatchUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMatchMutationOptions(options));
+    }
+
+export const getDeleteMatchUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}`
+}
+
+/**
+ * @summary Delete a match
+ */
+export const deleteMatch = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteMatchUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMatchMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMatch>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMatch>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMatch(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMatchMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMatch>>>
+
+    export type DeleteMatchMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Delete a match
+ */
+export const useDeleteMatch = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMatch>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMatch>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMatchMutationOptions(options));
+    }
+
+export const getListScreenshotsUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/screenshots`
+}
+
+/**
+ * @summary List all screenshots for a match in chronological order
+ */
+export const listScreenshots = async (id: number, options?: RequestInit): Promise<Screenshot[]> => {
+
+  return customFetch<Screenshot[]>(getListScreenshotsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListScreenshotsQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}/screenshots`
+    ] as const;
+    }
+
+
+export const getListScreenshotsQueryOptions = <TData = Awaited<ReturnType<typeof listScreenshots>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScreenshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListScreenshotsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listScreenshots>>> = ({ signal }) => listScreenshots(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listScreenshots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListScreenshotsQueryResult = NonNullable<Awaited<ReturnType<typeof listScreenshots>>>
+export type ListScreenshotsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List all screenshots for a match in chronological order
+ */
+
+export function useListScreenshots<TData = Awaited<ReturnType<typeof listScreenshots>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listScreenshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListScreenshotsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAddScreenshotUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/screenshots`
+}
+
+/**
+ * @summary Add a screenshot to a match and update the extracted profile
+ */
+export const addScreenshot = async (id: number,
+    screenshotInput: ScreenshotInput, options?: RequestInit): Promise<MatchDetail> => {
+
+  return customFetch<MatchDetail>(getAddScreenshotUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      screenshotInput,)
+  }
+);}
+
+
+
+
+export const getAddScreenshotMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addScreenshot>>, TError,{id: number;data: BodyType<ScreenshotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addScreenshot>>, TError,{id: number;data: BodyType<ScreenshotInput>}, TContext> => {
+
+const mutationKey = ['addScreenshot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addScreenshot>>, {id: number;data: BodyType<ScreenshotInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addScreenshot(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddScreenshotMutationResult = NonNullable<Awaited<ReturnType<typeof addScreenshot>>>
+    export type AddScreenshotMutationBody = BodyType<ScreenshotInput>
+    export type AddScreenshotMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Add a screenshot to a match and update the extracted profile
+ */
+export const useAddScreenshot = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addScreenshot>>, TError,{id: number;data: BodyType<ScreenshotInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addScreenshot>>,
+        TError,
+        {id: number;data: BodyType<ScreenshotInput>},
+        TContext
+      > => {
+      return useMutation(getAddScreenshotMutationOptions(options));
+    }
+
+export const getGenerateMatchRepliesUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/replies`
+}
+
+/**
+ * @summary Generate 3 reply suggestions using full conversation history and extracted profile
+ */
+export const generateMatchReplies = async (id: number, options?: RequestInit): Promise<ReplyResult> => {
+
+  return customFetch<ReplyResult>(getGenerateMatchRepliesUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getGenerateMatchRepliesMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMatchReplies>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateMatchReplies>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['generateMatchReplies'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateMatchReplies>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateMatchReplies(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateMatchRepliesMutationResult = NonNullable<Awaited<ReturnType<typeof generateMatchReplies>>>
+
+    export type GenerateMatchRepliesMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Generate 3 reply suggestions using full conversation history and extracted profile
+ */
+export const useGenerateMatchReplies = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMatchReplies>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateMatchReplies>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getGenerateMatchRepliesMutationOptions(options));
+    }
+
+export const getRequestUploadUrlUrl = () => {
+
+
+
+
+  return `/api/storage/uploads/request-url`
+}
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const requestUploadUrl = async (uploadUrlRequest: UploadUrlRequest, options?: RequestInit): Promise<UploadUrlResponse> => {
+
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      uploadUrlRequest,)
+  }
+);}
+
+
+
+
+export const getRequestUploadUrlMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext> => {
+
+const mutationKey = ['requestUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestUploadUrl>>, {data: BodyType<UploadUrlRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestUploadUrl>>>
+    export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>
+    export type RequestUploadUrlMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestUploadUrl>>,
+        TError,
+        {data: BodyType<UploadUrlRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestUploadUrlMutationOptions(options));
     }
 

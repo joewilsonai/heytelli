@@ -6,7 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './bumbleReplyResult';
-export * from './bumbleScreenshotInput';
-export * from './errorResponse';
+export * from './errorEnvelope';
+export * from './extractedProfile';
+export * from './extractionPreview';
 export * from './healthStatus';
+export * from './match';
+export * from './matchCreateInput';
+export * from './matchDetail';
+export * from './matchUpdate';
+export * from './replyResult';
+export * from './screenshot';
+export * from './screenshotInput';
+export * from './uploadUrlRequest';
+export * from './uploadUrlResponse';

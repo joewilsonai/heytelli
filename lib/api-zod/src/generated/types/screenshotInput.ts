@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface BumbleScreenshotInput {
-  /** Base64-encoded image of the Bumble conversation */
-  image: string;
+export interface ScreenshotInput {
+  objectPath: string;
 }

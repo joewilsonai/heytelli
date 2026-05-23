@@ -9,16 +9,103 @@ export interface HealthStatus {
   status: string;
 }
 
-export interface BumbleScreenshotInput {
-  /** Base64-encoded image of the Bumble conversation */
-  image: string;
+export interface ErrorEnvelope {
+  error: string;
 }
 
-export interface BumbleReplyResult {
+export interface ExtractedProfile {
+  /** @nullable */
+  job: string | null;
+  /** @nullable */
+  location: string | null;
+  interests: string[];
+  mentionedTopics: string[];
+  /** @nullable */
+  conversationTone: string | null;
+}
+
+export interface Match {
+  id: number;
+  name: string;
+  /** @nullable */
+  photoObjectPath: string | null;
+  vibeTags: string[];
+  extractedProfile: ExtractedProfile;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Screenshot {
+  id: number;
+  matchId: number;
+  objectPath: string;
+  uploadedAt: string;
+}
+
+export interface MatchDetail {
+  id: number;
+  name: string;
+  /** @nullable */
+  photoObjectPath: string | null;
+  vibeTags: string[];
+  extractedProfile: ExtractedProfile;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  screenshots: Screenshot[];
+}
+
+export interface MatchCreateInput {
+  /** Object path returned from /storage/uploads/request-url after upload */
+  screenshotObjectPath: string;
+  /**
+     * Confirmed/edited match name (originally suggested by preview)
+     * @minLength 1
+     */
+  name: string;
+  /** Confirmed/edited vibe tags */
+  vibeTags: string[];
+  extractedProfile: ExtractedProfile;
+}
+
+export interface ExtractionPreview {
+  /** @nullable */
+  suggestedName: string | null;
+  vibeTags: string[];
+  extractedProfile: ExtractedProfile;
+}
+
+export interface MatchUpdate {
+  /** @minLength 1 */
+  name?: string;
+  notes?: string;
+  vibeTags?: string[];
+  extractedProfile?: ExtractedProfile;
+  /** @nullable */
+  photoObjectPath?: string | null;
+}
+
+export interface ScreenshotInput {
+  objectPath: string;
+}
+
+export interface ReplyResult {
   replies: string[];
 }
 
-export interface ErrorResponse {
-  error: string;
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
 }
 

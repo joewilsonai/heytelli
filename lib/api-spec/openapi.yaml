@@ -10,8 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
-  - name: bumble
-    description: Bumble reply generation
+  - name: matches
+    description: Bumble CRM matches
+  - name: storage
+    description: Object storage upload and serving endpoints
 paths:
   /healthz:
     get:
@@ -26,60 +28,396 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-  /bumble-reply:
+  /matches:
+    get:
+      operationId: listMatches
+      tags: [matches]
+      summary: List all matches
+      responses:
+        "200":
+          description: Matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
     post:
-      operationId: generateBumbleReply
-      tags: [bumble]
-      summary: Generate reply suggestions from a Bumble screenshot
+      operationId: createMatch
+      tags: [matches]
+      summary: Create a match from an initial screenshot
+      description: |
+        Creates a new match record from an uploaded screenshot. The server
+        runs vision extraction on the screenshot to suggest a name and
+        initial profile. The screenshot is appended to the match's conversation log.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/BumbleScreenshotInput"
+              $ref: "#/components/schemas/MatchCreateInput"
       responses:
-        "200":
-          description: Reply suggestions generated
+        "201":
+          description: Match created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BumbleReplyResult"
+                $ref: "#/components/schemas/Match"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/preview:
+    post:
+      operationId: previewMatchExtraction
+      tags: [matches]
+      summary: Run vision extraction on an uploaded screenshot without persisting a match
+      description: |
+        Given the object path of an already-uploaded screenshot, runs the AI
+        vision model and returns the suggested name, vibe tags, and extracted
+        profile so the user can review and edit before the match is created.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreenshotInput"
+      responses:
+        "200":
+          description: Extraction preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionPreview"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}:
+    get:
+      operationId: getMatch
+      tags: [matches]
+      summary: Get a match with its screenshots
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateMatch
+      tags: [matches]
+      summary: Update a match's editable fields
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchUpdate"
+      responses:
+        "200":
+          description: Updated match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteMatch
+      tags: [matches]
+      summary: Delete a match
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/screenshots:
+    get:
+      operationId: listScreenshots
+      tags: [matches]
+      summary: List all screenshots for a match in chronological order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Screenshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Screenshot"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: addScreenshot
+      tags: [matches]
+      summary: Add a screenshot to a match and update the extracted profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreenshotInput"
+      responses:
+        "200":
+          description: Updated match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/replies:
+    post:
+      operationId: generateMatchReplies
+      tags: [matches]
+      summary: Generate 3 reply suggestions using full conversation history and extracted profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Reply suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplyResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /storage/uploads/request-url:
+    post:
+      tags: [storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
+        status: { type: string }
+      required: [status]
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    ExtractedProfile:
+      type: object
+      required: [job, location, interests, mentionedTopics, conversationTone]
+      properties:
+        job: { type: ["string", "null"] }
+        location: { type: ["string", "null"] }
+        interests:
+          type: array
+          items: { type: string }
+        mentionedTopics:
+          type: array
+          items: { type: string }
+        conversationTone: { type: ["string", "null"] }
+    Match:
+      type: object
       required:
-        - status
-    BumbleScreenshotInput:
+        - id
+        - name
+        - photoObjectPath
+        - vibeTags
+        - extractedProfile
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        photoObjectPath: { type: ["string", "null"] }
+        vibeTags:
+          type: array
+          items: { type: string }
+        extractedProfile:
+          $ref: "#/components/schemas/ExtractedProfile"
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Screenshot:
+      type: object
+      required: [id, matchId, objectPath, uploadedAt]
+      properties:
+        id: { type: integer }
+        matchId: { type: integer }
+        objectPath: { type: string }
+        uploadedAt: { type: string, format: date-time }
+    MatchDetail:
+      type: object
+      required:
+        - id
+        - name
+        - photoObjectPath
+        - vibeTags
+        - extractedProfile
+        - notes
+        - createdAt
+        - updatedAt
+        - screenshots
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        photoObjectPath: { type: ["string", "null"] }
+        vibeTags:
+          type: array
+          items: { type: string }
+        extractedProfile:
+          $ref: "#/components/schemas/ExtractedProfile"
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        screenshots:
+          type: array
+          items:
+            $ref: "#/components/schemas/Screenshot"
+    MatchCreateInput:
+      type: object
+      required: [screenshotObjectPath, name, vibeTags, extractedProfile]
+      properties:
+        screenshotObjectPath:
+          type: string
+          description: Object path returned from /storage/uploads/request-url after upload
+        name:
+          type: string
+          minLength: 1
+          description: Confirmed/edited match name (originally suggested by preview)
+        vibeTags:
+          type: array
+          items: { type: string }
+          description: Confirmed/edited vibe tags
+        extractedProfile:
+          $ref: "#/components/schemas/ExtractedProfile"
+    ExtractionPreview:
+      type: object
+      required: [suggestedName, vibeTags, extractedProfile]
+      properties:
+        suggestedName: { type: ["string", "null"] }
+        vibeTags:
+          type: array
+          items: { type: string }
+        extractedProfile:
+          $ref: "#/components/schemas/ExtractedProfile"
+    MatchUpdate:
       type: object
       properties:
-        image:
-          type: string
-          description: Base64-encoded image of the Bumble conversation
-      required:
-        - image
-    BumbleReplyResult:
+        name: { type: string, minLength: 1 }
+        notes: { type: string }
+        vibeTags:
+          type: array
+          items: { type: string }
+        extractedProfile:
+          $ref: "#/components/schemas/ExtractedProfile"
+        photoObjectPath: { type: ["string", "null"] }
+    ScreenshotInput:
       type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string }
+    ReplyResult:
+      type: object
+      required: [replies]
       properties:
         replies:
           type: array
-          items:
-            type: string
-      required:
-        - replies
-    ErrorResponse:
+          items: { type: string }
+    UploadUrlRequest:
       type: object
+      required: [name, size, contentType]
       properties:
-        error:
-          type: string
-      required:
-        - error
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1 }
+        contentType: { type: string, minLength: 1 }
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
