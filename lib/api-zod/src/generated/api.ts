@@ -20,6 +20,17 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all matches
  */
+export const listMatchesResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const listMatchesResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const listMatchesResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const listMatchesResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const listMatchesResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const listMatchesResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
 export const ListMatchesResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -30,7 +41,21 @@ export const ListMatchesResponseItem = zod.object({
   "location": zod.string().nullable(),
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(listMatchesResponseExtractedProfileScoresSexPotentialValueOneMin).max(listMatchesResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(listMatchesResponseExtractedProfileScoresConversionAbilityValueOneMin).max(listMatchesResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(listMatchesResponseExtractedProfileScoresChemistryValueOneMin).max(listMatchesResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
 }),
   "notes": zod.string(),
   "createdAt": zod.coerce.date(),
@@ -63,6 +88,17 @@ export const PreviewMatchExtractionBody = zod.object({
   "objectPath": zod.string()
 })
 
+export const previewMatchExtractionResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const previewMatchExtractionResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const previewMatchExtractionResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const previewMatchExtractionResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const previewMatchExtractionResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const previewMatchExtractionResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
 export const PreviewMatchExtractionResponse = zod.object({
   "suggestedName": zod.string().nullable(),
   "vibeTags": zod.array(zod.string()),
@@ -71,7 +107,21 @@ export const PreviewMatchExtractionResponse = zod.object({
   "location": zod.string().nullable(),
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(previewMatchExtractionResponseExtractedProfileScoresSexPotentialValueOneMin).max(previewMatchExtractionResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(previewMatchExtractionResponseExtractedProfileScoresConversionAbilityValueOneMin).max(previewMatchExtractionResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(previewMatchExtractionResponseExtractedProfileScoresChemistryValueOneMin).max(previewMatchExtractionResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
 })
 })
 
@@ -83,6 +133,17 @@ export const GetMatchParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const getMatchResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const getMatchResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const getMatchResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const getMatchResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const getMatchResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const getMatchResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
 export const GetMatchResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -93,7 +154,21 @@ export const GetMatchResponse = zod.object({
   "location": zod.string().nullable(),
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(getMatchResponseExtractedProfileScoresSexPotentialValueOneMin).max(getMatchResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(getMatchResponseExtractedProfileScoresConversionAbilityValueOneMin).max(getMatchResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(getMatchResponseExtractedProfileScoresChemistryValueOneMin).max(getMatchResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
 }),
   "notes": zod.string(),
   "createdAt": zod.coerce.date(),
@@ -117,6 +192,15 @@ export const UpdateMatchParams = zod.object({
 })
 
 
+export const updateMatchBodyExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const updateMatchBodyExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const updateMatchBodyExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const updateMatchBodyExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const updateMatchBodyExtractedProfileScoresChemistryValueOneMin = 0;
+export const updateMatchBodyExtractedProfileScoresChemistryValueOneMax = 10;
+
 
 
 export const UpdateMatchBody = zod.object({
@@ -128,10 +212,35 @@ export const UpdateMatchBody = zod.object({
   "location": zod.string().nullable(),
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(updateMatchBodyExtractedProfileScoresSexPotentialValueOneMin).max(updateMatchBodyExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(updateMatchBodyExtractedProfileScoresConversionAbilityValueOneMin).max(updateMatchBodyExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(updateMatchBodyExtractedProfileScoresChemistryValueOneMin).max(updateMatchBodyExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
 }).optional(),
   "photoObjectPath": zod.string().nullish()
 })
+
+export const updateMatchResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const updateMatchResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const updateMatchResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const updateMatchResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const updateMatchResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const updateMatchResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
 
 export const UpdateMatchResponse = zod.object({
   "id": zod.number(),
@@ -143,7 +252,21 @@ export const UpdateMatchResponse = zod.object({
   "location": zod.string().nullable(),
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(updateMatchResponseExtractedProfileScoresSexPotentialValueOneMin).max(updateMatchResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(updateMatchResponseExtractedProfileScoresConversionAbilityValueOneMin).max(updateMatchResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(updateMatchResponseExtractedProfileScoresChemistryValueOneMin).max(updateMatchResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
 }),
   "notes": zod.string(),
   "createdAt": zod.coerce.date(),
@@ -188,6 +311,17 @@ export const AddScreenshotBody = zod.object({
   "objectPath": zod.string()
 })
 
+export const addScreenshotResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const addScreenshotResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const addScreenshotResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const addScreenshotResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const addScreenshotResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const addScreenshotResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
 export const AddScreenshotResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -198,7 +332,21 @@ export const AddScreenshotResponse = zod.object({
   "location": zod.string().nullable(),
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(addScreenshotResponseExtractedProfileScoresSexPotentialValueOneMin).max(addScreenshotResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(addScreenshotResponseExtractedProfileScoresConversionAbilityValueOneMin).max(addScreenshotResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(addScreenshotResponseExtractedProfileScoresChemistryValueOneMin).max(addScreenshotResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
 }),
   "notes": zod.string(),
   "createdAt": zod.coerce.date(),

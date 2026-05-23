@@ -13,6 +13,8 @@ export * from './healthStatus';
 export * from './match';
 export * from './matchCreateInput';
 export * from './matchDetail';
+export * from './matchScore';
+export * from './matchScores';
 export * from './matchUpdate';
 export * from './replyResult';
 export * from './screenshot';

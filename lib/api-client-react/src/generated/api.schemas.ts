@@ -13,6 +13,18 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface MatchScore {
+  value: number | null;
+  /** @nullable */
+  rationale: string | null;
+}
+
+export interface MatchScores {
+  sexPotential: MatchScore;
+  conversionAbility: MatchScore;
+  chemistry: MatchScore;
+}
+
 export interface ExtractedProfile {
   /** @nullable */
   job: string | null;
@@ -22,6 +34,7 @@ export interface ExtractedProfile {
   mentionedTopics: string[];
   /** @nullable */
   conversationTone: string | null;
+  scores: MatchScores;
 }
 
 export interface Match {

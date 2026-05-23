@@ -10,7 +10,11 @@ import {
   getGetMatchQueryKey,
   getListMatchesQueryKey,
 } from "@workspace/api-client-react";
-import type { MatchDetail as MatchDetailType, ExtractedProfile } from "@workspace/api-client-react";
+import type {
+  MatchDetail as MatchDetailType,
+  ExtractedProfile,
+  MatchScore,
+} from "@workspace/api-client-react";
 import {
   ArrowLeft,
   Sparkles,
@@ -24,6 +28,9 @@ import {
   Heart,
   Plus,
   AlertCircle,
+  Flame,
+  Zap,
+  HeartHandshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -52,6 +59,103 @@ function ReplyCard({ text }: { text: string }) {
         >
           {copied ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy</>}
         </Button>
+      </div>
+    </Card>
+  );
+}
+
+const SCORE_DEFS: {
+  key: "sexPotential" | "conversionAbility" | "chemistry";
+  label: string;
+  description: string;
+  icon: typeof Flame;
+}[] = [
+  {
+    key: "sexPotential",
+    label: "Sex potential",
+    description: "Likelihood that a first date leads to sex",
+    icon: Flame,
+  },
+  {
+    key: "conversionAbility",
+    label: "Her conversion",
+    description: "How well she moves the chat toward a date",
+    icon: Zap,
+  },
+  {
+    key: "chemistry",
+    label: "Chemistry",
+    description: "Mutual back-and-forth chemistry between you two",
+    icon: HeartHandshake,
+  },
+];
+
+function scoreColor(value: number | null): string {
+  if (value === null) return "bg-muted";
+  if (value >= 8) return "bg-emerald-500";
+  if (value >= 6) return "bg-primary";
+  if (value >= 4) return "bg-amber-500";
+  return "bg-rose-500";
+}
+
+function scoreTextColor(value: number | null): string {
+  if (value === null) return "text-muted-foreground";
+  if (value >= 8) return "text-emerald-600";
+  if (value >= 6) return "text-primary";
+  if (value >= 4) return "text-amber-600";
+  return "text-rose-600";
+}
+
+function ScoresCard({ match }: { match: MatchDetailType }) {
+  const scores = match.extractedProfile.scores;
+  const allEmpty = SCORE_DEFS.every(
+    (def) => scores[def.key].value === null,
+  );
+  return (
+    <Card className="p-6 rounded-3xl" data-testid="scores-card">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary" /> Scores
+        </h2>
+        {allEmpty && (
+          <span className="text-xs text-muted-foreground">
+            Add more chat screenshots to unlock
+          </span>
+        )}
+      </div>
+      <div className="grid sm:grid-cols-3 gap-4">
+        {SCORE_DEFS.map((def) => {
+          const s: MatchScore = scores[def.key];
+          const Icon = def.icon;
+          const pct = s.value !== null ? (s.value / 10) * 100 : 0;
+          return (
+            <div
+              key={def.key}
+              className="rounded-2xl bg-muted/40 p-4 flex flex-col gap-2"
+              data-testid={`score-${def.key}`}
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Icon className={`w-4 h-4 ${scoreTextColor(s.value)}`} />
+                <span>{def.label}</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className={`text-4xl font-extrabold ${scoreTextColor(s.value)}`}>
+                  {s.value ?? "—"}
+                </span>
+                <span className="text-muted-foreground text-sm">/10</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-background overflow-hidden">
+                <div
+                  className={`h-full ${scoreColor(s.value)} transition-all duration-500`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground leading-snug min-h-[2.5rem]">
+                {s.rationale ?? def.description}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
@@ -89,6 +193,7 @@ function ProfileEditor({ match }: { match: MatchDetailType }) {
       conversationTone: draft.conversationTone?.trim() || null,
       interests: interestsText.split(",").map((s) => s.trim()).filter(Boolean),
       mentionedTopics: topicsText.split(",").map((s) => s.trim()).filter(Boolean),
+      scores: draft.scores,
     };
     updateMatch.mutate({ id: match.id, data: { extractedProfile: parsed } });
   };
@@ -483,6 +588,7 @@ export default function MatchDetail() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">
+            <ScoresCard match={data} />
             <ProfileEditor match={data} />
 
             <Card className="p-6 rounded-3xl">

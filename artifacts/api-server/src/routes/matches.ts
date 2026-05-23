@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, asc } from "drizzle-orm";
-import { db, matches, screenshots, emptyExtractedProfile } from "@workspace/db";
+import {
+  db,
+  matches,
+  screenshots,
+  emptyExtractedProfile,
+  normalizeExtractedProfile,
+} from "@workspace/db";
 import {
   CreateMatchBody,
   GetMatchParams,
@@ -32,6 +38,10 @@ async function objectPathToDataUrl(objectPath: string): Promise<string> {
   return `data:${contentType};base64,${buf.toString("base64")}`;
 }
 
+function withNormalizedProfile<T extends { extractedProfile: unknown }>(m: T) {
+  return { ...m, extractedProfile: normalizeExtractedProfile(m.extractedProfile) };
+}
+
 async function loadMatchDetail(matchId: number) {
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
   if (!match) return null;
@@ -40,12 +50,12 @@ async function loadMatchDetail(matchId: number) {
     .from(screenshots)
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
-  return { ...match, screenshots: shots };
+  return { ...withNormalizedProfile(match), screenshots: shots };
 }
 
 router.get("/matches", async (_req, res): Promise<void> => {
   const rows = await db.select().from(matches).orderBy(desc(matches.updatedAt));
-  res.json(rows);
+  res.json(rows.map(withNormalizedProfile));
 });
 
 router.post("/matches/preview", async (req, res): Promise<void> => {
@@ -151,7 +161,7 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
       res.status(404).json({ error: "Match not found" });
       return;
     }
-    res.json(existing);
+    res.json(withNormalizedProfile(existing));
     return;
   }
 
@@ -165,7 +175,7 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Match not found" });
     return;
   }
-  res.json(updated);
+  res.json(withNormalizedProfile(updated));
 });
 
 router.delete("/matches/:id", async (req, res): Promise<void> => {

@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import type { ExtractedProfile } from "@workspace/db";
-import { db, emptyExtractedProfile, matches, screenshots } from "@workspace/db";
+import type { ExtractedProfile, MatchScore, MatchScores } from "@workspace/db";
+import {
+  db,
+  emptyExtractedProfile,
+  emptyScore,
+  matches,
+  screenshots,
+} from "@workspace/db";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 
@@ -23,10 +29,16 @@ Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
   "location": string | null,             // City / neighborhood if mentioned
   "interests": string[],                 // Hobbies / interests they've mentioned (concise nouns/phrases)
   "mentionedTopics": string[],           // Specific things they brought up (e.g. "their dog Milo", "trip to Lisbon", "coffee snob")
-  "conversationTone": string | null      // Brief description of overall tone (e.g. "warm and playful", "dry witty banter") - null if no chat visible
+  "conversationTone": string | null,     // Brief description of overall tone (e.g. "warm and playful", "dry witty banter") - null if no chat visible
+
+  // Scores: each is an integer 0-10 plus a short rationale (1 sentence).
+  // Return null for both value and rationale if there is not enough signal to judge.
+  "sexPotentialScore":      { "value": number | null, "rationale": string | null },  // Likelihood that a first date would lead to sex, based on flirtation level, sexual undertones, openness, and overall energy
+  "conversionAbilityScore": { "value": number | null, "rationale": string | null },  // How skilled SHE is at moving the chat toward an actual date — asks questions, suggests plans, keeps momentum, doesn't ghost
+  "chemistryScore":         { "value": number | null, "rationale": string | null }   // Mutual chemistry between the two people in the chat — banter quality, matching energy, shared humor, reciprocity
 }
 
-If a field cannot be determined, use null (for scalars) or [] (for arrays). Keep lists short and high-signal.`;
+If a field cannot be determined, use null (for scalars) or [] (for arrays). Keep lists short and high-signal. Be honest with the scores — don't inflate them.`;
 
 function toStringOrNull(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
@@ -37,6 +49,16 @@ function toStringArray(v: unknown): string[] {
   return v
     .filter((x): x is string => typeof x === "string" && x.trim() !== "")
     .map((x) => x.trim());
+}
+
+function toScore(v: unknown): MatchScore {
+  if (!v || typeof v !== "object") return { ...emptyScore };
+  const obj = v as Record<string, unknown>;
+  let value: number | null = null;
+  if (typeof obj.value === "number" && Number.isFinite(obj.value)) {
+    value = Math.max(0, Math.min(10, Math.round(obj.value)));
+  }
+  return { value, rationale: toStringOrNull(obj.rationale) };
 }
 
 export async function extractFromScreenshot(
@@ -92,7 +114,32 @@ export async function extractFromScreenshot(
       interests: toStringArray(parsed.interests),
       mentionedTopics: toStringArray(parsed.mentionedTopics),
       conversationTone: toStringOrNull(parsed.conversationTone),
+      scores: {
+        sexPotential: toScore(parsed.sexPotentialScore),
+        conversionAbility: toScore(parsed.conversionAbilityScore),
+        chemistry: toScore(parsed.chemistryScore),
+      },
     },
+  };
+}
+
+function mergeScore(existing: MatchScore, incoming: MatchScore): MatchScore {
+  // Prefer the latest non-null reading, since later screenshots reflect more of the conversation.
+  if (incoming.value === null && incoming.rationale === null) return existing;
+  return {
+    value: incoming.value ?? existing.value,
+    rationale: incoming.rationale ?? existing.rationale,
+  };
+}
+
+function mergeScores(existing: MatchScores, incoming: MatchScores): MatchScores {
+  return {
+    sexPotential: mergeScore(existing.sexPotential, incoming.sexPotential),
+    conversionAbility: mergeScore(
+      existing.conversionAbility,
+      incoming.conversionAbility,
+    ),
+    chemistry: mergeScore(existing.chemistry, incoming.chemistry),
   };
 }
 
@@ -112,13 +159,16 @@ export function mergeExtraction(
   existing: ExtractedProfile | null | undefined,
   incoming: ExtractionResult["profile"],
 ): ExtractedProfile {
-  const base = existing ?? emptyExtractedProfile;
+  const base: ExtractedProfile = existing
+    ? { ...emptyExtractedProfile, ...existing, scores: existing.scores ?? emptyExtractedProfile.scores }
+    : emptyExtractedProfile;
   return {
     job: incoming.job ?? base.job,
     location: incoming.location ?? base.location,
     interests: mergeStringList(base.interests, incoming.interests),
     mentionedTopics: mergeStringList(base.mentionedTopics, incoming.mentionedTopics),
     conversationTone: incoming.conversationTone ?? base.conversationTone,
+    scores: mergeScores(base.scores, incoming.scores),
   };
 }
 

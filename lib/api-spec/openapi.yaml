@@ -284,9 +284,30 @@ components:
       required: [error]
       properties:
         error: { type: string }
+    MatchScore:
+      type: object
+      required: [value, rationale]
+      properties:
+        value:
+          oneOf:
+            - type: integer
+              minimum: 0
+              maximum: 10
+            - type: "null"
+        rationale: { type: ["string", "null"] }
+    MatchScores:
+      type: object
+      required: [sexPotential, conversionAbility, chemistry]
+      properties:
+        sexPotential:
+          $ref: "#/components/schemas/MatchScore"
+        conversionAbility:
+          $ref: "#/components/schemas/MatchScore"
+        chemistry:
+          $ref: "#/components/schemas/MatchScore"
     ExtractedProfile:
       type: object
-      required: [job, location, interests, mentionedTopics, conversationTone]
+      required: [job, location, interests, mentionedTopics, conversationTone, scores]
       properties:
         job: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
@@ -297,6 +318,8 @@ components:
           type: array
           items: { type: string }
         conversationTone: { type: ["string", "null"] }
+        scores:
+          $ref: "#/components/schemas/MatchScores"
     Match:
       type: object
       required:
