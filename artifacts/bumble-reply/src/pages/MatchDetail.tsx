@@ -402,6 +402,13 @@ export default function MatchDetail() {
     query: {
       enabled: Number.isFinite(id),
       queryKey: getGetMatchQueryKey(id),
+      refetchInterval: (query) => {
+        const d = query.state.data as MatchDetailType | undefined;
+        if (!d) return false;
+        return d.screenshots.some((s) => s.extractionStatus === "pending")
+          ? 1500
+          : false;
+      },
     },
   });
   const [replies, setReplies] = useState<string[] | null>(null);
@@ -422,7 +429,16 @@ export default function MatchDetail() {
   });
 
   const screenshotUrls = useMemo(
-    () => (data ? data.screenshots.map((s) => ({ id: s.id, url: objectPathToUrl(s.objectPath), uploadedAt: s.uploadedAt })) : []),
+    () =>
+      data
+        ? data.screenshots.map((s) => ({
+            id: s.id,
+            url: objectPathToUrl(s.objectPath),
+            uploadedAt: s.uploadedAt,
+            extractionStatus: s.extractionStatus,
+            extractionError: s.extractionError,
+          }))
+        : [],
     [data],
   );
 
@@ -486,11 +502,36 @@ export default function MatchDetail() {
                       href={s.url ?? "#"}
                       target="_blank"
                       rel="noreferrer"
-                      className="block rounded-2xl overflow-hidden border bg-white hover:shadow-md transition-shadow"
+                      className="block rounded-2xl overflow-hidden border bg-white hover:shadow-md transition-shadow relative"
                       data-testid={`screenshot-${s.id}`}
                     >
                       {s.url && (
-                        <img src={s.url} alt="" className="w-full aspect-[3/4] object-cover" />
+                        <img
+                          src={s.url}
+                          alt=""
+                          className={`w-full aspect-[3/4] object-cover ${
+                            s.extractionStatus === "pending" ? "opacity-60" : ""
+                          }`}
+                        />
+                      )}
+                      {s.extractionStatus === "pending" && (
+                        <div
+                          className="absolute inset-x-0 top-0 bg-primary/90 text-primary-foreground text-xs font-semibold px-2 py-1 flex items-center justify-center gap-1.5"
+                          data-testid={`screenshot-status-pending-${s.id}`}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                          Analyzing screenshot…
+                        </div>
+                      )}
+                      {s.extractionStatus === "failed" && (
+                        <div
+                          className="absolute inset-x-0 top-0 bg-destructive/90 text-destructive-foreground text-xs font-semibold px-2 py-1 flex items-center justify-center gap-1.5"
+                          data-testid={`screenshot-status-failed-${s.id}`}
+                          title={s.extractionError ?? undefined}
+                        >
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Couldn't read
+                        </div>
                       )}
                       <div className="p-2 text-xs text-muted-foreground text-center">
                         {new Date(s.uploadedAt).toLocaleDateString()}
@@ -499,22 +540,18 @@ export default function MatchDetail() {
                   ))}
                 </div>
               )}
-              {addScreenshot.isPending ? (
-                <Card className="p-6 flex flex-col items-center text-center bg-muted/40">
-                  <Sparkles className="w-6 h-6 text-primary mb-2 animate-pulse" />
-                  <p className="font-semibold">Reading the new screenshot...</p>
-                  <p className="text-sm text-muted-foreground">Updating their profile.</p>
-                </Card>
-              ) : (
-                <UploadDropzone
-                  compact
-                  onUploaded={(objectPath) =>
-                    addScreenshot.mutate({ id, data: { objectPath } })
-                  }
-                  label="Add another screenshot"
-                  hint="Click, drop, or paste"
-                />
-              )}
+              <UploadDropzone
+                compact
+                onUploaded={(objectPath) =>
+                  addScreenshot.mutate({ id, data: { objectPath } })
+                }
+                label={
+                  addScreenshot.isPending
+                    ? "Adding screenshot..."
+                    : "Add another screenshot"
+                }
+                hint="Click, drop, or paste — reads in the background"
+              />
               {addScreenshot.isError && (
                 <p className="text-destructive text-sm mt-3 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />

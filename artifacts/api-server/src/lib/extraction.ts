@@ -1,6 +1,9 @@
+import { eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile } from "@workspace/db";
-import { emptyExtractedProfile } from "@workspace/db";
+import { db, emptyExtractedProfile, matches, screenshots } from "@workspace/db";
+import { ObjectStorageService } from "./objectStorage";
+import { logger } from "./logger";
 
 export type ExtractionResult = {
   suggestedName: string | null;
@@ -121,6 +124,71 @@ export function mergeExtraction(
 
 export function mergeVibeTags(existing: string[], incoming: string[]): string[] {
   return mergeStringList(existing, incoming).slice(0, 8);
+}
+
+const storage = new ObjectStorageService();
+
+async function objectPathToDataUrl(objectPath: string): Promise<string> {
+  const file = await storage.getObjectEntityFile(objectPath);
+  const [meta] = await file.getMetadata();
+  const [buf] = await file.download();
+  const contentType = (meta.contentType as string) || "image/png";
+  return `data:${contentType};base64,${buf.toString("base64")}`;
+}
+
+export function runExtractionInBackground(
+  matchId: number,
+  screenshotId: number,
+  objectPath: string,
+  options: { applySuggestedName?: boolean } = {},
+): void {
+  void (async () => {
+    try {
+      const dataUrl = await objectPathToDataUrl(objectPath);
+      const extraction = await extractFromScreenshot(dataUrl);
+
+      const [match] = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.id, matchId));
+      if (!match) return;
+
+      const mergedProfile = mergeExtraction(match.extractedProfile, extraction.profile);
+      const mergedTags = mergeVibeTags(match.vibeTags, extraction.vibeTags);
+      const updates: Record<string, unknown> = {
+        extractedProfile: mergedProfile,
+        vibeTags: mergedTags,
+      };
+      if (
+        options.applySuggestedName &&
+        extraction.suggestedName &&
+        (match.name === "New Match" || match.name.trim() === "")
+      ) {
+        updates.name = extraction.suggestedName;
+      }
+
+      await db.update(matches).set(updates).where(eq(matches.id, matchId));
+      await db
+        .update(screenshots)
+        .set({ extractionStatus: "done", extractionError: null })
+        .where(eq(screenshots.id, screenshotId));
+    } catch (err) {
+      logger.error({ err, matchId, screenshotId }, "Background extraction failed");
+      const message =
+        err instanceof Error ? err.message : "Failed to analyze screenshot";
+      try {
+        await db
+          .update(screenshots)
+          .set({ extractionStatus: "failed", extractionError: message })
+          .where(eq(screenshots.id, screenshotId));
+      } catch (updateErr) {
+        logger.error(
+          { err: updateErr, screenshotId },
+          "Failed to mark screenshot extraction as failed",
+        );
+      }
+    }
+  })();
 }
 
 export async function generateRepliesFromContext(

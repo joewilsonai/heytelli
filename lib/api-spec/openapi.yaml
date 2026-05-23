@@ -322,12 +322,16 @@ components:
         updatedAt: { type: string, format: date-time }
     Screenshot:
       type: object
-      required: [id, matchId, objectPath, uploadedAt]
+      required: [id, matchId, objectPath, uploadedAt, extractionStatus, extractionError]
       properties:
         id: { type: integer }
         matchId: { type: integer }
         objectPath: { type: string }
         uploadedAt: { type: string, format: date-time }
+        extractionStatus:
+          type: string
+          enum: [pending, done, failed]
+        extractionError: { type: ["string", "null"] }
     MatchDetail:
       type: object
       required:
@@ -358,21 +362,14 @@ components:
             $ref: "#/components/schemas/Screenshot"
     MatchCreateInput:
       type: object
-      required: [screenshotObjectPath, name, vibeTags, extractedProfile]
+      required: [screenshotObjectPath]
       properties:
         screenshotObjectPath:
           type: string
           description: Object path returned from /storage/uploads/request-url after upload
         name:
           type: string
-          minLength: 1
-          description: Confirmed/edited match name (originally suggested by preview)
-        vibeTags:
-          type: array
-          items: { type: string }
-          description: Confirmed/edited vibe tags
-        extractedProfile:
-          $ref: "#/components/schemas/ExtractedProfile"
+          description: Optional initial name. If omitted, the server uses a placeholder until extraction completes.
     ExtractionPreview:
       type: object
       required: [suggestedName, vibeTags, extractedProfile]

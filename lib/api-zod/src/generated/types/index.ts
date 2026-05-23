@@ -16,6 +16,7 @@ export * from './matchDetail';
 export * from './matchUpdate';
 export * from './replyResult';
 export * from './screenshot';
+export * from './screenshotExtractionStatus';
 export * from './screenshotInput';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';

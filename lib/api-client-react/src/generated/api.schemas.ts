@@ -36,11 +36,23 @@ export interface Match {
   updatedAt: string;
 }
 
+export type ScreenshotExtractionStatus = typeof ScreenshotExtractionStatus[keyof typeof ScreenshotExtractionStatus];
+
+
+export const ScreenshotExtractionStatus = {
+  pending: 'pending',
+  done: 'done',
+  failed: 'failed',
+} as const;
+
 export interface Screenshot {
   id: number;
   matchId: number;
   objectPath: string;
   uploadedAt: string;
+  extractionStatus: ScreenshotExtractionStatus;
+  /** @nullable */
+  extractionError: string | null;
 }
 
 export interface MatchDetail {
@@ -59,14 +71,8 @@ export interface MatchDetail {
 export interface MatchCreateInput {
   /** Object path returned from /storage/uploads/request-url after upload */
   screenshotObjectPath: string;
-  /**
-     * Confirmed/edited match name (originally suggested by preview)
-     * @minLength 1
-     */
-  name: string;
-  /** Confirmed/edited vibe tags */
-  vibeTags: string[];
-  extractedProfile: ExtractedProfile;
+  /** Optional initial name. If omitted, the server uses a placeholder until extraction completes. */
+  name?: string;
 }
 
 export interface ExtractionPreview {

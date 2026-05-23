@@ -4,6 +4,8 @@ import { z } from "zod/v4";
 
 import { matches } from "./matches";
 
+export type ExtractionStatus = "pending" | "done" | "failed";
+
 export const screenshots = pgTable("screenshots", {
   id: serial("id").primaryKey(),
   matchId: integer("match_id")
@@ -13,6 +15,11 @@ export const screenshots = pgTable("screenshots", {
   uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
+  extractionStatus: text("extraction_status")
+    .$type<ExtractionStatus>()
+    .notNull()
+    .default("pending"),
+  extractionError: text("extraction_error"),
 });
 
 export const insertScreenshotSchema = createInsertSchema(screenshots).omit({

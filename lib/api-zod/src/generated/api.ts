@@ -46,20 +46,9 @@ initial profile. The screenshot is appended to the match's conversation log.
 
  * @summary Create a match from an initial screenshot
  */
-
-
-
 export const CreateMatchBody = zod.object({
   "screenshotObjectPath": zod.string().describe('Object path returned from \/storage\/uploads\/request-url after upload'),
-  "name": zod.string().min(1).describe('Confirmed\/edited match name (originally suggested by preview)'),
-  "vibeTags": zod.array(zod.string()).describe('Confirmed\/edited vibe tags'),
-  "extractedProfile": zod.object({
-  "job": zod.string().nullable(),
-  "location": zod.string().nullable(),
-  "interests": zod.array(zod.string()),
-  "mentionedTopics": zod.array(zod.string()),
-  "conversationTone": zod.string().nullable()
-})
+  "name": zod.string().optional().describe('Optional initial name. If omitted, the server uses a placeholder until extraction completes.')
 })
 
 
@@ -113,7 +102,9 @@ export const GetMatchResponse = zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
   "objectPath": zod.string(),
-  "uploadedAt": zod.coerce.date()
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable()
 }))
 })
 
@@ -179,7 +170,9 @@ export const ListScreenshotsResponseItem = zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
   "objectPath": zod.string(),
-  "uploadedAt": zod.coerce.date()
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable()
 })
 export const ListScreenshotsResponse = zod.array(ListScreenshotsResponseItem)
 
@@ -214,7 +207,9 @@ export const AddScreenshotResponse = zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
   "objectPath": zod.string(),
-  "uploadedAt": zod.coerce.date()
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable()
 }))
 })
 

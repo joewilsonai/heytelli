@@ -5,17 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { ExtractedProfile } from './extractedProfile';
 
 export interface MatchCreateInput {
   /** Object path returned from /storage/uploads/request-url after upload */
   screenshotObjectPath: string;
-  /**
-     * Confirmed/edited match name (originally suggested by preview)
-     * @minLength 1
-     */
-  name: string;
-  /** Confirmed/edited vibe tags */
-  vibeTags: string[];
-  extractedProfile: ExtractedProfile;
+  /** Optional initial name. If omitted, the server uses a placeholder until extraction completes. */
+  name?: string;
 }

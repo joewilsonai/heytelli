@@ -5,10 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ScreenshotExtractionStatus } from './screenshotExtractionStatus';
 
 export interface Screenshot {
   id: number;
   matchId: number;
   objectPath: string;
   uploadedAt: Date;
+  extractionStatus: ScreenshotExtractionStatus;
+  /** @nullable */
+  extractionError: string | null;
 }

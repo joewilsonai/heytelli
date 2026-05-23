@@ -17,8 +17,8 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import {
   extractFromScreenshot,
   mergeExtraction,
-  mergeVibeTags,
   generateRepliesFromContext,
+  runExtractionInBackground,
 } from "../lib/extraction";
 
 const router: IRouter = Router();
@@ -76,22 +76,31 @@ router.post("/matches", async (req, res): Promise<void> => {
     return;
   }
 
-  const { screenshotObjectPath, name, vibeTags, extractedProfile } = parsed.data;
+  const { screenshotObjectPath, name } = parsed.data;
+  const initialName = (name ?? "").trim() || "New Match";
 
   const [created] = await db
     .insert(matches)
     .values({
-      name: name.trim() || "New Match",
+      name: initialName,
       photoObjectPath: screenshotObjectPath,
-      vibeTags,
-      extractedProfile,
+      vibeTags: [],
+      extractedProfile: emptyExtractedProfile,
       notes: "",
     })
     .returning();
 
-  await db.insert(screenshots).values({
-    matchId: created.id,
-    objectPath: screenshotObjectPath,
+  const [shot] = await db
+    .insert(screenshots)
+    .values({
+      matchId: created.id,
+      objectPath: screenshotObjectPath,
+      extractionStatus: "pending",
+    })
+    .returning();
+
+  runExtractionInBackground(created.id, shot.id, screenshotObjectPath, {
+    applySuggestedName: true,
   });
 
   const detail = await loadMatchDetail(created.id);
@@ -219,31 +228,16 @@ router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
     return;
   }
 
-  let extraction;
-  try {
-    const dataUrl = await objectPathToDataUrl(body.data.objectPath);
-    extraction = await extractFromScreenshot(dataUrl);
-  } catch (err) {
-    req.log.error({ err }, "Extraction failed during screenshot add");
-    res.status(500).json({ error: "Failed to analyze screenshot" });
-    return;
-  }
-
-  const mergedProfile = mergeExtraction(match.extractedProfile, extraction.profile);
-  const mergedTags = mergeVibeTags(match.vibeTags, extraction.vibeTags);
-
-  await db
-    .update(matches)
-    .set({
-      extractedProfile: mergedProfile,
-      vibeTags: mergedTags,
+  const [shot] = await db
+    .insert(screenshots)
+    .values({
+      matchId: match.id,
+      objectPath: body.data.objectPath,
+      extractionStatus: "pending",
     })
-    .where(eq(matches.id, match.id));
+    .returning();
 
-  await db.insert(screenshots).values({
-    matchId: match.id,
-    objectPath: body.data.objectPath,
-  });
+  runExtractionInBackground(match.id, shot.id, body.data.objectPath);
 
   const detail = await loadMatchDetail(match.id);
   res.json(detail);
