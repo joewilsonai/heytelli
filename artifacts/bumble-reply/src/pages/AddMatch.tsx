@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   useCreateMatch,
+  useAddScreenshot,
   getListMatchesQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,27 +15,40 @@ export default function AddMatch() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
 
-  const createMatch = useCreateMatch({
-    mutation: {
-      onSuccess: (match) => {
-        queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() });
-        setLocation(`/matches/${match.id}`);
-      },
-      onError: (err) => {
-        setError(err instanceof Error ? err.message : "Failed to create match");
-      },
-    },
-  });
+  const matchIdRef = useRef<number | null>(null);
 
-  const handleUploaded = (objectPath: string) => {
+  const createMatch = useCreateMatch();
+  const addScreenshot = useAddScreenshot();
+
+  const handleUploaded = async (objectPath: string) => {
     setError(null);
-    createMatch.mutate({
-      data: { screenshotObjectPath: objectPath },
-    });
+    setWorking(true);
+    try {
+      if (matchIdRef.current === null) {
+        const match = await createMatch.mutateAsync({
+          data: { screenshotObjectPath: objectPath },
+        });
+        matchIdRef.current = match.id;
+      } else {
+        await addScreenshot.mutateAsync({
+          id: matchIdRef.current,
+          data: { objectPath },
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save screenshot");
+    }
   };
 
-  const busy = createMatch.isPending;
+  const handleComplete = () => {
+    setWorking(false);
+    if (matchIdRef.current !== null) {
+      queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() });
+      setLocation(`/matches/${matchIdRef.current}`);
+    }
+  };
 
   return (
     <div className="min-h-[100dvh] w-full bg-background relative overflow-hidden">
@@ -56,11 +70,11 @@ export default function AddMatch() {
             Add a new match
           </h1>
           <p className="text-muted-foreground text-lg mt-3 max-w-lg mx-auto">
-            Drop a screenshot of their profile or chat. We'll save it instantly and read it in the background.
+            Drop one or more screenshots — their profile and chat history. We'll save them instantly and read them in the background.
           </p>
         </div>
 
-        {busy ? (
+        {working ? (
           <Card className="p-12 flex flex-col items-center justify-center min-h-[240px]" data-testid="creating-match">
             <div className="relative mb-6">
               <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
@@ -69,13 +83,15 @@ export default function AddMatch() {
               </div>
             </div>
             <h3 className="text-2xl font-bold mb-2">Saving your match...</h3>
-            <p className="text-muted-foreground">Taking you to their page.</p>
+            <p className="text-muted-foreground">Taking you to their page in a moment.</p>
           </Card>
         ) : (
           <UploadDropzone
+            multiple
             onUploaded={handleUploaded}
-            label="Drop their screenshot here"
-            hint="Click to browse or Ctrl+V to paste from clipboard"
+            onComplete={handleComplete}
+            label="Drop their screenshots here"
+            hint="Click to browse, drop files, or Ctrl+V to paste"
           />
         )}
 

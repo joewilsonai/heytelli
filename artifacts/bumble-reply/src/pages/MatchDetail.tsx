@@ -542,14 +542,11 @@ export default function MatchDetail() {
               )}
               <UploadDropzone
                 compact
+                multiple
                 onUploaded={(objectPath) =>
-                  addScreenshot.mutate({ id, data: { objectPath } })
+                  addScreenshot.mutateAsync({ id, data: { objectPath } })
                 }
-                label={
-                  addScreenshot.isPending
-                    ? "Adding screenshot..."
-                    : "Add another screenshot"
-                }
+                label="Add more screenshots"
                 hint="Click, drop, or paste — reads in the background"
               />
               {addScreenshot.isError && (
