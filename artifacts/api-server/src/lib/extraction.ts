@@ -201,13 +201,24 @@ async function objectPathToDataUrl(objectPath: string): Promise<string> {
 export function runExtractionInBackground(
   matchId: number,
   screenshotId: number,
-  objectPath: string,
+  _objectPath: string,
   options: { applySuggestedName?: boolean } = {},
 ): void {
   void (async () => {
     try {
-      const dataUrl = await objectPathToDataUrl(objectPath);
-      const extraction = await extractFromScreenshot(dataUrl);
+      const allShots = await db
+        .select()
+        .from(screenshots)
+        .where(eq(screenshots.matchId, matchId));
+      // Chronological order so the AI reads the conversation correctly.
+      allShots.sort(
+        (a, b) => a.uploadedAt.getTime() - b.uploadedAt.getTime(),
+      );
+
+      const dataUrls = await Promise.all(
+        allShots.map((s) => objectPathToDataUrl(s.objectPath)),
+      );
+      const extraction = await extractFromScreenshots(dataUrls);
 
       const [match] = await db
         .select()
