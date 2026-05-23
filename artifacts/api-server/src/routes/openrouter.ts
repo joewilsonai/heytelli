@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import sharp from "sharp";
 import {
   db,
@@ -67,27 +69,82 @@ function profileSummary(match: {
     .join("\n");
 }
 
+// Path to the editable prompt template at the monorepo root.
+const PROMPT_FILE = path.resolve(process.cwd(), "../../grok_prompt.md");
+
+type PromptSections = {
+  base: string;
+  noMatches: string;
+  allMatches: string;
+  singleMatch: string;
+};
+
+function parsePromptSections(md: string): PromptSections {
+  const sections = new Map<string, string>();
+  const lines = md.split("\n");
+  let current: string | null = null;
+  let buf: string[] = [];
+  const flush = () => {
+    if (current) sections.set(current.toLowerCase(), buf.join("\n").trim());
+  };
+  for (const line of lines) {
+    const m = /^##\s+(.+?)\s*$/.exec(line);
+    if (m) {
+      flush();
+      current = m[1];
+      buf = [];
+    } else if (current) {
+      buf.push(line);
+    }
+  }
+  flush();
+  const get = (k: string): string => {
+    const v = sections.get(k);
+    if (!v) throw new Error(`grok_prompt.md missing "## ${k}" section`);
+    return v;
+  };
+  return {
+    base: get("base"),
+    noMatches: get("no matches"),
+    allMatches: get("all matches"),
+    singleMatch: get("single match"),
+  };
+}
+
+async function loadPromptSections(): Promise<PromptSections> {
+  const raw = await readFile(PROMPT_FILE, "utf8");
+  return parsePromptSections(raw);
+}
+
+function render(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? "");
+}
+
 async function buildSystemPrompt(matchId: number | null): Promise<string> {
-  const base = `You are the user's dating wingman. You have access to detailed profiles, conversation analyses, and scores for the women he's matched with. Speak candidly and tactically — he wants real strategic advice on attraction, replies, escalation, and reading her interest. Be direct, witty, and honest. Reference specific details from the profile and screenshots when relevant.`;
+  const sections = await loadPromptSections();
+  const base = sections.base;
 
   if (matchId == null) {
     const all = await db.select().from(matches).orderBy(desc(matches.updatedAt));
     if (all.length === 0) {
-      return `${base}\n\nThe user has no matches in his CRM yet.`;
+      return render(sections.noMatches, { BASE: base });
     }
-    const summaries = all
+    const roster = all
       .map((m, i) => {
         const norm = { ...m, extractedProfile: normalizeExtractedProfile(m.extractedProfile) };
         return `--- Match #${i + 1} (id=${m.id}) ---\n${profileSummary(norm)}`;
       })
       .join("\n\n");
-    return `${base}\n\nHere is the full roster he's working with:\n\n${summaries}`;
+    return render(sections.allMatches, { BASE: base, ROSTER: roster });
   }
 
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
   if (!match) return base;
   const norm = { ...match, extractedProfile: normalizeExtractedProfile(match.extractedProfile) };
-  return `${base}\n\nThis conversation is focused on ONE specific match. Her profile:\n\n${profileSummary(norm)}\n\nThe user's most recent screenshots of their chat will be attached to his next message so you can read the actual conversation.`;
+  return render(sections.singleMatch, {
+    BASE: base,
+    MATCH_SUMMARY: profileSummary(norm),
+  });
 }
 
 async function loadMatchImages(matchId: number): Promise<string[]> {
