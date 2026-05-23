@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: bumble
+    description: Bumble reply generation
 paths:
   /healthz:
     get:
@@ -24,6 +26,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /bumble-reply:
+    post:
+      operationId: generateBumbleReply
+      tags: [bumble]
+      summary: Generate reply suggestions from a Bumble screenshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BumbleScreenshotInput"
+      responses:
+        "200":
+          description: Reply suggestions generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BumbleReplyResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +59,27 @@ components:
           type: string
       required:
         - status
-
+    BumbleScreenshotInput:
+      type: object
+      properties:
+        image:
+          type: string
+          description: Base64-encoded image of the Bumble conversation
+      required:
+        - image
+    BumbleReplyResult:
+      type: object
+      properties:
+        replies:
+          type: array
+          items:
+            type: string
+      required:
+        - replies
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
