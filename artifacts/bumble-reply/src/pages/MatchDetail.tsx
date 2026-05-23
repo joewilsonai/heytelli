@@ -41,6 +41,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { objectPathToUrl } from "@/lib/storage";
 
+function formatLastUpload(shots: { uploadedAt: string | Date }[]): string {
+  if (shots.length === 0) return "";
+  const latest = shots.reduce<Date | null>((max, s) => {
+    const d = new Date(s.uploadedAt);
+    return !max || d > max ? d : max;
+  }, null);
+  if (!latest) return "";
+  const diffMs = Date.now() - latest.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  let rel: string;
+  if (diffMin < 1) rel = "just now";
+  else if (diffMin < 60) rel = `${diffMin}m ago`;
+  else if (diffMin < 60 * 24) rel = `${Math.floor(diffMin / 60)}h ago`;
+  else if (diffMin < 60 * 24 * 7) rel = `${Math.floor(diffMin / (60 * 24))}d ago`;
+  else rel = `${Math.floor(diffMin / (60 * 24 * 7))}w ago`;
+  const abs = latest.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${abs} (${rel})`;
+}
+
 function ReplyCard({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -507,8 +531,9 @@ function NameHeader({ match }: { match: MatchDetailType }) {
           </div>
         )}
         <p className="text-sm text-muted-foreground">
-          {match.screenshots.length} screenshot{match.screenshots.length === 1 ? "" : "s"} ·
-          Updated {new Date(match.updatedAt).toLocaleString()}
+          {match.screenshots.length} screenshot{match.screenshots.length === 1 ? "" : "s"}
+          {match.screenshots.length > 0 && ` · Last upload ${formatLastUpload(match.screenshots)}`}
+          {" · "}Updated {new Date(match.updatedAt).toLocaleString()}
         </p>
       </div>
       <Button
@@ -644,10 +669,16 @@ export default function MatchDetail() {
             <ProfileEditor match={data} />
 
             <Card className="p-6 rounded-3xl">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 gap-3">
                 <h2 className="text-xl font-bold">Conversation log</h2>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground text-right">
                   {data.screenshots.length} screenshot{data.screenshots.length === 1 ? "" : "s"}
+                  {data.screenshots.length > 0 && (
+                    <>
+                      <br />
+                      Last upload {formatLastUpload(data.screenshots)}
+                    </>
+                  )}
                 </span>
               </div>
               {data.screenshots.length === 0 ? (
