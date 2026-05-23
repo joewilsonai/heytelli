@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useListMatches } from "@workspace/api-client-react";
 import type { ScoreHistoryPoint } from "@workspace/api-client-react";
-import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare } from "lucide-react";
+import { Sparkles, Plus, Heart, ChevronRight, TrendingUp, TrendingDown, Minus, MessageSquare, CalendarClock, CalendarCheck, CalendarX } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +127,114 @@ function SexTrendCell({
         Sex · {style.label}
       </span>
     </div>
+  );
+}
+
+type DateBadgeInfo =
+  | { kind: "upcoming"; whenLabel: string; location: string | null }
+  | { kind: "past"; whenLabel: string; location: string | null }
+  | { kind: "none"; potential: number | null };
+
+function relWhenFuture(d: Date): string {
+  const diff = d.getTime() - Date.now();
+  const mins = Math.round(diff / 60_000);
+  if (mins < 60) return `in ${Math.max(mins, 1)}m`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `in ${hrs}h`;
+  const days = Math.round(hrs / 24);
+  if (days === 1) return "tomorrow";
+  if (days < 7) return `in ${days}d`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function relWhenPast(d: Date): string {
+  const diff = Date.now() - d.getTime();
+  const mins = Math.round(diff / 60_000);
+  if (mins < 60) return `${Math.max(mins, 1)}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.round(days / 7)}w ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function deriveDateBadge(m: {
+  nextDateAt: string | Date | null;
+  nextDateLocation: string | null;
+  dateHistory: { when: string; location: string }[];
+  extractedProfile: { scores: { conversionAbility: { value: number | null } } };
+}): DateBadgeInfo {
+  const now = Date.now();
+  const next = m.nextDateAt ? new Date(m.nextDateAt) : null;
+  const nextValid = next && !Number.isNaN(next.getTime()) ? next : null;
+  if (nextValid && nextValid.getTime() > now) {
+    return {
+      kind: "upcoming",
+      whenLabel: relWhenFuture(nextValid),
+      location: m.nextDateLocation || null,
+    };
+  }
+  const past = (m.dateHistory ?? [])
+    .map((e) => ({ ...e, d: new Date(e.when) }))
+    .filter((e) => !Number.isNaN(e.d.getTime()) && e.d.getTime() <= now)
+    .sort((a, b) => b.d.getTime() - a.d.getTime());
+  if (past.length > 0) {
+    return {
+      kind: "past",
+      whenLabel: relWhenPast(past[0].d),
+      location: past[0].location || null,
+    };
+  }
+  return {
+    kind: "none",
+    potential: m.extractedProfile.scores.conversionAbility.value,
+  };
+}
+
+function DateBadge({ info }: { info: DateBadgeInfo }) {
+  if (info.kind === "upcoming") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-300 px-2 py-0.5 text-[11px] font-medium"
+        data-testid="badge-date-upcoming"
+      >
+        <CalendarClock className="w-3 h-3" />
+        Date {info.whenLabel}
+        {info.location ? ` · ${info.location}` : ""}
+      </span>
+    );
+  }
+  if (info.kind === "past") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[11px] font-medium"
+        data-testid="badge-date-past"
+      >
+        <CalendarCheck className="w-3 h-3" />
+        Last date {info.whenLabel}
+        {info.location ? ` · ${info.location}` : ""}
+      </span>
+    );
+  }
+  const v = info.potential;
+  const tone =
+    v == null
+      ? "bg-muted text-muted-foreground"
+      : v >= 7
+        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+        : v >= 4
+          ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+          : "bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}
+      data-testid="badge-date-none"
+    >
+      <CalendarX className="w-3 h-3" />
+      No date · Potential {v != null ? `${v}/10` : "—"}
+    </span>
   );
 }
 
@@ -261,19 +369,18 @@ export default function MatchesList() {
                           {subtitle}
                         </p>
                       )}
-                      {m.vibeTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {m.vibeTags.slice(0, 3).map((t) => (
-                            <Badge
-                              key={t}
-                              variant="secondary"
-                              className="rounded-full font-normal text-[10px] px-2 py-0 h-5"
-                            >
-                              {t}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                        <DateBadge info={deriveDateBadge(m)} />
+                        {m.vibeTags.slice(0, 3).map((t) => (
+                          <Badge
+                            key={t}
+                            variant="secondary"
+                            className="rounded-full font-normal text-[10px] px-2 py-0 h-5"
+                          >
+                            {t}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
 
                     <SexTrendCell
