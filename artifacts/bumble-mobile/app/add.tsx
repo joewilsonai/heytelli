@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -34,6 +34,14 @@ export default function AddMatchScreen() {
   const [preview, setPreview] = useState<ExtractionPreview | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const autoLaunched = useRef(false);
+
+  useEffect(() => {
+    if (autoLaunched.current) return;
+    autoLaunched.current = true;
+    pickFromLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
