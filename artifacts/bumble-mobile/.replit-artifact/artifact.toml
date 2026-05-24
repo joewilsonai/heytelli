@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "Bumble CRM Mobile"
+version = "1.0.0"
+id = "artifacts/bumble-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/mobile/" ]
+localPort = 18984
+
+[services.development]
+run = "pnpm --filter @workspace/bumble-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bumble-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/bumble-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "18984"
+BASE_PATH = "/mobile/"
