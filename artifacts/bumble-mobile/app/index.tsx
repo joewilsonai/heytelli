@@ -29,6 +29,7 @@ import {
   StatusPill,
   VibeTag,
 } from "@/components/ui";
+import { StaleNudgesSection } from "@/components/StaleNudgesSection";
 import { formatTimeAgo } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
 
@@ -297,10 +298,18 @@ export default function MatchesScreen() {
           keyExtractor={(m) => String(m.id)}
           renderItem={renderRow}
           contentContainerStyle={{
-            padding: 20,
+            paddingHorizontal: 20,
+            paddingTop: 8,
             paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 20),
             gap: 10,
           }}
+          ListHeaderComponent={
+            filter === "active" ? (
+              <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
+                <StaleNudgesSection />
+              </View>
+            ) : null
+          }
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}

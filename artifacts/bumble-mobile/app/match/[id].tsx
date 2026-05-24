@@ -53,6 +53,13 @@ import {
   VibeTag,
 } from "@/components/ui";
 import { VoiceDebriefSheet } from "@/components/VoiceDebriefSheet";
+import { VoiceNoteFeedbackSheet } from "@/components/VoiceNoteFeedbackSheet";
+import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
+import { addDateToCalendar } from "@/lib/calendar";
+import {
+  cancelDateDayReminder,
+  scheduleDateDayReminder,
+} from "@/lib/notifications";
 import { formatDateTime, formatTimeAgo, isPast } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
 import { uploadImage } from "@/lib/upload";
@@ -130,6 +137,7 @@ export default function MatchDetailScreen() {
           matchName={data.name}
           onApplied={() => refetch()}
         />
+        <ToolsRow matchId={data.id} matchName={data.name} onApplied={() => refetch()} />
         {isPast(data.nextDateAt) && data.nextDateAt && (
           <PostDateDebriefCard match={data} onChange={() => refetch()} />
         )}
@@ -213,6 +221,109 @@ function VoiceDebriefCard({
         matchId={matchId}
         matchName={matchName}
         onClose={() => setOpen(false)}
+        onApplied={onApplied}
+      />
+    </>
+  );
+}
+
+function ToolsRow({
+  matchId,
+  matchName,
+  onApplied,
+}: {
+  matchId: number;
+  matchName: string;
+  onApplied: () => void;
+}) {
+  const c = useColors();
+  const [voiceNote, setVoiceNote] = useState(false);
+  const [inPerson, setInPerson] = useState(false);
+  return (
+    <>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            setVoiceNote(true);
+          }}
+          style={({ pressed }) => ({
+            flex: 1,
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: c.border,
+            borderRadius: c.radius,
+            padding: 12,
+            gap: 6,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: c.warning,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="headphones" size={16} color="#fff" />
+          </View>
+          <Text style={{ fontFamily: "Inter_600SemiBold", color: c.foreground, fontSize: 13 }}>
+            Voice note check
+          </Text>
+          <Text style={{ fontSize: 11, color: c.mutedForeground }}>
+            Critique before you send
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            setInPerson(true);
+          }}
+          style={({ pressed }) => ({
+            flex: 1,
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: c.border,
+            borderRadius: c.radius,
+            padding: 12,
+            gap: 6,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: c.foreground,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="radio" size={16} color={c.background} />
+          </View>
+          <Text style={{ fontFamily: "Inter_600SemiBold", color: c.foreground, fontSize: 13 }}>
+            Record date (live)
+          </Text>
+          <Text style={{ fontSize: 11, color: c.mutedForeground }}>
+            With consent — transcribe & analyze
+          </Text>
+        </Pressable>
+      </View>
+      <VoiceNoteFeedbackSheet
+        visible={voiceNote}
+        matchId={matchId}
+        matchName={matchName}
+        onClose={() => setVoiceNote(false)}
+      />
+      <InPersonRecordingSheet
+        visible={inPerson}
+        matchId={matchId}
+        matchName={matchName}
+        onClose={() => setInPerson(false)}
         onApplied={onApplied}
       />
     </>
@@ -515,11 +626,37 @@ function ScheduleDateCard({
     }
     setSaving(true);
     try {
+      const location = where.trim() || null;
       await updateMatch(match.id, {
         nextDateAt: parsed.toISOString(),
-        nextDateLocation: where.trim() || null,
+        nextDateLocation: location,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+      // Schedule local reminder for date day (9am local)
+      scheduleDateDayReminder(match.id, match.name, parsed, location).catch(
+        () => {},
+      );
+
+      // Offer calendar add
+      Alert.alert(
+        "Add to calendar?",
+        `Create a calendar event for your date with ${match.name}?`,
+        [
+          { text: "Not now", style: "cancel" },
+          {
+            text: "Add",
+            onPress: () => {
+              addDateToCalendar(match.name, parsed, location).then((id) => {
+                if (!id) {
+                  Alert.alert("Couldn't add", "Calendar permission denied or unavailable.");
+                }
+              });
+            },
+          },
+        ],
+      );
+
       onChange();
       setOpen(false);
       setWhen("");
@@ -601,6 +738,7 @@ function NextDateCard({
     setClearing(true);
     try {
       await updateMatch(match.id, { nextDateAt: null, nextDateLocation: null });
+      cancelDateDayReminder(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't clear", e?.message ?? "Try again.");
@@ -682,6 +820,7 @@ function PostDateDebriefCard({
         nextDateAt: null,
         nextDateLocation: null,
       });
+      cancelDateDayReminder(match.id).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       onChange();
       setRecap("");
@@ -696,6 +835,7 @@ function PostDateDebriefCard({
     setSkipping(true);
     try {
       await updateMatch(match.id, { nextDateAt: null, nextDateLocation: null });
+      cancelDateDayReminder(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't clear", e?.message ?? "Try again.");

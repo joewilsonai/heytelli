@@ -24,9 +24,15 @@ import {
   RescoreMatchParams,
   VoiceDebriefParams,
   VoiceDebriefBody,
+  VoiceNoteFeedbackParams,
+  VoiceNoteFeedbackBody,
+  InPersonRecordingParams,
+  InPersonRecordingBody,
 } from "@workspace/api-zod";
 import { transcribeAudioObject } from "../lib/audio";
 import { analyzeVoiceDebrief } from "../lib/voiceDebrief";
+import { analyzeVoiceNote } from "../lib/voiceFeedback";
+import { generateStaleNudgeOpeners } from "../lib/nudges";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
   extractFromScreenshot,
@@ -73,6 +79,82 @@ async function loadMatchDetail(matchId: number) {
     screenshots: shots,
   };
 }
+
+// Static sub-paths must be registered BEFORE `/matches/:id` so Express
+// doesn't try to parse "stale-nudges" as a numeric id.
+router.get("/matches/stale-nudges", async (req, res): Promise<void> => {
+  try {
+    const rows = await db
+      .select()
+      .from(matches)
+      .where(eq(matches.status, "active"));
+
+    const ids = rows.map((r) => r.id);
+    const shotRows = ids.length
+      ? await db
+          .select({
+            matchId: screenshots.matchId,
+            uploadedAt: screenshots.uploadedAt,
+          })
+          .from(screenshots)
+          .where(inArray(screenshots.matchId, ids))
+      : [];
+    const lastShot = new Map<number, Date>();
+    for (const s of shotRows) {
+      const prev = lastShot.get(s.matchId);
+      if (!prev || s.uploadedAt > prev) lastShot.set(s.matchId, s.uploadedAt);
+    }
+
+    const STALE_HOURS = 36;
+    const now = Date.now();
+    const candidates = rows
+      .map(withNormalizedProfile)
+      .map((m) => ({
+        ...m,
+        transcript: normalizeTranscript(m.transcript),
+      }))
+      .filter((m) => {
+        const lastTurn = m.transcript[m.transcript.length - 1];
+        if (!lastTurn || lastTurn.speaker === "me") return false;
+        const lastActivity = lastShot.get(m.id) ?? m.updatedAt;
+        if (!lastActivity) return false;
+        const hours = (now - new Date(lastActivity).getTime()) / 3600000;
+        return hours >= STALE_HOURS;
+      })
+      .slice(0, 8);
+
+    const results = await Promise.all(
+      candidates.map(async (m) => {
+        const lastActivity = (lastShot.get(m.id) ?? m.updatedAt) as Date;
+        const hours = (now - new Date(lastActivity).getTime()) / 3600000;
+        let openers: string[] = [];
+        try {
+          openers = await generateStaleNudgeOpeners(
+            m.name,
+            hours,
+            m.extractedProfile,
+            m.transcript,
+            m.notes ?? "",
+          );
+        } catch (err) {
+          req.log.warn({ err, matchId: m.id }, "Nudge generation failed");
+        }
+        return {
+          matchId: m.id,
+          name: m.name,
+          photoObjectPath: m.photoObjectPath,
+          hoursSinceLastReply: Math.round(hours * 10) / 10,
+          openers,
+        };
+      }),
+    );
+
+    res.json(results.filter((r) => r.openers.length > 0));
+  } catch (err) {
+    req.log.error({ err }, "Stale nudges failed");
+    res.status(500).json({ error: "Failed to fetch stale nudges" });
+  }
+});
 
 router.get("/matches", async (_req, res): Promise<void> => {
   const rows = await db.select().from(matches).orderBy(desc(matches.updatedAt));
@@ -425,6 +507,141 @@ router.post("/matches/:id/replies", async (req, res): Promise<void> => {
   }
 });
 
+router.post(
+  "/matches/:id/voice-note-feedback",
+  async (req, res): Promise<void> => {
+    const params = VoiceNoteFeedbackParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const body = VoiceNoteFeedbackBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.message });
+      return;
+    }
+
+    const detail = await loadMatchDetail(params.data.id);
+    if (!detail) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    try {
+      const transcript = await transcribeAudioObject(body.data.audioObjectPath);
+      if (!transcript) {
+        res.status(400).json({ error: "Transcription returned empty text" });
+        return;
+      }
+      const feedback = await analyzeVoiceNote(transcript, {
+        name: detail.name,
+        profile: detail.extractedProfile,
+        recentTurns: detail.transcript,
+      });
+      res.json({ transcript, ...feedback });
+    } catch (err) {
+      req.log.error({ err }, "Voice note feedback failed");
+      res.status(500).json({ error: "Voice note feedback failed" });
+    }
+  },
+);
+
+router.post(
+  "/matches/:id/in-person-recording",
+  async (req, res): Promise<void> => {
+    const params = InPersonRecordingParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const body = InPersonRecordingBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.message });
+      return;
+    }
+    if (!body.data.bothPartiesConsented) {
+      res.status(400).json({
+        error: "Both parties must consent to recording. Set bothPartiesConsented=true.",
+      });
+      return;
+    }
+
+    const detail = await loadMatchDetail(params.data.id);
+    if (!detail) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    try {
+      const transcript = await transcribeAudioObject(body.data.audioObjectPath);
+      if (!transcript) {
+        res.status(400).json({ error: "Transcription returned empty text" });
+        return;
+      }
+      const analysis = await analyzeVoiceDebrief(transcript, {
+        name: detail.name,
+        priorVibe: detail.vibeTags.join(", ") || null,
+        priorScores: detail.extractedProfile.scores,
+      });
+
+      const mergedScores = { ...detail.extractedProfile.scores };
+      for (const key of ["sexPotential", "conversionAbility", "chemistry"] as const) {
+        const s = analysis.scoreSuggestions[key];
+        if (s.value != null) mergedScores[key] = s;
+      }
+      const mergedProfile = { ...detail.extractedProfile, scores: mergedScores };
+
+      const noteHeader = `\n\n— In-person recording (${new Date().toLocaleDateString()}) [consent confirmed] —\n`;
+      const noteBody = [
+        `Summary: ${analysis.summary}`,
+        analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
+        analysis.greenFlags.length ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}` : null,
+        analysis.redFlags.length ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}` : null,
+        analysis.nextMoveSuggestion ? `Next move: ${analysis.nextMoveSuggestion}` : null,
+        `\nTranscript:\n"${transcript}"`,
+      ].filter(Boolean).join("\n");
+      const updatedNotes = (detail.notes || "").trim() + noteHeader + noteBody;
+
+      const updates: Record<string, unknown> = {
+        extractedProfile: mergedProfile,
+        notes: updatedNotes,
+      };
+
+      if (body.data.addToDateHistory) {
+        const nowIso = new Date().toISOString();
+        const recap = [
+          analysis.summary,
+          analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
+          analysis.nextMoveSuggestion ? `Next: ${analysis.nextMoveSuggestion}` : null,
+        ]
+          .filter(Boolean)
+          .join(" — ");
+        const newEntry = {
+          id: `inp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          when: detail.nextDateAt ? new Date(detail.nextDateAt).toISOString() : nowIso,
+          location: detail.nextDateLocation ?? "",
+          recap,
+          createdAt: nowIso,
+        };
+        updates.dateHistory = [...detail.dateHistory, newEntry];
+        if (detail.nextDateAt) {
+          updates.nextDateAt = null;
+          updates.nextDateLocation = null;
+        }
+      }
+
+      await db.update(matches).set(updates).where(eq(matches.id, detail.id));
+      await recordScoreHistory(detail.id, mergedScores);
+
+      const refreshed = await loadMatchDetail(detail.id);
+      res.json({ transcript, analysis, match: refreshed });
+    } catch (err) {
+      req.log.error({ err }, "In-person recording analysis failed");
+      res.status(500).json({ error: "Recording analysis failed" });
+    }
+  },
+);
+
 router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
   const params = VoiceDebriefParams.safeParse(req.params);
   if (!params.success) {
@@ -484,15 +701,23 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     const updates: Record<string, unknown> = {
       extractedProfile: mergedProfile,
       notes: updatedNotes,
-      lastActivityAt: new Date(),
     };
 
     if (body.data.addToDateHistory) {
+      const nowIso = new Date().toISOString();
+      const recap = [
+        analysis.summary,
+        analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
+        analysis.nextMoveSuggestion ? `Next: ${analysis.nextMoveSuggestion}` : null,
+      ]
+        .filter(Boolean)
+        .join(" — ");
       const newEntry = {
-        at: new Date().toISOString(),
-        location: detail.nextDateLocation,
-        notes: analysis.summary,
-        vibe: analysis.vibe,
+        id: `vd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        when: detail.nextDateAt ? new Date(detail.nextDateAt).toISOString() : nowIso,
+        location: detail.nextDateLocation ?? "",
+        recap,
+        createdAt: nowIso,
       };
       const history = [...detail.dateHistory, newEntry];
       updates.dateHistory = history;

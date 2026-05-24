@@ -25,7 +25,9 @@ export async function transcribeAudioObject(objectPath: string): Promise<string>
               ? "ogg"
               : "m4a";
   // OpenAI SDK accepts a File-like object
-  const blob = new Blob([buf], { type: contentType });
+  const ab = new ArrayBuffer(buf.byteLength);
+  new Uint8Array(ab).set(buf);
+  const blob = new Blob([ab], { type: contentType });
   const fileLike = new File([blob], `audio.${ext}`, { type: contentType });
   const result = await openai.audio.transcriptions.create({
     file: fileLike,

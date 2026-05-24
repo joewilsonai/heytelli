@@ -544,6 +544,161 @@ export const GenerateDateBriefResponse = zod.object({
 
 
 /**
+ * Returns active matches where the last speaker was her or unknown AND
+her last reply was more than 36 hours ago. For each, includes 3
+suggested openers tailored to the conversation.
+
+ * @summary List matches that have gone quiet with AI-generated re-engagement openers
+ */
+export const GetStaleNudgesResponseItem = zod.object({
+  "matchId": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "hoursSinceLastReply": zod.number(),
+  "openers": zod.array(zod.string())
+})
+export const GetStaleNudgesResponse = zod.array(GetStaleNudgesResponseItem)
+
+
+/**
+ * @summary Critique a voice note the user is about to send to a match
+ */
+export const VoiceNoteFeedbackParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const VoiceNoteFeedbackBody = zod.object({
+  "audioObjectPath": zod.string(),
+  "addToDateHistory": zod.boolean().optional().describe('If true, append a new date history entry summarizing this debrief.')
+})
+
+export const VoiceNoteFeedbackResponse = zod.object({
+  "transcript": zod.string(),
+  "toneRating": zod.number().nullable(),
+  "energyRating": zod.number().nullable(),
+  "strengths": zod.array(zod.string()),
+  "improvements": zod.array(zod.string()),
+  "rewrite": zod.string().nullable(),
+  "shouldSend": zod.enum(['send', 'revise', 'scrap'])
+})
+
+
+/**
+ * Transcribes an audio recording of an in-person interaction and runs
+the same debrief analysis. Requires `bothPartiesConsented=true` —
+the client is responsible for collecting that consent on-camera.
+
+ * @summary Transcribe and analyze an in-person date recording (requires consent)
+ */
+export const InPersonRecordingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const InPersonRecordingBody = zod.object({
+  "audioObjectPath": zod.string(),
+  "bothPartiesConsented": zod.boolean().describe('Must be true. Server rejects the request otherwise.'),
+  "addToDateHistory": zod.boolean().optional()
+})
+
+export const inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMin = 0;
+export const inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMax = 10;
+
+export const inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMin = 0;
+export const inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMax = 10;
+
+export const inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMin = 0;
+export const inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMax = 10;
+
+export const inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const inPersonRecordingResponseMatchExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const inPersonRecordingResponseMatchExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const inPersonRecordingResponseMatchExtractedProfileScoresChemistryValueOneMin = 0;
+export const inPersonRecordingResponseMatchExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
+export const InPersonRecordingResponse = zod.object({
+  "transcript": zod.string(),
+  "analysis": zod.object({
+  "summary": zod.string(),
+  "vibe": zod.string().nullable(),
+  "greenFlags": zod.array(zod.string()),
+  "redFlags": zod.array(zod.string()),
+  "nextMoveSuggestion": zod.string().nullable(),
+  "scoreSuggestions": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMin).max(inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMin).max(inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMin).max(inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
+}),
+  "match": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
+  "vibeTags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMin).max(inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(inPersonRecordingResponseMatchExtractedProfileScoresConversionAbilityValueOneMin).max(inPersonRecordingResponseMatchExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(inPersonRecordingResponseMatchExtractedProfileScoresChemistryValueOneMin).max(inPersonRecordingResponseMatchExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
+}),
+  "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "screenshots": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string(),
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable()
+}))
+})
+})
+
+
+/**
  * Accepts an already-uploaded audio file (object path), transcribes it
 via Whisper, then asks the LLM to extract structured insights:
 summary, vibe, green/red flags, suggested next move, and revised

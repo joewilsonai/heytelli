@@ -34,6 +34,19 @@
         {
           "microphonePermission": "Allow Bumble CRM to record voice debriefs after dates."
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow Bumble CRM to add upcoming dates to your calendar."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff"
+        }
       ]
     ],
     "experiments": {

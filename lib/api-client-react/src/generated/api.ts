@@ -24,6 +24,7 @@ import type {
   ErrorEnvelope,
   ExtractionPreview,
   HealthStatus,
+  InPersonRecordingInput,
   Match,
   MatchCreateInput,
   MatchDetail,
@@ -36,10 +37,12 @@ import type {
   ReplyResult,
   Screenshot,
   ScreenshotInput,
+  StaleNudge,
   UploadUrlRequest,
   UploadUrlResponse,
   VoiceDebriefInput,
-  VoiceDebriefResult
+  VoiceDebriefResult,
+  VoiceNoteFeedbackResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -865,6 +868,235 @@ export const useGenerateDateBrief = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getGenerateDateBriefMutationOptions(options));
+    }
+
+export const getGetStaleNudgesUrl = () => {
+
+
+
+
+  return `/api/matches/stale-nudges`
+}
+
+/**
+ * Returns active matches where the last speaker was her or unknown AND
+her last reply was more than 36 hours ago. For each, includes 3
+suggested openers tailored to the conversation.
+
+ * @summary List matches that have gone quiet with AI-generated re-engagement openers
+ */
+export const getStaleNudges = async ( options?: RequestInit): Promise<StaleNudge[]> => {
+
+  return customFetch<StaleNudge[]>(getGetStaleNudgesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaleNudgesQueryKey = () => {
+    return [
+    `/api/matches/stale-nudges`
+    ] as const;
+    }
+
+
+export const getGetStaleNudgesQueryOptions = <TData = Awaited<ReturnType<typeof getStaleNudges>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaleNudges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaleNudgesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaleNudges>>> = ({ signal }) => getStaleNudges({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStaleNudges>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStaleNudgesQueryResult = NonNullable<Awaited<ReturnType<typeof getStaleNudges>>>
+export type GetStaleNudgesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List matches that have gone quiet with AI-generated re-engagement openers
+ */
+
+export function useGetStaleNudges<TData = Awaited<ReturnType<typeof getStaleNudges>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaleNudges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStaleNudgesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getVoiceNoteFeedbackUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/voice-note-feedback`
+}
+
+/**
+ * @summary Critique a voice note the user is about to send to a match
+ */
+export const voiceNoteFeedback = async (id: number,
+    voiceDebriefInput: VoiceDebriefInput, options?: RequestInit): Promise<VoiceNoteFeedbackResult> => {
+
+  return customFetch<VoiceNoteFeedbackResult>(getVoiceNoteFeedbackUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      voiceDebriefInput,)
+  }
+);}
+
+
+
+
+export const getVoiceNoteFeedbackMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voiceNoteFeedback>>, TError,{id: number;data: BodyType<VoiceDebriefInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof voiceNoteFeedback>>, TError,{id: number;data: BodyType<VoiceDebriefInput>}, TContext> => {
+
+const mutationKey = ['voiceNoteFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof voiceNoteFeedback>>, {id: number;data: BodyType<VoiceDebriefInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  voiceNoteFeedback(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VoiceNoteFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof voiceNoteFeedback>>>
+    export type VoiceNoteFeedbackMutationBody = BodyType<VoiceDebriefInput>
+    export type VoiceNoteFeedbackMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Critique a voice note the user is about to send to a match
+ */
+export const useVoiceNoteFeedback = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voiceNoteFeedback>>, TError,{id: number;data: BodyType<VoiceDebriefInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof voiceNoteFeedback>>,
+        TError,
+        {id: number;data: BodyType<VoiceDebriefInput>},
+        TContext
+      > => {
+      return useMutation(getVoiceNoteFeedbackMutationOptions(options));
+    }
+
+export const getInPersonRecordingUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/in-person-recording`
+}
+
+/**
+ * Transcribes an audio recording of an in-person interaction and runs
+the same debrief analysis. Requires `bothPartiesConsented=true` —
+the client is responsible for collecting that consent on-camera.
+
+ * @summary Transcribe and analyze an in-person date recording (requires consent)
+ */
+export const inPersonRecording = async (id: number,
+    inPersonRecordingInput: InPersonRecordingInput, options?: RequestInit): Promise<VoiceDebriefResult> => {
+
+  return customFetch<VoiceDebriefResult>(getInPersonRecordingUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      inPersonRecordingInput,)
+  }
+);}
+
+
+
+
+export const getInPersonRecordingMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inPersonRecording>>, TError,{id: number;data: BodyType<InPersonRecordingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof inPersonRecording>>, TError,{id: number;data: BodyType<InPersonRecordingInput>}, TContext> => {
+
+const mutationKey = ['inPersonRecording'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof inPersonRecording>>, {id: number;data: BodyType<InPersonRecordingInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  inPersonRecording(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InPersonRecordingMutationResult = NonNullable<Awaited<ReturnType<typeof inPersonRecording>>>
+    export type InPersonRecordingMutationBody = BodyType<InPersonRecordingInput>
+    export type InPersonRecordingMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Transcribe and analyze an in-person date recording (requires consent)
+ */
+export const useInPersonRecording = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inPersonRecording>>, TError,{id: number;data: BodyType<InPersonRecordingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof inPersonRecording>>,
+        TError,
+        {id: number;data: BodyType<InPersonRecordingInput>},
+        TContext
+      > => {
+      return useMutation(getInPersonRecordingMutationOptions(options));
     }
 
 export const getVoiceDebriefUrl = (id: number,) => {

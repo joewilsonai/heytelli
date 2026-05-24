@@ -57,6 +57,8 @@
   },
   "dependencies": {
     "expo-av": "~16.0.8",
-    "expo-clipboard": "^8.0.8"
+    "expo-calendar": "~15.0.8",
+    "expo-clipboard": "^8.0.8",
+    "expo-notifications": "~0.32.17"
   }
 }

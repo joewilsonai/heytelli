@@ -279,6 +279,98 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/stale-nudges:
+    get:
+      operationId: getStaleNudges
+      tags: [matches]
+      summary: List matches that have gone quiet with AI-generated re-engagement openers
+      description: |
+        Returns active matches where the last speaker was her or unknown AND
+        her last reply was more than 36 hours ago. For each, includes 3
+        suggested openers tailored to the conversation.
+      responses:
+        "200":
+          description: List of stale matches with openers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StaleNudge"
+  /matches/{id}/voice-note-feedback:
+    post:
+      operationId: voiceNoteFeedback
+      tags: [matches]
+      summary: Critique a voice note the user is about to send to a match
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoiceDebriefInput"
+      responses:
+        "200":
+          description: Voice note feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceNoteFeedbackResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/in-person-recording:
+    post:
+      operationId: inPersonRecording
+      tags: [matches]
+      summary: Transcribe and analyze an in-person date recording (requires consent)
+      description: |
+        Transcribes an audio recording of an in-person interaction and runs
+        the same debrief analysis. Requires `bothPartiesConsented=true` —
+        the client is responsible for collecting that consent on-camera.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InPersonRecordingInput"
+      responses:
+        "200":
+          description: Recording analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceDebriefResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /matches/{id}/voice-debrief:
     post:
       operationId: voiceDebrief
@@ -741,6 +833,50 @@ components:
         nextMoveSuggestion: { type: ["string", "null"] }
         scoreSuggestions:
           $ref: "#/components/schemas/MatchScores"
+    StaleNudge:
+      type: object
+      required: [matchId, name, photoObjectPath, hoursSinceLastReply, openers]
+      properties:
+        matchId: { type: integer }
+        name: { type: string }
+        photoObjectPath: { type: ["string", "null"] }
+        hoursSinceLastReply: { type: number }
+        openers:
+          type: array
+          items: { type: string }
+    VoiceNoteFeedbackResult:
+      type: object
+      required:
+        - transcript
+        - toneRating
+        - energyRating
+        - strengths
+        - improvements
+        - rewrite
+        - shouldSend
+      properties:
+        transcript: { type: string }
+        toneRating: { type: ["integer", "null"] }
+        energyRating: { type: ["integer", "null"] }
+        strengths:
+          type: array
+          items: { type: string }
+        improvements:
+          type: array
+          items: { type: string }
+        rewrite: { type: ["string", "null"] }
+        shouldSend:
+          type: string
+          enum: [send, revise, scrap]
+    InPersonRecordingInput:
+      type: object
+      required: [audioObjectPath, bothPartiesConsented]
+      properties:
+        audioObjectPath: { type: string }
+        bothPartiesConsented:
+          type: boolean
+          description: Must be true. Server rejects the request otherwise.
+        addToDateHistory: { type: boolean }
     VoiceDebriefResult:
       type: object
       required: [transcript, analysis, match]

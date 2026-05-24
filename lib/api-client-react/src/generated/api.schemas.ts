@@ -221,6 +221,44 @@ export interface VoiceDebriefAnalysis {
   scoreSuggestions: MatchScores;
 }
 
+export interface StaleNudge {
+  matchId: number;
+  name: string;
+  /** @nullable */
+  photoObjectPath: string | null;
+  hoursSinceLastReply: number;
+  openers: string[];
+}
+
+export type VoiceNoteFeedbackResultShouldSend = typeof VoiceNoteFeedbackResultShouldSend[keyof typeof VoiceNoteFeedbackResultShouldSend];
+
+
+export const VoiceNoteFeedbackResultShouldSend = {
+  send: 'send',
+  revise: 'revise',
+  scrap: 'scrap',
+} as const;
+
+export interface VoiceNoteFeedbackResult {
+  transcript: string;
+  /** @nullable */
+  toneRating: number | null;
+  /** @nullable */
+  energyRating: number | null;
+  strengths: string[];
+  improvements: string[];
+  /** @nullable */
+  rewrite: string | null;
+  shouldSend: VoiceNoteFeedbackResultShouldSend;
+}
+
+export interface InPersonRecordingInput {
+  audioObjectPath: string;
+  /** Must be true. Server rejects the request otherwise. */
+  bothPartiesConsented: boolean;
+  addToDateHistory?: boolean;
+}
+
 export interface VoiceDebriefResult {
   transcript: string;
   analysis: VoiceDebriefAnalysis;
