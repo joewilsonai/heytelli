@@ -3,6 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -21,8 +22,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import {
   addScreenshot,
+  createOpenrouterConversation,
   generateDateBrief,
   generateMatchReplies,
+  getListOpenrouterConversationsQueryKey,
   rescoreMatch,
   updateMatch,
   useGetMatch,
@@ -120,6 +123,7 @@ export default function MatchDetailScreen() {
         }
       >
         <HeaderCard match={data} onChange={() => refetch()} />
+        <ChatLinkCard matchId={data.id} matchName={data.name} />
         {isPast(data.nextDateAt) && data.nextDateAt && (
           <PostDateDebriefCard match={data} onChange={() => refetch()} />
         )}
@@ -139,6 +143,84 @@ export default function MatchDetailScreen() {
 }
 
 /* ------------------------------- Cards ----------------------------------- */
+
+function ChatLinkCard({
+  matchId,
+  matchName,
+}: {
+  matchId: number;
+  matchName: string;
+}) {
+  const c = useColors();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const openChat = async () => {
+    setBusy(true);
+    try {
+      const created = await createOpenrouterConversation({
+        title: `Chat about ${matchName}`,
+        matchId,
+      });
+      qc.invalidateQueries({ queryKey: getListOpenrouterConversationsQueryKey() });
+      router.push(`/chat/${created.id}`);
+    } catch (e: any) {
+      Alert.alert("Couldn't start chat", e?.message ?? "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Pressable
+      onPress={openChat}
+      disabled={busy}
+      style={({ pressed }) => ({
+        backgroundColor: c.accent,
+        borderRadius: c.radius,
+        padding: 14,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: c.card,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Feather name="message-circle" size={18} color={c.accentForeground} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            fontFamily: "Inter_600SemiBold",
+            color: c.accentForeground,
+          }}
+        >
+          Chat with Grok about {matchName}
+        </Text>
+        <Text style={{ fontSize: 12, color: c.accentForeground, opacity: 0.7, marginTop: 2 }}>
+          Brainstorm next moves, decode her vibe
+        </Text>
+      </View>
+      {busy ? (
+        <ActivityIndicator color={c.accentForeground} />
+      ) : (
+        <Feather name="chevron-right" size={18} color={c.accentForeground} />
+      )}
+    </Pressable>
+  );
+}
+
 
 function HeaderCard({
   match,

@@ -59,6 +59,8 @@ function RootLayoutNav() {
           presentation: "modal",
         }}
       />
+      <Stack.Screen name="chat/index" options={{ headerShown: false }} />
+      <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
     </Stack>
   );
 }

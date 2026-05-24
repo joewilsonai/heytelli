@@ -109,28 +109,49 @@ export default function MatchesScreen() {
               {(data ?? []).length} total · {counts.active} active
             </Body>
           </View>
-          <Link href="/add" asChild>
-            <Pressable
-              onPress={() => Haptics.selectionAsync().catch(() => {})}
-              style={({ pressed }) => ({
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: c.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.7 : 1,
-                shadowColor: "#000",
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 3,
-              })}
-              accessibilityLabel="Add match"
-            >
-              <Feather name="plus" size={24} color={c.primaryForeground} />
-            </Pressable>
-          </Link>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Link href="/chat" asChild>
+              <Pressable
+                onPress={() => Haptics.selectionAsync().catch(() => {})}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.7 : 1,
+                })}
+                accessibilityLabel="Wingman chat"
+              >
+                <Feather name="message-circle" size={20} color={c.foreground} />
+              </Pressable>
+            </Link>
+            <Link href="/add" asChild>
+              <Pressable
+                onPress={() => Haptics.selectionAsync().catch(() => {})}
+                style={({ pressed }) => ({
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: c.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.7 : 1,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 3,
+                })}
+                accessibilityLabel="Add match"
+              >
+                <Feather name="plus" size={24} color={c.primaryForeground} />
+              </Pressable>
+            </Link>
+          </View>
         </View>
 
         {/* Filter chips */}
