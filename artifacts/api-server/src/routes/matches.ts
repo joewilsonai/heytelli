@@ -22,7 +22,11 @@ import {
   PreviewMatchExtractionBody,
   ListScreenshotsParams,
   RescoreMatchParams,
+  VoiceDebriefParams,
+  VoiceDebriefBody,
 } from "@workspace/api-zod";
+import { transcribeAudioObject } from "../lib/audio";
+import { analyzeVoiceDebrief } from "../lib/voiceDebrief";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
   extractFromScreenshot,
@@ -418,6 +422,95 @@ router.post("/matches/:id/replies", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Reply generation failed");
     res.status(500).json({ error: "Failed to generate replies" });
+  }
+});
+
+router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
+  const params = VoiceDebriefParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = VoiceDebriefBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const detail = await loadMatchDetail(params.data.id);
+  if (!detail) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+
+  try {
+    const transcript = await transcribeAudioObject(body.data.audioObjectPath);
+    if (!transcript) {
+      res.status(400).json({ error: "Transcription returned empty text" });
+      return;
+    }
+
+    const analysis = await analyzeVoiceDebrief(transcript, {
+      name: detail.name,
+      priorVibe: detail.vibeTags.join(", ") || null,
+      priorScores: detail.extractedProfile.scores,
+    });
+
+    // Persist: update scores (only fields where suggestion has a value),
+    // append the debrief to notes, optionally add a date history entry.
+    const mergedScores = { ...detail.extractedProfile.scores };
+    for (const key of ["sexPotential", "conversionAbility", "chemistry"] as const) {
+      const s = analysis.scoreSuggestions[key];
+      if (s.value != null) mergedScores[key] = s;
+    }
+    const mergedProfile = {
+      ...detail.extractedProfile,
+      scores: mergedScores,
+    };
+
+    const noteHeader = `\n\n— Voice debrief (${new Date().toLocaleDateString()}) —\n`;
+    const noteBody = [
+      `Summary: ${analysis.summary}`,
+      analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
+      analysis.greenFlags.length ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}` : null,
+      analysis.redFlags.length ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}` : null,
+      analysis.nextMoveSuggestion ? `Next move: ${analysis.nextMoveSuggestion}` : null,
+      `\nTranscript:\n"${transcript}"`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const updatedNotes = (detail.notes || "").trim() + noteHeader + noteBody;
+
+    const updates: Record<string, unknown> = {
+      extractedProfile: mergedProfile,
+      notes: updatedNotes,
+      lastActivityAt: new Date(),
+    };
+
+    if (body.data.addToDateHistory) {
+      const newEntry = {
+        at: new Date().toISOString(),
+        location: detail.nextDateLocation,
+        notes: analysis.summary,
+        vibe: analysis.vibe,
+      };
+      const history = [...detail.dateHistory, newEntry];
+      updates.dateHistory = history;
+      // If this was the upcoming date, clear it.
+      if (detail.nextDateAt) {
+        updates.nextDateAt = null;
+        updates.nextDateLocation = null;
+      }
+    }
+
+    await db.update(matches).set(updates).where(eq(matches.id, detail.id));
+    await recordScoreHistory(detail.id, mergedScores);
+
+    const refreshed = await loadMatchDetail(detail.id);
+    res.json({ transcript, analysis, match: refreshed });
+  } catch (err) {
+    req.log.error({ err }, "Voice debrief failed");
+    res.status(500).json({ error: "Voice debrief failed" });
   }
 });
 

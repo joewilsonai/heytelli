@@ -28,7 +28,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Bumble CRM to record voice debriefs after dates."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

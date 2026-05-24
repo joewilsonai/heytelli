@@ -37,7 +37,9 @@ import type {
   Screenshot,
   ScreenshotInput,
   UploadUrlRequest,
-  UploadUrlResponse
+  UploadUrlResponse,
+  VoiceDebriefInput,
+  VoiceDebriefResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -863,6 +865,84 @@ export const useGenerateDateBrief = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getGenerateDateBriefMutationOptions(options));
+    }
+
+export const getVoiceDebriefUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/voice-debrief`
+}
+
+/**
+ * Accepts an already-uploaded audio file (object path), transcribes it
+via Whisper, then asks the LLM to extract structured insights:
+summary, vibe, green/red flags, suggested next move, and revised
+scores. Server persists the transcript appended to match notes and
+applies revised scores.
+
+ * @summary Transcribe a voice debrief audio recording and analyze it
+ */
+export const voiceDebrief = async (id: number,
+    voiceDebriefInput: VoiceDebriefInput, options?: RequestInit): Promise<VoiceDebriefResult> => {
+
+  return customFetch<VoiceDebriefResult>(getVoiceDebriefUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      voiceDebriefInput,)
+  }
+);}
+
+
+
+
+export const getVoiceDebriefMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voiceDebrief>>, TError,{id: number;data: BodyType<VoiceDebriefInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof voiceDebrief>>, TError,{id: number;data: BodyType<VoiceDebriefInput>}, TContext> => {
+
+const mutationKey = ['voiceDebrief'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof voiceDebrief>>, {id: number;data: BodyType<VoiceDebriefInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  voiceDebrief(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VoiceDebriefMutationResult = NonNullable<Awaited<ReturnType<typeof voiceDebrief>>>
+    export type VoiceDebriefMutationBody = BodyType<VoiceDebriefInput>
+    export type VoiceDebriefMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Transcribe a voice debrief audio recording and analyze it
+ */
+export const useVoiceDebrief = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voiceDebrief>>, TError,{id: number;data: BodyType<VoiceDebriefInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof voiceDebrief>>,
+        TError,
+        {id: number;data: BodyType<VoiceDebriefInput>},
+        TContext
+      > => {
+      return useMutation(getVoiceDebriefMutationOptions(options));
     }
 
 export const getGenerateMatchRepliesUrl = (id: number,) => {

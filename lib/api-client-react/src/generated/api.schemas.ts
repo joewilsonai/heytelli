@@ -204,6 +204,29 @@ export interface ScreenshotInput {
   objectPath: string;
 }
 
+export interface VoiceDebriefInput {
+  audioObjectPath: string;
+  /** If true, append a new date history entry summarizing this debrief. */
+  addToDateHistory?: boolean;
+}
+
+export interface VoiceDebriefAnalysis {
+  summary: string;
+  /** @nullable */
+  vibe: string | null;
+  greenFlags: string[];
+  redFlags: string[];
+  /** @nullable */
+  nextMoveSuggestion: string | null;
+  scoreSuggestions: MatchScores;
+}
+
+export interface VoiceDebriefResult {
+  transcript: string;
+  analysis: VoiceDebriefAnalysis;
+  match: MatchDetail;
+}
+
 export interface ReplyResult {
   replies: string[];
 }

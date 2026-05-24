@@ -52,6 +52,7 @@ import {
   StatusPill,
   VibeTag,
 } from "@/components/ui";
+import { VoiceDebriefSheet } from "@/components/VoiceDebriefSheet";
 import { formatDateTime, formatTimeAgo, isPast } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
 import { uploadImage } from "@/lib/upload";
@@ -124,6 +125,11 @@ export default function MatchDetailScreen() {
       >
         <HeaderCard match={data} onChange={() => refetch()} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />
+        <VoiceDebriefCard
+          matchId={data.id}
+          matchName={data.name}
+          onApplied={() => refetch()}
+        />
         {isPast(data.nextDateAt) && data.nextDateAt && (
           <PostDateDebriefCard match={data} onChange={() => refetch()} />
         )}
@@ -143,6 +149,75 @@ export default function MatchDetailScreen() {
 }
 
 /* ------------------------------- Cards ----------------------------------- */
+
+function VoiceDebriefCard({
+  matchId,
+  matchName,
+  onApplied,
+}: {
+  matchId: number;
+  matchName: string;
+  onApplied: () => void;
+}) {
+  const c = useColors();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync().catch(() => {});
+          setOpen(true);
+        }}
+        style={({ pressed }) => ({
+          backgroundColor: c.card,
+          borderWidth: 1,
+          borderColor: c.border,
+          borderRadius: c.radius,
+          padding: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: c.destructive,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Feather name="mic" size={18} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              fontFamily: "Inter_600SemiBold",
+              color: c.foreground,
+            }}
+          >
+            Voice debrief
+          </Text>
+          <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
+            Talk it out — Grok transcribes, flags, and updates scores
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+      </Pressable>
+      <VoiceDebriefSheet
+        visible={open}
+        matchId={matchId}
+        matchName={matchName}
+        onClose={() => setOpen(false)}
+        onApplied={onApplied}
+      />
+    </>
+  );
+}
 
 function ChatLinkCard({
   matchId,

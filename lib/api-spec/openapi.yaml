@@ -279,6 +279,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/voice-debrief:
+    post:
+      operationId: voiceDebrief
+      tags: [matches]
+      summary: Transcribe a voice debrief audio recording and analyze it
+      description: |
+        Accepts an already-uploaded audio file (object path), transcribes it
+        via Whisper, then asks the LLM to extract structured insights:
+        summary, vibe, green/red flags, suggested next move, and revised
+        scores. Server persists the transcript appended to match notes and
+        applies revised scores.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoiceDebriefInput"
+      responses:
+        "200":
+          description: Debrief analysis with the updated match detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceDebriefResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /matches/{id}/replies:
     post:
       operationId: generateMatchReplies
@@ -671,6 +712,44 @@ components:
       required: [objectPath]
       properties:
         objectPath: { type: string }
+    VoiceDebriefInput:
+      type: object
+      required: [audioObjectPath]
+      properties:
+        audioObjectPath: { type: string }
+        addToDateHistory:
+          type: boolean
+          description: If true, append a new date history entry summarizing this debrief.
+    VoiceDebriefAnalysis:
+      type: object
+      required:
+        - summary
+        - vibe
+        - greenFlags
+        - redFlags
+        - nextMoveSuggestion
+        - scoreSuggestions
+      properties:
+        summary: { type: string }
+        vibe: { type: ["string", "null"] }
+        greenFlags:
+          type: array
+          items: { type: string }
+        redFlags:
+          type: array
+          items: { type: string }
+        nextMoveSuggestion: { type: ["string", "null"] }
+        scoreSuggestions:
+          $ref: "#/components/schemas/MatchScores"
+    VoiceDebriefResult:
+      type: object
+      required: [transcript, analysis, match]
+      properties:
+        transcript: { type: string }
+        analysis:
+          $ref: "#/components/schemas/VoiceDebriefAnalysis"
+        match:
+          $ref: "#/components/schemas/MatchDetail"
     ReplyResult:
       type: object
       required: [replies]

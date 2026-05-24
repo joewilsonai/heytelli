@@ -34,3 +34,6 @@ export * from './transcriptTurn';
 export * from './transcriptTurnSpeaker';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
+export * from './voiceDebriefAnalysis';
+export * from './voiceDebriefInput';
+export * from './voiceDebriefResult';
