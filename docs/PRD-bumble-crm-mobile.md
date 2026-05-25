@@ -100,6 +100,7 @@ This is the core surface. Cards from top to bottom:
 - **Schedule a date** card → time + location + **outfit note** (Phase 3).
 - Once scheduled, becomes a **Next date** card showing date/time, location, and an outfit pill ("Outfit: black turtleneck + boots").
 - Buttons: **AI prep brief** (GPT-5.4 summary of everything we know + ice-breakers), **Add to calendar**, **Reschedule**.
+- The prep brief is **persisted on the match** (not ephemeral local state) and carries a freshness pill. It flips to amber-stale with a reason whenever (a) a new screenshot finishes extraction, (b) any date-related context changes — past-date log, upcoming-date time/location/outfit, or notes — or (c) the brief is more than 5 days old. The reason text tells you which one ("3 new screenshots since" / "Date details updated" / "Older than 5 days") so you know whether a regenerate is worth the tokens.
 - Post-date: automatic "How did it go?" debrief card with quick recap input.
 
 #### Scores
@@ -210,6 +211,7 @@ This is the core surface. Cards from top to bottom:
 - `scores` (sex / conv / chem), `scoresExplanation`, `scoreHistory[]`
 - `nextDateAt timestamptz`, `nextDateLocation text`, `nextDateOutfit text` (Phase 3)
 - `dateHistory[]` ({ id, when, location, recap, createdAt })
+- `lastDateBrief` jsonb — `{ brief, generatedAt, screenshotCountAt, contextHash }`. `contextHash` is a 16-char sha256 over the stable subset of date-related inputs (date history `when`/`location`/`recap`, next-date time/location/outfit, notes); the read path recomputes it to flip the pre-date brief between current and stale.
 - `transcript[]`, `notes`, `createdAt`, `updatedAt`
 
 `matchScreenshots` — { id, matchId, objectPath, extractionStatus }
@@ -273,7 +275,7 @@ All route handlers register sub-paths **before** `/matches/:id` so the dynamic i
 
 1. **Photo lightbox** — current gallery shows the still; add full-screen swipe view.
 2. **Cross-screen cache invalidation** — PATCH currently refetches the match detail locally; analytics / weekly / home would benefit from explicit `queryClient.invalidateQueries` on the relevant keys.
-3. **Cheat-sheet / red-flag caching** — currently re-runs each tap. Could persist last result per match to save tokens.
+3. **Cheat-sheet / red-flag caching** — currently re-runs each tap. The pre-date brief now persists with a context-hash freshness check; extend the same pattern to cheat sheet and red flag radar to save tokens.
 4. **Tag suggestions** — auto-suggest tags from vibe analysis.
 5. **Funnel by cohort** — split funnel by week or by tag to see what's working.
 6. **Native dev build** — unblocks push, widgets, share extension for Phase 4.
