@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "Bumble CRM Mobile",
+    "name": "Haystack",
     "slug": "bumble-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "bumble-mobile",
+    "scheme": "haystack",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAF7F3"
     },
     "ios": {
       "supportsTablet": false
@@ -32,13 +32,13 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow Bumble CRM to record voice debriefs after dates."
+          "microphonePermission": "Allow Haystack to record voice debriefs after dates."
         }
       ],
       [
         "expo-calendar",
         {
-          "calendarPermission": "Allow Bumble CRM to add upcoming dates to your calendar."
+          "calendarPermission": "Allow Haystack to add upcoming dates to your calendar."
         }
       ],
       [

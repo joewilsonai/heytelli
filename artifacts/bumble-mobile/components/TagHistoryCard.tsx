@@ -33,12 +33,15 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
         onPress={() => setOpen((v) => !v)}
         style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
       >
-        <SectionLabel>Tag history</SectionLabel>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather name="activity" size={14} color={c.mutedForeground} />
+          <SectionLabel>Behavior log</SectionLabel>
+        </View>
         <Feather name={open ? "chevron-up" : "chevron-down"} size={16} color={c.mutedForeground} />
       </Pressable>
       {!open && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
-          Timeline of every tag change.
+          What's shifted in how you'd describe him over time.
         </Body>
       )}
       {open && (

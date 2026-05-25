@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/mobile/"
-title = "Bumble CRM Mobile"
+title = "Haystack"
 version = "1.0.0"
 id = "artifacts/bumble-mobile"
 router = "expo-domain"

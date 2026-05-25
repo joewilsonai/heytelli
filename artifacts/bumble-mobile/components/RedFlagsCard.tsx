@@ -8,7 +8,13 @@ import type { RedFlagRadarResult } from "@workspace/api-client-react";
 
 import { Body, Card, SectionLabel } from "./ui";
 
-export function RedFlagsCard({ matchId }: { matchId: number }) {
+export function RedFlagsCard({
+  matchId,
+  promoted = false,
+}: {
+  matchId: number;
+  promoted?: boolean;
+}) {
   const c = useColors();
   const [data, setData] = useState<RedFlagRadarResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,8 +36,23 @@ export function RedFlagsCard({ matchId }: { matchId: number }) {
   const sevColor = (s: "low" | "medium" | "high") =>
     s === "high" ? c.destructive : s === "medium" ? c.warning : c.mutedForeground;
 
+  const hasHighFlag = data?.redFlags.some((f) => f.severity === "high") ?? false;
+  const flagCount = data?.redFlags.length ?? 0;
+  const showAlert = promoted && hasHighFlag;
+
   return (
-    <Card>
+    <Card
+      style={
+        showAlert
+          ? {
+              borderColor: c.destructive,
+              borderWidth: 2,
+            }
+          : promoted
+            ? { borderColor: c.primary, borderWidth: 1.5 }
+            : undefined
+      }
+    >
       <View
         style={{
           flexDirection: "row",
@@ -39,7 +60,34 @@ export function RedFlagsCard({ matchId }: { matchId: number }) {
           justifyContent: "space-between",
         }}
       >
-        <SectionLabel>Red flag radar</SectionLabel>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather
+            name="shield"
+            size={16}
+            color={showAlert ? c.destructive : promoted ? c.primary : c.foreground}
+          />
+          <SectionLabel>The Read</SectionLabel>
+          {flagCount > 0 && (
+            <View
+              style={{
+                backgroundColor: c.destructive,
+                borderRadius: 999,
+                paddingHorizontal: 7,
+                paddingVertical: 1,
+              }}
+            >
+              <Text
+                style={{
+                  color: c.destructiveForeground,
+                  fontSize: 10,
+                  fontFamily: "Inter_700Bold",
+                }}
+              >
+                {flagCount} 🚩
+              </Text>
+            </View>
+          )}
+        </View>
         <Pressable
           onPress={data ? () => setOpen((v) => !v) : run}
           disabled={loading}
@@ -58,7 +106,9 @@ export function RedFlagsCard({ matchId }: { matchId: number }) {
       </View>
       {!data && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
-          Scan chat, dates, and notes for behavioral patterns.
+          {promoted
+            ? "Scan chat and notes for behavioral patterns before you reply."
+            : "Scan chat, dates, and notes for behavioral patterns."}
         </Body>
       )}
       {data && open && (
@@ -77,9 +127,10 @@ export function RedFlagsCard({ matchId }: { matchId: number }) {
                   fontSize: 12,
                   color: c.destructive,
                   fontFamily: "Inter_600SemiBold",
+                  letterSpacing: 0.5,
                 }}
               >
-                RED FLAGS
+                🚩 RED FLAGS
               </Text>
               {data.redFlags.map((f, i) => (
                 <View key={i} style={{ gap: 2 }}>
@@ -92,11 +143,19 @@ export function RedFlagsCard({ matchId }: { matchId: number }) {
                         backgroundColor: sevColor(f.severity),
                       }}
                     />
-                    <Text style={{ color: c.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                    <Text
+                      style={{
+                        color: c.foreground,
+                        fontFamily: "Inter_600SemiBold",
+                        fontSize: 13,
+                      }}
+                    >
                       {f.label}
                     </Text>
                   </View>
-                  <Text style={{ color: c.mutedForeground, fontSize: 12, marginLeft: 14 }}>
+                  <Text
+                    style={{ color: c.mutedForeground, fontSize: 12, marginLeft: 14 }}
+                  >
                     {f.evidence}
                   </Text>
                 </View>
@@ -110,16 +169,25 @@ export function RedFlagsCard({ matchId }: { matchId: number }) {
                   fontSize: 12,
                   color: c.success,
                   fontFamily: "Inter_600SemiBold",
+                  letterSpacing: 0.5,
                 }}
               >
-                GREEN FLAGS
+                💚 GREEN FLAGS
               </Text>
               {data.greenFlags.map((f, i) => (
                 <View key={i} style={{ gap: 2 }}>
-                  <Text style={{ color: c.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                  <Text
+                    style={{
+                      color: c.foreground,
+                      fontFamily: "Inter_600SemiBold",
+                      fontSize: 13,
+                    }}
+                  >
                     {f.label}
                   </Text>
-                  <Text style={{ color: c.mutedForeground, fontSize: 12 }}>{f.evidence}</Text>
+                  <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+                    {f.evidence}
+                  </Text>
                 </View>
               ))}
             </View>

@@ -136,6 +136,8 @@ export default function MatchDetailScreen() {
         }
       >
         <HeaderCard match={data} onChange={() => refetch()} />
+        <RedFlagsCard matchId={data.id} promoted />
+        <ResponseStatsCard matchId={data.id} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />
         <VoiceDebriefCard
           matchId={data.id}
@@ -150,11 +152,9 @@ export default function MatchDetailScreen() {
           <NextDateCard match={data} onChange={() => refetch()} />
         )}
         {!data.nextDateAt && <ScheduleDateCard match={data} onChange={() => refetch()} />}
-        <ScoresCard match={data} onChange={() => refetch()} />
         <CheatSheetCard matchId={data.id} />
         <RepliesCard matchId={data.id} />
-        <RedFlagsCard matchId={data.id} />
-        <ResponseStatsCard matchId={data.id} />
+        <ScoresCard match={data} onChange={() => refetch()} />
         <ScreenshotsCard match={data} onChange={() => refetch()} />
         <Pressable
           onPress={() => router.push(`/match/${data.id}/photos`)}
@@ -223,12 +223,12 @@ function VoiceDebriefCard({
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: c.destructive,
+            backgroundColor: c.primary,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Feather name="mic" size={18} color="#fff" />
+          <Feather name="mic" size={18} color={c.primaryForeground} />
         </View>
         <View style={{ flex: 1 }}>
           <Text

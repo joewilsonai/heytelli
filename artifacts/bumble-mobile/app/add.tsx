@@ -119,7 +119,7 @@ export default function AddMatchScreen() {
           <Card>
             <SectionLabel>How it works</SectionLabel>
             <Body muted>
-              Snap or upload a screenshot of your match's Bumble profile or chat. AI extracts
+              Snap or upload a screenshot of his profile or your chat. AI extracts
               their profile, interests, and conversation tone — and scores compatibility.
             </Body>
           </Card>

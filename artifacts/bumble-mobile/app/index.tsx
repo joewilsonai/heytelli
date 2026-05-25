@@ -116,10 +116,10 @@ export default function MatchesScreen() {
         }}
       >
         <View style={styles.headerRow}>
-          <View>
-            <H1>Matches</H1>
+          <View style={{ flex: 1 }}>
+            <H1>Haystack</H1>
             <Body muted style={{ marginTop: 2 }}>
-              {(data ?? []).length} total · {counts.active} active
+              Vet before you meet · {counts.active} active
             </Body>
           </View>
           <View style={{ flexDirection: "row", gap: 10 }}>
