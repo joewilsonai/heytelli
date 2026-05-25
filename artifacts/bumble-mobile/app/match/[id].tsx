@@ -55,6 +55,10 @@ import {
 import { VoiceDebriefSheet } from "@/components/VoiceDebriefSheet";
 import { VoiceNoteFeedbackSheet } from "@/components/VoiceNoteFeedbackSheet";
 import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
+import { RedFlagsCard } from "@/components/RedFlagsCard";
+import { CheatSheetCard } from "@/components/CheatSheetCard";
+import { TagsRow } from "@/components/TagsRow";
+import { ResponseStatsCard } from "@/components/ResponseStatsCard";
 import { addDateToCalendar } from "@/lib/calendar";
 import {
   cancelDateDayReminder,
@@ -146,9 +150,33 @@ export default function MatchDetailScreen() {
         )}
         {!data.nextDateAt && <ScheduleDateCard match={data} onChange={() => refetch()} />}
         <ScoresCard match={data} onChange={() => refetch()} />
+        <CheatSheetCard matchId={data.id} />
         <RepliesCard matchId={data.id} />
+        <RedFlagsCard matchId={data.id} />
+        <ResponseStatsCard matchId={data.id} />
         <ScreenshotsCard match={data} onChange={() => refetch()} />
+        <Pressable
+          onPress={() => router.push(`/match/${data.id}/photos`)}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            padding: 10,
+            borderRadius: c.radius,
+            borderWidth: 1,
+            borderColor: c.border,
+            backgroundColor: c.card,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Feather name="image" size={14} color={c.foreground} />
+          <Text style={{ color: c.foreground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
+            View all {data.screenshots.length} photo{data.screenshots.length === 1 ? "" : "s"}
+          </Text>
+        </Pressable>
         <TranscriptCard match={data} onChange={() => refetch()} />
+        <TagsRow matchId={data.id} tags={data.tags ?? []} onChange={() => refetch()} />
         <NotesCard match={data} onChange={() => refetch()} />
         <StatusActionsCard match={data} onChange={() => refetch()} onArchived={() => router.back()} />
       </ScrollView>
@@ -608,8 +636,8 @@ function ScheduleDateCard({
   const [open, setOpen] = useState(false);
   const [when, setWhen] = useState("");
   const [where, setWhere] = useState("");
+  const [outfit, setOutfit] = useState("");
   const [saving, setSaving] = useState(false);
-  const [briefLoading, setBriefLoading] = useState(false);
 
   const save = async () => {
     if (!when.trim()) {
@@ -630,6 +658,7 @@ function ScheduleDateCard({
       await updateMatch(match.id, {
         nextDateAt: parsed.toISOString(),
         nextDateLocation: location,
+        nextDateOutfit: outfit.trim() || null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
@@ -689,6 +718,11 @@ function ScheduleDateCard({
             placeholder="Where (optional)"
             value={where}
             onChangeText={setWhere}
+          />
+          <Input
+            placeholder="Outfit note (optional)"
+            value={outfit}
+            onChangeText={setOutfit}
           />
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button
@@ -762,6 +796,26 @@ function NextDateCard({
         <Text style={{ fontSize: 13, color: c.mutedForeground, marginTop: 2 }}>
           {match.nextDateLocation}
         </Text>
+      )}
+      {match.nextDateOutfit && (
+        <View
+          style={{
+            marginTop: 8,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            backgroundColor: c.muted,
+            borderRadius: 8,
+            alignSelf: "flex-start",
+          }}
+        >
+          <Feather name="bookmark" size={12} color={c.foreground} />
+          <Text style={{ fontSize: 12, color: c.foreground }}>
+            Outfit: {match.nextDateOutfit}
+          </Text>
+        </View>
       )}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <Button

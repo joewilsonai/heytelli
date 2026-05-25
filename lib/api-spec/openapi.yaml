@@ -279,6 +279,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/red-flags:
+    get:
+      operationId: getRedFlagRadar
+      tags: [matches]
+      summary: Analyze conversation and date history for behavioral red/green flags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Red flag radar result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedFlagRadarResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/cheat-sheet:
+    get:
+      operationId: getCheatSheet
+      tags: [matches]
+      summary: Get 3 quick-reply suggestions (playful / curious / direct) for current chat state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Cheat sheet replies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheatSheetResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/response-stats:
+    get:
+      operationId: getResponseStats
+      tags: [matches]
+      summary: Compute her vs. user reply cadence from screenshot history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Response cadence stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseStats"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/weekly-debrief:
+    get:
+      operationId: getWeeklyDebrief
+      tags: [matches]
+      summary: Cross-match weekly Sunday debrief for the entire active pipeline
+      responses:
+        "200":
+          description: Weekly debrief
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyDebriefResult"
+  /matches/auto-archive-candidates:
+    get:
+      operationId: getAutoArchiveCandidates
+      tags: [matches]
+      summary: List active matches that have gone fully cold and are candidates to archive/ghost
+      responses:
+        "200":
+          description: Auto-archive candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AutoArchiveCandidate"
+  /analytics/funnel:
+    get:
+      operationId: getFunnelStats
+      tags: [matches]
+      summary: Conversion funnel and pipeline analytics
+      responses:
+        "200":
+          description: Funnel stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelStats"
   /matches/stale-nudges:
     get:
       operationId: getStaleNudges
@@ -657,6 +764,7 @@ components:
         - nextDateAt
         - nextDateLocation
         - dateHistory
+        - tags
         - createdAt
         - updatedAt
       properties:
@@ -668,11 +776,15 @@ components:
         vibeTags:
           type: array
           items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
         extractedProfile:
           $ref: "#/components/schemas/ExtractedProfile"
         notes: { type: string }
         nextDateAt: { type: ["string", "null"], format: date-time }
         nextDateLocation: { type: ["string", "null"] }
+        nextDateOutfit: { type: ["string", "null"] }
         dateHistory:
           type: array
           items:
@@ -725,6 +837,7 @@ components:
         - nextDateLocation
         - dateHistory
         - transcript
+        - tags
         - createdAt
         - updatedAt
         - screenshots
@@ -737,11 +850,15 @@ components:
         vibeTags:
           type: array
           items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
         extractedProfile:
           $ref: "#/components/schemas/ExtractedProfile"
         notes: { type: string }
         nextDateAt: { type: ["string", "null"], format: date-time }
         nextDateLocation: { type: ["string", "null"] }
+        nextDateOutfit: { type: ["string", "null"] }
         dateHistory:
           type: array
           items:
@@ -786,11 +903,15 @@ components:
         vibeTags:
           type: array
           items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
         extractedProfile:
           $ref: "#/components/schemas/ExtractedProfile"
         photoObjectPath: { type: ["string", "null"] }
         nextDateAt: { type: ["string", "null"], format: date-time }
         nextDateLocation: { type: ["string", "null"] }
+        nextDateOutfit: { type: ["string", "null"] }
         dateHistory:
           type: array
           items:
@@ -899,6 +1020,121 @@ components:
       properties:
         brief: { type: string, description: Markdown-formatted pre-date prep brief }
         generatedAt: { type: string, format: date-time }
+    RedFlag:
+      type: object
+      required: [severity, label, evidence]
+      properties:
+        severity:
+          type: string
+          enum: [low, medium, high]
+        label: { type: string }
+        evidence: { type: string }
+    GreenFlag:
+      type: object
+      required: [label, evidence]
+      properties:
+        label: { type: string }
+        evidence: { type: string }
+    RedFlagRadarResult:
+      type: object
+      required: [redFlags, greenFlags, overallRead]
+      properties:
+        redFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        greenFlags:
+          type: array
+          items: { $ref: "#/components/schemas/GreenFlag" }
+        overallRead: { type: string }
+    CheatSheetReply:
+      type: object
+      required: [style, text]
+      properties:
+        style:
+          type: string
+          enum: [playful, curious, direct]
+        text: { type: string }
+    CheatSheetResult:
+      type: object
+      required: [replies]
+      properties:
+        replies:
+          type: array
+          items: { $ref: "#/components/schemas/CheatSheetReply" }
+    ResponseStats:
+      type: object
+      required:
+        - herAvgReplyHours
+        - meAvgReplyHours
+        - herMessageCount
+        - meMessageCount
+        - longestHerSilenceHours
+        - cadenceBalance
+      properties:
+        herAvgReplyHours: { type: ["number", "null"] }
+        meAvgReplyHours: { type: ["number", "null"] }
+        herMessageCount: { type: integer }
+        meMessageCount: { type: integer }
+        longestHerSilenceHours: { type: ["number", "null"] }
+        cadenceBalance:
+          type: string
+          enum: [you_chasing, balanced, she_chasing, unknown]
+    WeeklyDebriefMatchSummary:
+      type: object
+      required: [matchId, name, status, reason]
+      properties:
+        matchId: { type: integer }
+        name: { type: string }
+        status:
+          type: string
+          enum: [heating_up, cold, needs_attention, deprioritize, steady]
+        reason: { type: string }
+    WeeklyDebriefResult:
+      type: object
+      required: [headline, summary, totalActive, newThisWeek, matches, recommendations]
+      properties:
+        headline: { type: string }
+        summary: { type: string }
+        totalActive: { type: integer }
+        newThisWeek: { type: integer }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/WeeklyDebriefMatchSummary" }
+        recommendations:
+          type: array
+          items: { type: string }
+    AutoArchiveCandidate:
+      type: object
+      required: [matchId, name, photoObjectPath, hoursSinceLastReply, reason]
+      properties:
+        matchId: { type: integer }
+        name: { type: string }
+        photoObjectPath: { type: ["string", "null"] }
+        hoursSinceLastReply: { type: number }
+        reason: { type: string }
+    FunnelStage:
+      type: object
+      required: [label, count]
+      properties:
+        label: { type: string }
+        count: { type: integer }
+    FunnelStats:
+      type: object
+      required: [stages, totals]
+      properties:
+        stages:
+          type: array
+          items: { $ref: "#/components/schemas/FunnelStage" }
+        totals:
+          type: object
+          required: [matches, active, archived, ghosted, withDateScheduled, withDateCompleted]
+          properties:
+            matches: { type: integer }
+            active: { type: integer }
+            archived: { type: integer }
+            ghosted: { type: integer }
+            withDateScheduled: { type: integer }
+            withDateCompleted: { type: integer }
     UploadUrlRequest:
       type: object
       required: [name, size, contentType]

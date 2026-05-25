@@ -6,11 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './autoArchiveCandidate';
+export * from './cheatSheetReply';
+export * from './cheatSheetReplyStyle';
+export * from './cheatSheetResult';
 export * from './dateBriefResult';
 export * from './dateHistoryEntry';
 export * from './errorEnvelope';
 export * from './extractedProfile';
 export * from './extractionPreview';
+export * from './funnelStage';
+export * from './funnelStats';
+export * from './funnelStatsTotals';
+export * from './greenFlag';
 export * from './healthStatus';
 export * from './inPersonRecordingInput';
 export * from './match';
@@ -26,7 +34,12 @@ export * from './openrouterConversationInput';
 export * from './openrouterConversationWithMessages';
 export * from './openrouterMessage';
 export * from './openrouterMessageInput';
+export * from './redFlag';
+export * from './redFlagRadarResult';
+export * from './redFlagSeverity';
 export * from './replyResult';
+export * from './responseStats';
+export * from './responseStatsCadenceBalance';
 export * from './scoreHistoryPoint';
 export * from './screenshot';
 export * from './screenshotExtractionStatus';
@@ -41,3 +54,6 @@ export * from './voiceDebriefInput';
 export * from './voiceDebriefResult';
 export * from './voiceNoteFeedbackResult';
 export * from './voiceNoteFeedbackResultShouldSend';
+export * from './weeklyDebriefMatchSummary';
+export * from './weeklyDebriefMatchSummaryStatus';
+export * from './weeklyDebriefResult';

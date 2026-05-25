@@ -33,6 +33,9 @@ import { transcribeAudioObject } from "../lib/audio";
 import { analyzeVoiceDebrief } from "../lib/voiceDebrief";
 import { analyzeVoiceNote } from "../lib/voiceFeedback";
 import { generateStaleNudgeOpeners } from "../lib/nudges";
+import { analyzeRedFlags } from "../lib/redFlagRadar";
+import { generateCheatSheet } from "../lib/cheatSheet";
+import { generateWeeklyDebrief } from "../lib/weeklyDebrief";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
   extractFromScreenshot,
@@ -154,6 +157,295 @@ router.get("/matches/stale-nudges", async (req, res): Promise<void> => {
     req.log.error({ err }, "Stale nudges failed");
     res.status(500).json({ error: "Failed to fetch stale nudges" });
   }
+});
+
+router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
+  const params = GetMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  if (!match) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  try {
+    const result = await analyzeRedFlags(
+      match.name,
+      normalizeExtractedProfile(match.extractedProfile),
+      normalizeTranscript(match.transcript),
+      normalizeDateHistory(match.dateHistory),
+      match.notes ?? "",
+    );
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Red flag radar failed");
+    res.status(500).json({ error: "Failed to analyze red flags" });
+  }
+});
+
+router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
+  const params = GetMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  if (!match) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  try {
+    const replies = await generateCheatSheet(
+      match.name,
+      normalizeExtractedProfile(match.extractedProfile),
+      normalizeTranscript(match.transcript),
+    );
+    res.json({ replies });
+  } catch (err) {
+    req.log.error({ err }, "Cheat sheet failed");
+    res.status(500).json({ error: "Failed to generate cheat sheet" });
+  }
+});
+
+router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
+  const params = GetMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  if (!match) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  const shots = await db
+    .select()
+    .from(screenshots)
+    .where(eq(screenshots.matchId, params.data.id))
+    .orderBy(asc(screenshots.uploadedAt));
+  const turns = normalizeTranscript(match.transcript);
+  const herCount = turns.filter((t) => t.speaker === "her").length;
+  const meCount = turns.filter((t) => t.speaker === "me").length;
+
+  // Approximate reply timing using screenshot upload gaps as a proxy.
+  const gaps: number[] = [];
+  for (let i = 1; i < shots.length; i++) {
+    gaps.push(
+      (shots[i].uploadedAt.getTime() - shots[i - 1].uploadedAt.getTime()) / 3_600_000,
+    );
+  }
+  const avgGap =
+    gaps.length > 0 ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
+  const longestGap = gaps.length > 0 ? Math.max(...gaps) : null;
+
+  // Heuristic split: alternate her/me on gaps assuming roughly equal share.
+  const herAvg =
+    avgGap != null && herCount > 0
+      ? Number(((avgGap * (meCount + 1)) / Math.max(herCount + meCount, 1)).toFixed(1))
+      : null;
+  const meAvg =
+    avgGap != null && meCount > 0
+      ? Number(((avgGap * (herCount + 1)) / Math.max(herCount + meCount, 1)).toFixed(1))
+      : null;
+
+  let cadence: "you_chasing" | "balanced" | "she_chasing" | "unknown" = "unknown";
+  if (herCount + meCount >= 4) {
+    const ratio = meCount / Math.max(herCount, 1);
+    if (ratio > 1.5) cadence = "you_chasing";
+    else if (ratio < 0.66) cadence = "she_chasing";
+    else cadence = "balanced";
+  }
+
+  res.json({
+    herAvgReplyHours: herAvg,
+    meAvgReplyHours: meAvg,
+    herMessageCount: herCount,
+    meMessageCount: meCount,
+    longestHerSilenceHours: longestGap != null ? Number(longestGap.toFixed(1)) : null,
+    cadenceBalance: cadence,
+  });
+});
+
+router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
+  try {
+    const allMatches = await db.select().from(matches);
+    const active = allMatches.filter((m) => m.status === "active");
+    const oneWeekAgo = Date.now() - 7 * 24 * 3_600_000;
+    const newThisWeek = allMatches.filter(
+      (m) => m.createdAt.getTime() >= oneWeekAgo,
+    ).length;
+
+    const ids = active.map((m) => m.id);
+    const shotRows = ids.length
+      ? await db
+          .select({
+            matchId: screenshots.matchId,
+            uploadedAt: screenshots.uploadedAt,
+          })
+          .from(screenshots)
+          .where(inArray(screenshots.matchId, ids))
+      : [];
+    const lastActivity = new Map<number, Date>();
+    for (const s of shotRows) {
+      const prev = lastActivity.get(s.matchId);
+      if (!prev || s.uploadedAt > prev) lastActivity.set(s.matchId, s.uploadedAt);
+    }
+    const scoreRows = ids.length
+      ? await db
+          .select()
+          .from(matchScoreHistory)
+          .where(inArray(matchScoreHistory.matchId, ids))
+          .orderBy(desc(matchScoreHistory.createdAt))
+      : [];
+    const latestScores = new Map<
+      number,
+      { sex: number | null; conv: number | null; chem: number | null }
+    >();
+    for (const s of scoreRows) {
+      if (!latestScores.has(s.matchId)) {
+        latestScores.set(s.matchId, {
+          sex: s.sexPotential,
+          conv: s.conversionAbility,
+          chem: s.chemistry,
+        });
+      }
+    }
+
+    const now = Date.now();
+    const input = active.map((m) => {
+      const turns = normalizeTranscript(m.transcript);
+      const lastTurn = turns[turns.length - 1];
+      const last = lastActivity.get(m.id);
+      const recent = turns
+        .slice(-6)
+        .map((t) => `${t.speaker}: ${t.text}`)
+        .join(" | ");
+      return {
+        matchId: m.id,
+        name: m.name,
+        scores:
+          latestScores.get(m.id) ?? { sex: null, conv: null, chem: null },
+        hoursSinceLastActivity: last
+          ? (now - last.getTime()) / 3_600_000
+          : null,
+        lastSpeaker: lastTurn ? lastTurn.speaker : null,
+        recentTurns: recent,
+        nextDateAt: m.nextDateAt ? m.nextDateAt.toISOString() : null,
+      };
+    });
+
+    const result = await generateWeeklyDebrief({
+      totalActive: active.length,
+      newThisWeek,
+      matches: input,
+    });
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Weekly debrief failed");
+    res.status(500).json({ error: "Failed to generate weekly debrief" });
+  }
+});
+
+router.get(
+  "/matches/auto-archive-candidates",
+  async (req, res): Promise<void> => {
+    try {
+      const active = await db
+        .select()
+        .from(matches)
+        .where(eq(matches.status, "active"));
+      const ids = active.map((m) => m.id);
+      const shotRows = ids.length
+        ? await db
+            .select({
+              matchId: screenshots.matchId,
+              uploadedAt: screenshots.uploadedAt,
+            })
+            .from(screenshots)
+            .where(inArray(screenshots.matchId, ids))
+        : [];
+      const lastActivity = new Map<number, Date>();
+      for (const s of shotRows) {
+        const prev = lastActivity.get(s.matchId);
+        if (!prev || s.uploadedAt > prev) lastActivity.set(s.matchId, s.uploadedAt);
+      }
+      const now = Date.now();
+      const COLD_HOURS = 14 * 24; // 14 days
+      const out = active
+        .map((m) => {
+          const turns = normalizeTranscript(m.transcript);
+          const lastTurn = turns[turns.length - 1];
+          const last = lastActivity.get(m.id) ?? m.updatedAt;
+          const hours = (now - last.getTime()) / 3_600_000;
+          const herLast = lastTurn?.speaker === "her";
+          const noUpcoming = !m.nextDateAt || m.nextDateAt.getTime() < now;
+          let reason = "";
+          if (hours >= COLD_HOURS && noUpcoming) {
+            if (lastTurn?.speaker === "me") {
+              reason = `You sent the last message ${Math.round(hours / 24)} days ago — she hasn't replied.`;
+            } else if (herLast) {
+              reason = `Her last message was ${Math.round(hours / 24)} days ago and you never replied.`;
+            } else {
+              reason = `No activity for ${Math.round(hours / 24)} days.`;
+            }
+          }
+          return { match: m, hours, reason };
+        })
+        .filter((x) => x.reason)
+        .map((x) => ({
+          matchId: x.match.id,
+          name: x.match.name,
+          photoObjectPath: x.match.photoObjectPath,
+          hoursSinceLastReply: Number(x.hours.toFixed(1)),
+          reason: x.reason,
+        }));
+      res.json(out);
+    } catch (err) {
+      req.log.error({ err }, "Auto-archive candidates failed");
+      res.status(500).json({ error: "Failed to compute candidates" });
+    }
+  },
+);
+
+router.get("/analytics/funnel", async (_req, res): Promise<void> => {
+  const allMatches = await db.select().from(matches);
+  const totals = {
+    matches: allMatches.length,
+    active: allMatches.filter((m) => m.status === "active").length,
+    archived: allMatches.filter((m) => m.status === "archived").length,
+    ghosted: allMatches.filter((m) => m.status === "ghosted").length,
+    withDateScheduled: allMatches.filter((m) => !!m.nextDateAt).length,
+    withDateCompleted: allMatches.filter(
+      (m) => normalizeDateHistory(m.dateHistory).length > 0,
+    ).length,
+  };
+
+  const matched = allMatches.length;
+  const conversed = allMatches.filter(
+    (m) => normalizeTranscript(m.transcript).length >= 2,
+  ).length;
+  // Funnel-consistent: anyone who currently has a date queued OR ever completed one
+  // reached the "scheduled" milestone. Union, not sum, to avoid double-counting.
+  const scheduled = allMatches.filter(
+    (m) => !!m.nextDateAt || normalizeDateHistory(m.dateHistory).length > 0,
+  ).length;
+  const firstDate = totals.withDateCompleted;
+  const repeatDate = allMatches.filter(
+    (m) => normalizeDateHistory(m.dateHistory).length >= 2,
+  ).length;
+
+  res.json({
+    stages: [
+      { label: "Matched", count: matched },
+      { label: "Conversed", count: conversed },
+      { label: "Date scheduled", count: scheduled },
+      { label: "First date", count: firstDate },
+      { label: "Repeat date", count: repeatDate },
+    ],
+    totals,
+  });
 });
 
 router.get("/matches", async (_req, res): Promise<void> => {
@@ -307,6 +599,9 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
       : null;
   if (body.data.nextDateLocation !== undefined)
     updates.nextDateLocation = body.data.nextDateLocation;
+  if (body.data.nextDateOutfit !== undefined)
+    updates.nextDateOutfit = body.data.nextDateOutfit;
+  if (body.data.tags !== undefined) updates.tags = body.data.tags;
   if (body.data.dateHistory !== undefined)
     updates.dateHistory = normalizeDateHistory(body.data.dateHistory);
   if (body.data.transcript !== undefined)

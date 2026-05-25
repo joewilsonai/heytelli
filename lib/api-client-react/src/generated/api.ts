@@ -20,9 +20,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AutoArchiveCandidate,
+  CheatSheetResult,
   DateBriefResult,
   ErrorEnvelope,
   ExtractionPreview,
+  FunnelStats,
   HealthStatus,
   InPersonRecordingInput,
   Match,
@@ -34,7 +37,9 @@ import type {
   OpenrouterConversationWithMessages,
   OpenrouterMessage,
   OpenrouterMessageInput,
+  RedFlagRadarResult,
   ReplyResult,
+  ResponseStats,
   Screenshot,
   ScreenshotInput,
   StaleNudge,
@@ -42,7 +47,8 @@ import type {
   UploadUrlResponse,
   VoiceDebriefInput,
   VoiceDebriefResult,
-  VoiceNoteFeedbackResult
+  VoiceNoteFeedbackResult,
+  WeeklyDebriefResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -869,6 +875,468 @@ export const useGenerateDateBrief = <TError = ErrorType<ErrorEnvelope>,
       > => {
       return useMutation(getGenerateDateBriefMutationOptions(options));
     }
+
+export const getGetRedFlagRadarUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/red-flags`
+}
+
+/**
+ * @summary Analyze conversation and date history for behavioral red/green flags
+ */
+export const getRedFlagRadar = async (id: number, options?: RequestInit): Promise<RedFlagRadarResult> => {
+
+  return customFetch<RedFlagRadarResult>(getGetRedFlagRadarUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRedFlagRadarQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}/red-flags`
+    ] as const;
+    }
+
+
+export const getGetRedFlagRadarQueryOptions = <TData = Awaited<ReturnType<typeof getRedFlagRadar>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRedFlagRadar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRedFlagRadarQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRedFlagRadar>>> = ({ signal }) => getRedFlagRadar(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRedFlagRadar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRedFlagRadarQueryResult = NonNullable<Awaited<ReturnType<typeof getRedFlagRadar>>>
+export type GetRedFlagRadarQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Analyze conversation and date history for behavioral red/green flags
+ */
+
+export function useGetRedFlagRadar<TData = Awaited<ReturnType<typeof getRedFlagRadar>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRedFlagRadar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRedFlagRadarQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetCheatSheetUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/cheat-sheet`
+}
+
+/**
+ * @summary Get 3 quick-reply suggestions (playful / curious / direct) for current chat state
+ */
+export const getCheatSheet = async (id: number, options?: RequestInit): Promise<CheatSheetResult> => {
+
+  return customFetch<CheatSheetResult>(getGetCheatSheetUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCheatSheetQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}/cheat-sheet`
+    ] as const;
+    }
+
+
+export const getGetCheatSheetQueryOptions = <TData = Awaited<ReturnType<typeof getCheatSheet>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCheatSheet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCheatSheetQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCheatSheet>>> = ({ signal }) => getCheatSheet(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCheatSheet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCheatSheetQueryResult = NonNullable<Awaited<ReturnType<typeof getCheatSheet>>>
+export type GetCheatSheetQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get 3 quick-reply suggestions (playful / curious / direct) for current chat state
+ */
+
+export function useGetCheatSheet<TData = Awaited<ReturnType<typeof getCheatSheet>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCheatSheet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCheatSheetQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetResponseStatsUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/response-stats`
+}
+
+/**
+ * @summary Compute her vs. user reply cadence from screenshot history
+ */
+export const getResponseStats = async (id: number, options?: RequestInit): Promise<ResponseStats> => {
+
+  return customFetch<ResponseStats>(getGetResponseStatsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetResponseStatsQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}/response-stats`
+    ] as const;
+    }
+
+
+export const getGetResponseStatsQueryOptions = <TData = Awaited<ReturnType<typeof getResponseStats>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getResponseStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetResponseStatsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getResponseStats>>> = ({ signal }) => getResponseStats(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getResponseStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetResponseStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getResponseStats>>>
+export type GetResponseStatsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Compute her vs. user reply cadence from screenshot history
+ */
+
+export function useGetResponseStats<TData = Awaited<ReturnType<typeof getResponseStats>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getResponseStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetResponseStatsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetWeeklyDebriefUrl = () => {
+
+
+
+
+  return `/api/matches/weekly-debrief`
+}
+
+/**
+ * @summary Cross-match weekly Sunday debrief for the entire active pipeline
+ */
+export const getWeeklyDebrief = async ( options?: RequestInit): Promise<WeeklyDebriefResult> => {
+
+  return customFetch<WeeklyDebriefResult>(getGetWeeklyDebriefUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWeeklyDebriefQueryKey = () => {
+    return [
+    `/api/matches/weekly-debrief`
+    ] as const;
+    }
+
+
+export const getGetWeeklyDebriefQueryOptions = <TData = Awaited<ReturnType<typeof getWeeklyDebrief>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyDebrief>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWeeklyDebriefQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWeeklyDebrief>>> = ({ signal }) => getWeeklyDebrief({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWeeklyDebrief>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWeeklyDebriefQueryResult = NonNullable<Awaited<ReturnType<typeof getWeeklyDebrief>>>
+export type GetWeeklyDebriefQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Cross-match weekly Sunday debrief for the entire active pipeline
+ */
+
+export function useGetWeeklyDebrief<TData = Awaited<ReturnType<typeof getWeeklyDebrief>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyDebrief>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWeeklyDebriefQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAutoArchiveCandidatesUrl = () => {
+
+
+
+
+  return `/api/matches/auto-archive-candidates`
+}
+
+/**
+ * @summary List active matches that have gone fully cold and are candidates to archive/ghost
+ */
+export const getAutoArchiveCandidates = async ( options?: RequestInit): Promise<AutoArchiveCandidate[]> => {
+
+  return customFetch<AutoArchiveCandidate[]>(getGetAutoArchiveCandidatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAutoArchiveCandidatesQueryKey = () => {
+    return [
+    `/api/matches/auto-archive-candidates`
+    ] as const;
+    }
+
+
+export const getGetAutoArchiveCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof getAutoArchiveCandidates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutoArchiveCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAutoArchiveCandidatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAutoArchiveCandidates>>> = ({ signal }) => getAutoArchiveCandidates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAutoArchiveCandidates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAutoArchiveCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof getAutoArchiveCandidates>>>
+export type GetAutoArchiveCandidatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List active matches that have gone fully cold and are candidates to archive/ghost
+ */
+
+export function useGetAutoArchiveCandidates<TData = Awaited<ReturnType<typeof getAutoArchiveCandidates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutoArchiveCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAutoArchiveCandidatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetFunnelStatsUrl = () => {
+
+
+
+
+  return `/api/analytics/funnel`
+}
+
+/**
+ * @summary Conversion funnel and pipeline analytics
+ */
+export const getFunnelStats = async ( options?: RequestInit): Promise<FunnelStats> => {
+
+  return customFetch<FunnelStats>(getGetFunnelStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFunnelStatsQueryKey = () => {
+    return [
+    `/api/analytics/funnel`
+    ] as const;
+    }
+
+
+export const getGetFunnelStatsQueryOptions = <TData = Awaited<ReturnType<typeof getFunnelStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFunnelStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFunnelStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFunnelStats>>> = ({ signal }) => getFunnelStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFunnelStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFunnelStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getFunnelStats>>>
+export type GetFunnelStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Conversion funnel and pipeline analytics
+ */
+
+export function useGetFunnelStats<TData = Awaited<ReturnType<typeof getFunnelStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFunnelStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFunnelStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetStaleNudgesUrl = () => {
 

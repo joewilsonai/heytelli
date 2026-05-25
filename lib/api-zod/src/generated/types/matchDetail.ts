@@ -18,12 +18,15 @@ export interface MatchDetail {
   photoObjectPath: string | null;
   status: MatchStatus;
   vibeTags: string[];
+  tags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
   /** @nullable */
   nextDateAt: Date | null;
   /** @nullable */
   nextDateLocation: string | null;
+  /** @nullable */
+  nextDateOutfit?: string | null;
   dateHistory: DateHistoryEntry[];
   transcript: TranscriptTurn[];
   createdAt: Date;

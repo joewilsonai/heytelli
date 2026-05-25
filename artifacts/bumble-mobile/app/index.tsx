@@ -30,6 +30,7 @@ import {
   VibeTag,
 } from "@/components/ui";
 import { StaleNudgesSection } from "@/components/StaleNudgesSection";
+import { AutoArchiveBanner } from "@/components/AutoArchiveBanner";
 import { formatTimeAgo } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
 
@@ -69,6 +70,13 @@ export default function MatchesScreen() {
   const [filter, setFilter] = useState<StatusFilter>("active");
   const [sort, setSort] = useState<SortKey>("recent");
   const [sortOpen, setSortOpen] = useState(false);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+
+  const allTags = useMemo(() => {
+    const s = new Set<string>();
+    (data ?? []).forEach((m) => (m.tags ?? []).forEach((t) => s.add(t)));
+    return Array.from(s).sort();
+  }, [data]);
 
   const counts = useMemo(() => {
     const c = { active: 0, archived: 0, ghosted: 0 };
@@ -79,14 +87,18 @@ export default function MatchesScreen() {
   }, [data]);
 
   const matches = useMemo(() => {
-    const list = (data ?? []).filter((m) => m.status === filter);
+    const list = (data ?? []).filter(
+      (m) =>
+        m.status === filter &&
+        (!tagFilter || (m.tags ?? []).includes(tagFilter)),
+    );
     list.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "recent") return lastActivity(b) - lastActivity(a);
       return scoreOf(b, sort) - scoreOf(a, sort);
     });
     return list;
-  }, [data, filter, sort]);
+  }, [data, filter, sort, tagFilter]);
 
   const renderRow = ({ item }: { item: Match }) => (
     <MatchRow match={item} onPress={() => router.push(`/match/${item.id}`)} />
@@ -111,6 +123,25 @@ export default function MatchesScreen() {
             </Body>
           </View>
           <View style={{ flexDirection: "row", gap: 10 }}>
+            <Link href="/analytics" asChild>
+              <Pressable
+                onPress={() => Haptics.selectionAsync().catch(() => {})}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.7 : 1,
+                })}
+                accessibilityLabel="Analytics"
+              >
+                <Feather name="bar-chart-2" size={20} color={c.foreground} />
+              </Pressable>
+            </Link>
             <Link href="/chat" asChild>
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
@@ -195,6 +226,29 @@ export default function MatchesScreen() {
             />
           )}
         </ScrollView>
+
+        {allTags.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: 8, marginHorizontal: -20 }}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 6 }}
+          >
+            <Chip
+              label="All tags"
+              active={tagFilter === null}
+              onPress={() => setTagFilter(null)}
+            />
+            {allTags.map((t) => (
+              <Chip
+                key={t}
+                label={`#${t}`}
+                active={tagFilter === t}
+                onPress={() => setTagFilter(tagFilter === t ? null : t)}
+              />
+            ))}
+          </ScrollView>
+        )}
 
         {/* Sort row */}
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}>
@@ -316,6 +370,7 @@ export default function MatchesScreen() {
           ListHeaderComponent={
             filter === "active" ? (
               <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
+                <AutoArchiveBanner onChange={() => refetch()} />
                 <StaleNudgesSection />
               </View>
             ) : null

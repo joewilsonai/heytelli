@@ -161,6 +161,8 @@ export const matches = pgTable("matches", {
   notes: text("notes").notNull().default(""),
   nextDateAt: timestamp("next_date_at", { withTimezone: true }),
   nextDateLocation: text("next_date_location"),
+  nextDateOutfit: text("next_date_outfit"),
+  tags: text("tags").array().notNull().default([]),
   dateHistory: jsonb("date_history")
     .$type<DateHistoryEntry[]>()
     .notNull()

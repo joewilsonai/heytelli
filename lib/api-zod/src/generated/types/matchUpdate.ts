@@ -16,6 +16,7 @@ export interface MatchUpdate {
   notes?: string;
   status?: MatchStatus;
   vibeTags?: string[];
+  tags?: string[];
   extractedProfile?: ExtractedProfile;
   /** @nullable */
   photoObjectPath?: string | null;
@@ -23,6 +24,8 @@ export interface MatchUpdate {
   nextDateAt?: Date | null;
   /** @nullable */
   nextDateLocation?: string | null;
+  /** @nullable */
+  nextDateOutfit?: string | null;
   dateHistory?: DateHistoryEntry[];
   transcript?: TranscriptTurn[];
 }

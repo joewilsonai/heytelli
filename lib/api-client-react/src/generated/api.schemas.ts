@@ -95,12 +95,15 @@ export interface Match {
   photoObjectPath: string | null;
   status: MatchStatus;
   vibeTags: string[];
+  tags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
   /** @nullable */
   nextDateAt: string | null;
   /** @nullable */
   nextDateLocation: string | null;
+  /** @nullable */
+  nextDateOutfit?: string | null;
   dateHistory: DateHistoryEntry[];
   createdAt: string;
   updatedAt: string;
@@ -156,12 +159,15 @@ export interface MatchDetail {
   photoObjectPath: string | null;
   status: MatchStatus;
   vibeTags: string[];
+  tags: string[];
   extractedProfile: ExtractedProfile;
   notes: string;
   /** @nullable */
   nextDateAt: string | null;
   /** @nullable */
   nextDateLocation: string | null;
+  /** @nullable */
+  nextDateOutfit?: string | null;
   dateHistory: DateHistoryEntry[];
   transcript: TranscriptTurn[];
   createdAt: string;
@@ -189,6 +195,7 @@ export interface MatchUpdate {
   notes?: string;
   status?: MatchStatus;
   vibeTags?: string[];
+  tags?: string[];
   extractedProfile?: ExtractedProfile;
   /** @nullable */
   photoObjectPath?: string | null;
@@ -196,6 +203,8 @@ export interface MatchUpdate {
   nextDateAt?: string | null;
   /** @nullable */
   nextDateLocation?: string | null;
+  /** @nullable */
+  nextDateOutfit?: string | null;
   dateHistory?: DateHistoryEntry[];
   transcript?: TranscriptTurn[];
 }
@@ -273,6 +282,127 @@ export interface DateBriefResult {
   /** Markdown-formatted pre-date prep brief */
   brief: string;
   generatedAt: string;
+}
+
+export type RedFlagSeverity = typeof RedFlagSeverity[keyof typeof RedFlagSeverity];
+
+
+export const RedFlagSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export interface RedFlag {
+  severity: RedFlagSeverity;
+  label: string;
+  evidence: string;
+}
+
+export interface GreenFlag {
+  label: string;
+  evidence: string;
+}
+
+export interface RedFlagRadarResult {
+  redFlags: RedFlag[];
+  greenFlags: GreenFlag[];
+  overallRead: string;
+}
+
+export type CheatSheetReplyStyle = typeof CheatSheetReplyStyle[keyof typeof CheatSheetReplyStyle];
+
+
+export const CheatSheetReplyStyle = {
+  playful: 'playful',
+  curious: 'curious',
+  direct: 'direct',
+} as const;
+
+export interface CheatSheetReply {
+  style: CheatSheetReplyStyle;
+  text: string;
+}
+
+export interface CheatSheetResult {
+  replies: CheatSheetReply[];
+}
+
+export type ResponseStatsCadenceBalance = typeof ResponseStatsCadenceBalance[keyof typeof ResponseStatsCadenceBalance];
+
+
+export const ResponseStatsCadenceBalance = {
+  you_chasing: 'you_chasing',
+  balanced: 'balanced',
+  she_chasing: 'she_chasing',
+  unknown: 'unknown',
+} as const;
+
+export interface ResponseStats {
+  /** @nullable */
+  herAvgReplyHours: number | null;
+  /** @nullable */
+  meAvgReplyHours: number | null;
+  herMessageCount: number;
+  meMessageCount: number;
+  /** @nullable */
+  longestHerSilenceHours: number | null;
+  cadenceBalance: ResponseStatsCadenceBalance;
+}
+
+export type WeeklyDebriefMatchSummaryStatus = typeof WeeklyDebriefMatchSummaryStatus[keyof typeof WeeklyDebriefMatchSummaryStatus];
+
+
+export const WeeklyDebriefMatchSummaryStatus = {
+  heating_up: 'heating_up',
+  cold: 'cold',
+  needs_attention: 'needs_attention',
+  deprioritize: 'deprioritize',
+  steady: 'steady',
+} as const;
+
+export interface WeeklyDebriefMatchSummary {
+  matchId: number;
+  name: string;
+  status: WeeklyDebriefMatchSummaryStatus;
+  reason: string;
+}
+
+export interface WeeklyDebriefResult {
+  headline: string;
+  summary: string;
+  totalActive: number;
+  newThisWeek: number;
+  matches: WeeklyDebriefMatchSummary[];
+  recommendations: string[];
+}
+
+export interface AutoArchiveCandidate {
+  matchId: number;
+  name: string;
+  /** @nullable */
+  photoObjectPath: string | null;
+  hoursSinceLastReply: number;
+  reason: string;
+}
+
+export interface FunnelStage {
+  label: string;
+  count: number;
+}
+
+export type FunnelStatsTotals = {
+  matches: number;
+  active: number;
+  archived: number;
+  ghosted: number;
+  withDateScheduled: number;
+  withDateCompleted: number;
+};
+
+export interface FunnelStats {
+  stages: FunnelStage[];
+  totals: FunnelStatsTotals;
 }
 
 export interface UploadUrlRequest {

@@ -46,6 +46,7 @@ export const ListMatchesResponseItem = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -70,6 +71,7 @@ export const ListMatchesResponseItem = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -177,6 +179,7 @@ export const GetMatchResponse = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -201,6 +204,7 @@ export const GetMatchResponse = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -249,6 +253,7 @@ export const UpdateMatchBody = zod.object({
   "notes": zod.string().optional(),
   "status": zod.enum(['active', 'archived', 'ghosted']).optional(),
   "vibeTags": zod.array(zod.string()).optional(),
+  "tags": zod.array(zod.string()).optional(),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -273,6 +278,7 @@ export const UpdateMatchBody = zod.object({
   "photoObjectPath": zod.string().nullish(),
   "nextDateAt": zod.coerce.date().nullish(),
   "nextDateLocation": zod.string().nullish(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -312,6 +318,7 @@ export const UpdateMatchResponse = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -336,6 +343,7 @@ export const UpdateMatchResponse = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -410,6 +418,7 @@ export const AddScreenshotResponse = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -434,6 +443,7 @@ export const AddScreenshotResponse = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -482,6 +492,7 @@ export const RescoreMatchResponse = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -506,6 +517,7 @@ export const RescoreMatchResponse = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -540,6 +552,109 @@ export const GenerateDateBriefParams = zod.object({
 export const GenerateDateBriefResponse = zod.object({
   "brief": zod.string().describe('Markdown-formatted pre-date prep brief'),
   "generatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Analyze conversation and date history for behavioral red/green flags
+ */
+export const GetRedFlagRadarParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetRedFlagRadarResponse = zod.object({
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string()
+})
+
+
+/**
+ * @summary Get 3 quick-reply suggestions (playful / curious / direct) for current chat state
+ */
+export const GetCheatSheetParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCheatSheetResponse = zod.object({
+  "replies": zod.array(zod.object({
+  "style": zod.enum(['playful', 'curious', 'direct']),
+  "text": zod.string()
+}))
+})
+
+
+/**
+ * @summary Compute her vs. user reply cadence from screenshot history
+ */
+export const GetResponseStatsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetResponseStatsResponse = zod.object({
+  "herAvgReplyHours": zod.number().nullable(),
+  "meAvgReplyHours": zod.number().nullable(),
+  "herMessageCount": zod.number(),
+  "meMessageCount": zod.number(),
+  "longestHerSilenceHours": zod.number().nullable(),
+  "cadenceBalance": zod.enum(['you_chasing', 'balanced', 'she_chasing', 'unknown'])
+})
+
+
+/**
+ * @summary Cross-match weekly Sunday debrief for the entire active pipeline
+ */
+export const GetWeeklyDebriefResponse = zod.object({
+  "headline": zod.string(),
+  "summary": zod.string(),
+  "totalActive": zod.number(),
+  "newThisWeek": zod.number(),
+  "matches": zod.array(zod.object({
+  "matchId": zod.number(),
+  "name": zod.string(),
+  "status": zod.enum(['heating_up', 'cold', 'needs_attention', 'deprioritize', 'steady']),
+  "reason": zod.string()
+})),
+  "recommendations": zod.array(zod.string())
+})
+
+
+/**
+ * @summary List active matches that have gone fully cold and are candidates to archive/ghost
+ */
+export const GetAutoArchiveCandidatesResponseItem = zod.object({
+  "matchId": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "hoursSinceLastReply": zod.number(),
+  "reason": zod.string()
+})
+export const GetAutoArchiveCandidatesResponse = zod.array(GetAutoArchiveCandidatesResponseItem)
+
+
+/**
+ * @summary Conversion funnel and pipeline analytics
+ */
+export const GetFunnelStatsResponse = zod.object({
+  "stages": zod.array(zod.object({
+  "label": zod.string(),
+  "count": zod.number()
+})),
+  "totals": zod.object({
+  "matches": zod.number(),
+  "active": zod.number(),
+  "archived": zod.number(),
+  "ghosted": zod.number(),
+  "withDateScheduled": zod.number(),
+  "withDateCompleted": zod.number()
+})
 })
 
 
@@ -649,6 +764,7 @@ export const InPersonRecordingResponse = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -673,6 +789,7 @@ export const InPersonRecordingResponse = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -765,6 +882,7 @@ export const VoiceDebriefResponse = zod.object({
   "photoObjectPath": zod.string().nullable(),
   "status": zod.enum(['active', 'archived', 'ghosted']),
   "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
   "extractedProfile": zod.object({
   "job": zod.string().nullable(),
   "location": zod.string().nullable(),
@@ -789,6 +907,7 @@ export const VoiceDebriefResponse = zod.object({
   "notes": zod.string(),
   "nextDateAt": zod.coerce.date().nullable(),
   "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
