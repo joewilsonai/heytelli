@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "NnC44Rcz4-eoGQpe8VxkZ"
@@ -12,3 +11,51 @@ id = "G55JX-I3SbTof7F4MzU6X"
 uri = "file://artifacts/bumble-mobile/assets/images/icon.png"
 type = "image"
 title = "bumble crm icon"
+
+[[outputs]]
+id = "pLU13LhKZ4b9MimeAK8_3"
+uri = "file://docs/PRD-bumble-crm-mobile.md"
+type = "text"
+title = "Bumble CRM Mobile — PRD"
+
+[[outputs]]
+id = "4hlECw7AqXLbNA7w68xoa"
+uri = "file://screenshots/home.jpg"
+type = "image"
+title = "Matches home"
+
+[[outputs]]
+id = "FQxoLqvRQKuS8jaCgggcT"
+uri = "file://screenshots/match-detail-full.jpg"
+type = "image"
+title = "Match detail (full scroll)"
+
+[[outputs]]
+id = "7JYq2orHHp4B1BLEBdeuz"
+uri = "file://screenshots/analytics.jpg"
+type = "image"
+title = "Analytics — conversion funnel"
+
+[[outputs]]
+id = "0PApKEfU8Ydr3EYYP_TN2"
+uri = "file://screenshots/weekly.jpg"
+type = "image"
+title = "Weekly debrief"
+
+[[outputs]]
+id = "S4L6n7hrimg7JbXsGlol0"
+uri = "file://screenshots/photos.jpg"
+type = "image"
+title = "Photo gallery"
+
+[[outputs]]
+id = "6q9bjc5BuAiQx1YUUYbCF"
+uri = "file://screenshots/chat.jpg"
+type = "image"
+title = "Wingman chat list"
+
+[[outputs]]
+id = "-uKWoyWrCkLo4mzlAdSrF"
+uri = "file://screenshots/add-match.jpg"
+type = "image"
+title = "Add match"
