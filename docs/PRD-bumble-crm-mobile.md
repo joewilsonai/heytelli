@@ -1,4 +1,180 @@
-# Bumble CRM Mobile — Product Requirements Document
+#Here is your fully updated, comprehensive Product Requirements Document (PRD). It has been completely rewritten to weave the **women’s safety-first online dating clarity** thesis directly into every feature, database table, visual cue, and AI prompt while keeping development lean and achievable for a solo founder on Expo.
+# Product Requirements Document: HeyTelli
+**Product:** HeyTelli
+**Category:** Private AI-Assisted Dating Safety & Clarity Journal
+**Platform:** Expo / React Native (iOS, Android) + Tailwind CSS (Nativewind)
+**Status:** MVP Blueprint (Phase 1 Validation)
+**Owner:** Solo Founder
+## 1. Product Overview & Thesis
+### 1.1 Overview
+HeyTelli is a private, local-first AI-assisted safety and clarity journal designed for women navigating modern online dating. The app bridges the dangerous structural gap between digital matching on dating platforms and physical real-world meetings.
+HeyTelli does **not** connect directly to dating platforms. It acts as an independent, private workspace where users drop screenshots, voice debriefs, and manual notes. The app then parses this data to build chronological connection timelines, flag early behavioral warning signs, and facilitate seamless, private check-ins with a trusted circle of friends.
+### 1.2 Brand Tone & Identity
+ * **The Vibe:** Notion + Headspace + Group Chat Energy.
+ * **Visual Direction:** Warm minimalism. Soft neutral bases (slate, cream tints), grounding empty spaces, and clear scannability. Avoid hyper-gamified components, toxic gossip aesthetics, or loud, panic-inducing security red alerts.
+ * **Core Emotional Framework:** Calm, emotionally intelligent, trustworthy, protective, and grounding.
+### 1.3 The Core Safety Thesis
+Most physical dating incidents and toxic emotional situations are preceded by subtle digital behaviors—such as boundary testing, rushing intimacy, isolation comments, or unpredictable communication cadences. Because modern dating apps optimize for engagement, these warning patterns get lost in fragmented text threads. HeyTelli organizes this data to surface clear, unarguable behavioral facts **before** a user steps into a vulnerable real-world setting.
+> **The Shield Rule:** HeyTelli acts strictly as a private workspace. It is **NOT** a public rating board, a searchable database of individuals, a crowdsourced accusation network, or a surveillance app.
+> 
+## 2. Core User Loop
+```
+[ Upload Data ] ──────► Bulk upload chat & profile screenshots + record voice debriefs
+       │
+[ Private Processing ] ──► Async AI pipeline extracts transcripts and logs behavioral signals
+       │
+[ Update Timeline ] ───► Interactive ledger categorizes facts and surfaces "Safety Pulses"
+       │
+[ Share Vibe Check ] ──► Generate secure, tokenized web links for group chat emergency contacts
+       │
+[ Real-World Date ] ───► Fill out a 60-second local Date Brief with automated check-in triggers
+
+```
+## 3. Information Architecture & App Map
+```
+/                           Home Workspace (Connections list, active status trackers)
+/add                        Bulk import interface (Image picker & Voice Debrief recorder)
+/connection/[id]            Comprehensive Connection Dashboard
+   ├── /timeline            Chronological ledger (Screenshots, entries, AI Safety Pulses)
+   └── /date-brief          Pre-date planning checklist & tracking hub
+/chat/[id]                  Isolated AI Reflection Assistant for a specific connection
+/profile                    User security controls, biometric locks, and data wipe toggles
+
+```
+## 4. Technical Architecture & Database Schema
+To maximize developer velocity for a solo founder on Expo, data processing is divided between an asynchronous cloud AI pipeline and secure local-first device storage.
+```typescript
+// Drizzle Schema Definition (PostgreSQL / Supabase Compatible)
+
+import { pgTable, uuid, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
+
+export const connections = pgTable('connections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull(),
+  displayName: text('display_name').notNull(),
+  sourceApp: text('source_app'), // e.g., 'Hinge', 'Tinder', 'iMessage'
+  status: text('status').default('active').notNull(), // active, paused, archived
+  avatarPath: text('avatar_path'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const screenshots = pgTable('screenshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  connectionId: uuid('connection_id').references(() => connections.id, { onDelete: 'cascade' }),
+  objectPath: text('object_path').notNull(), // Cloudflare R2 path
+  extractionStatus: text('extraction_status').default('pending').notNull(), // pending, processing, completed, failed
+  extractedText: text('extracted_text'), // Raw OCR text fallback
+  structuredData: jsonb('structured_data'), // AI-extracted profile context/messages
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const observations = pgTable('observations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  connectionId: uuid('connection_id').references(() => connections.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(), // boundary_testing, pacing, sexual_acceleration, consistency
+  polarity: text('polarity').notNull(), // positive, neutral, warning
+  observationText: text('observation_text').notNull(), // Fact-based phrasing only
+  observedAt: timestamp('observed_at').defaultNow().notNull(),
+});
+
+export const dateBriefs = pgTable('date_briefs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  connectionId: uuid('connection_id').references(() => connections.id, { onDelete: 'cascade' }),
+  locationText: text('location_text').notNull(),
+  dateTime: timestamp('date_time').notNull(),
+  checkInWindowMinutes: text('check_in_window_minutes').default('180').notNull(),
+  isCompleted: boolean('is_completed').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const trustedCircleShares = pgTable('trusted_circle_shares', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  connectionId: uuid('connection_id').references(() => connections.id, { onDelete: 'cascade' }),
+  createdBy: uuid('created_by').notNull(),
+  shareToken: text('share_token').unique().notNull(), // Cryptographic token for web views
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+```
+## 5. Detailed Feature Specifications
+### 5.1 Workspace Home Screen (/)
+The main viewport displays an ongoing snapshot of active romantic connections, prioritized by ongoing activity and safety tracking.
+ * **Connection Ledger:** Rows displaying avatar, display name, origin app, and context pills.
+ * **Fact-Over-Opinion Tags:** Rows display objective data anchors derived from past interactions instead of subjective labels (e.g., "Met in Public", "Follows-Through", "Cadence Shift").
+ * **Stale Nudges:** Flags connections that have remained entirely unverified or inactive for greater than 14 days to encourage database pruning.
+### 5.2 Async Bulk Screenshot Import (/add)
+Allows users to multi-select up to 5 screenshots at once using the native mobile image picker (expo-image-picker) to prevent the friction of single uploads.
+**Direct-to-Object Storage Upload**
+*Client-side Execution*
+The Expo client requests a pre-signed upload URL from the Fastify backend and securely streams the raw image payload directly into an isolated Cloudflare R2 bucket.**Database Initialization**
+*Instant UI Feedback*
+The application saves references into the screenshots table with an initial status of pending. The UI renders a clean processing animation over the specific connection&#39;s timeline ledger.**Background Vision Processing**
+*Edge Server Execution*
+A Fastify background task compiles the image batch and fires a context-optimized payload to the OpenAI Vision API / OpenRouter abstraction wrapper.**State Ingestion &amp; Client Sync**
+*SSE Stream Sync*
+The processed JSON transcript updates the database, changes status to completed, and triggers a Server-Sent Event (SSE) to update the client application layout in real-time.
+### 5.3 The Safety-First Timeline & "Safety Pulses" (/connection/[id]/timeline)
+The timeline builds an interactive, unalterable log of verified behaviors. Rather than evaluating individual character traits or computing arbitrary "safety scores," the underlying engine monitors deviations from normal conversational pacing.
+ * **Objective Event Architecture:** Logs dates, screen grabs, text summaries, and voice notes chronologically.
+ * **Automated Safety Pulses:** If the background parser identifies high-risk behavioral signals (e.g., pushing to leave the app immediately, ignoring explicit conversational diversions, or escalating sexual pressure after a boundary was set), the timeline does not throw an alarmist red alert. Instead, it serves an inline, calming **Safety Pulse card**.
+> ### 💡 Grounding Pulse: Conversational Shift
+> The system noted that the match returned to explicit sexual topics three times after you explicitly modified the subject.
+> **A quick mental anchor:**
+> You are entirely in control of this timeline's pace. You are never obligated to provide a response, a justification, or a compromise on your comfort level.
+>  * [🔒 Pause this Conversation]
+>  * [💬 Open Boundary Text Options]
+>  * [🔗 Share Secure Vibe Check Link]
+> 
+### 5.4 The 60-Second Date Brief (/connection/[id]/date-brief)
+A functional safety tool completed prior to a real-world encounter. It avoids complex background GPS infrastructure in favor of zero-friction, reliable communication channels.
+ * **The Checkpoints:** The user manually writes down the venue location, anticipated start time, and a safety check-in window (e.g., 3 hours).
+ * **Native Alerts:** Leverages expo-notifications locally to prompt a silent status check-in when the timer concludes.
+ * **The Guardrail Option:** If the safety timer expires without user confirmation or extension, a push message is sent out to designated emergency numbers via the web sharing mechanism.
+### 5.5 Tokenized Web-View Vibe Checks (/circle)
+Building an intricate internal social ecosystem within an MVP adds immense codebase friction and creates acquisition drops. HeyTelli bypasses this entirely using secure link deployment.
+ * **The Workflow:** When a user wants feedback or wants a contact to watch over them on a date, they click "Share Vibe Check." The backend spins up a unique cryptographically signed, unindexed link: [hey-telli.com/shared/](https://hey-telli.com/shared/)[secure_token].
+ * **The Group Chat Surface:** Friends open this secure URL inside iOS Safari or Android Chrome straight from their group text threads. They see a clean web view summarizing connection highlights, timeline notes, and active Date Brief statuses.
+ * **Frictionless Feedback Controls:** To guarantee zero moderation issues during Apple App Review, friends **cannot** input free-form text comments. Instead, they interact via one-tap utility reactions:
+| Functional Option | Direct Outcome for the User Inside the Mobile App |
+|---|---|
+| **🚨 Call Me** | Triggers an immediate push alert advising the user to make a clean break or exit. |
+| **⚠️ Look Closer** | Flags the connection's profile in the user's home screen with a tracking note. |
+| **👍 Green Light** | Appends a positive validation node directly into the timeline database. |
+### 5.6 Secure Voice Debriefs (/add)
+Captures emotional context directly following a real-world date or telephone call, bypassing cognitive filtering or memory distortion.
+ * **Execution:** Records clear audio locally using expo-av, streams the .m4a file straight to OpenAI Whisper for rapid transcription, and pipelines the output text into the safety monitoring layer to catch lingering context flags.
+## 6. AI Ingestion & Prompt Optimization
+### 6.1 System Ingestion Guardrails (The OpenRouter Protocol)
+To remain legally protected and pass App Store content review, the AI layer must act strictly as a fact extractor. It is barred from applying clinical diagnoses or using toxic hyper-reactive web buzzwords.
+```markdown
+You are a highly analytical, objective safety verification assistant built for HeyTelli. 
+Your core responsibility is to scan incoming dating transcripts, extracted profile screenshots, and vocal journals to organize timelines and flag baseline conversational shifts.
+
+CRITICAL INSTRUCTIONS:
+1. Never apply psychological labels or personality disorder characterizations (e.g., "Narcissist", "Sociopath", "Gaslighter").
+2. Focus exclusively on extracting verifiable actions. (e.g., write "Match requested home location details twice after user shifted focus to a public coffee house" instead of "Match is acting controlling").
+3. Do not overreact to consensual, mutually enthusiastic adult banter. Focus alerts purely on boundary testing, rapid escalation, isolation comments, and conversational pressure.
+
+OUTPUT STRUCTURING:
+Return clear JSON strings indicating data fields alongside an isolated "safety_signals" node if anomalies are present.
+
+```
+## 7. App Store Review Strategy & Security Hardening
+To navigate Apple App Store regulations safely, specific technical strategies are engineered directly into the core design.
+### 7.1 Security & Duress Protocols (Guideline 2.3.1)
+ * **Biometric Shielding:** Access is locked via expo-local-authentication on every initial launch and background-to-foreground toggle.
+ * **The Safe-PIN Exit:** Users configure a secondary safety unlock passcode. If typed in under duress (such as an aggressive individual visually interrogating the user's screen), the app hides the entire dating data structure and swaps the active layout with a generic, unblemished digital journal container (/profile). *This system is completely documented inside the App Review Submission notes to satisfy hidden feature rules.*
+### 7.2 Data Management (Guideline 5.1.1)
+ * **Account Obliteration:** A prominent button sits inside /profile that calls a cascading database purge, completely erasing the user's records, active session keys, and associated R2 image buckets instantly.
+## 8. Success Analytics (PostHog Metrics)
+ * **Primary Value Metric:** Ratio of screenshot additions to structural timeline interactions.
+ * **Retention Signal:** Frequency of Voice Debrief execution following a scheduled Date Brief closure.
+ * **Virality Trigger:** Conversion rate of secure web share generations to external browser link openings.
+### Suggested Next Step
+Now that the complete safety-first PRD is locked down, would you like to build out the exact **Tailwind/Nativewind CSS layout and layout architecture for the home screen (/)**, ensuring it looks like a premium, calming reflection workspace?
+ Bumble CRM Mobile — Product Requirements Document
 
 **Product:** Bumble CRM Mobile (Expo / React Native, ships to iOS, Android, and Web)
 **Codename:** `bumble-mobile`
