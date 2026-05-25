@@ -1,45 +1,26 @@
-# [Project name]
-
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
-
-## Run & Operate
-
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
-
-## Stack
-
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
-
-## Where things live
-
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
-
-## Architecture decisions
-
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+# HeyTelli Runbook
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+HeyTelli is an iOS-first private dating clarity and safety memory layer for women. Phase 1 is mobile-first. Web is internal/admin only.
 
-## User preferences
+## Commands
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- `pnpm install` — install workspace dependencies.
+- `pnpm typecheck` — full workspace typecheck.
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas after editing `lib/api-spec/openapi.yaml`.
+- `pnpm --filter @workspace/api-server run dev` — run the API server.
+- `pnpm --filter @workspace/bumble-mobile run dev` — run the Expo mobile app scaffold.
+- `pnpm --filter @workspace/bumble-reply run dev` — run the web/admin scaffold.
 
-## Gotchas
+## Product Guardrails
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Do not add ratings, rankings, toxicity scores, safety scores, diagnoses, or danger verdicts.
+- Do not create friend accounts or friend-facing hosted connection pages.
+- Do not store third-party assessments as objective facts.
+- Store the user's own reflections and neutral event facts.
+- Treat raw screenshots as transient whenever technically possible.
 
-## Pointers
+## Implementation Priority
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+First prove inbound iOS share-sheet screenshot intake. If Expo/EAS cannot support a reliable "Share to HeyTelli" flow, implement a native iOS share extension before the broader product conversion.
