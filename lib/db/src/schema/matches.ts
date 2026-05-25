@@ -167,6 +167,11 @@ export const matches = pgTable("matches", {
     .$type<DateHistoryEntry[]>()
     .notNull()
     .default(emptyDateHistory),
+  lastDateBrief: jsonb("last_date_brief").$type<{
+    brief: string;
+    generatedAt: string;
+    screenshotCountAt: number;
+  } | null>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

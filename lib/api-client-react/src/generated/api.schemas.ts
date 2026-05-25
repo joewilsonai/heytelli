@@ -100,6 +100,28 @@ export const MatchAnalysisFreshness = {
   'never-analyzed': 'never-analyzed',
 } as const;
 
+export interface DateBriefSnapshot {
+  brief: string;
+  generatedAt: string;
+  /** Total screenshot count at the moment this brief was generated */
+  screenshotCountAt: number;
+}
+
+/**
+ * current = brief is up to date.
+stale   = new screenshots since generation OR generated > 5 days ago.
+missing = no brief has ever been generated.
+
+ */
+export type DateBriefFreshness = typeof DateBriefFreshness[keyof typeof DateBriefFreshness];
+
+
+export const DateBriefFreshness = {
+  current: 'current',
+  stale: 'stale',
+  missing: 'missing',
+} as const;
+
 export interface Match {
   id: number;
   name: string;
@@ -119,6 +141,8 @@ export interface Match {
   dateHistory: DateHistoryEntry[];
   createdAt: string;
   updatedAt: string;
+  lastDateBrief: DateBriefSnapshot | null;
+  dateBriefFreshness: DateBriefFreshness;
   scoreHistory?: ScoreHistoryPoint[];
   /**
      * Speaker of the most recent transcript turn, if any
@@ -199,6 +223,8 @@ export interface MatchDetail {
   /** @nullable */
   nextDateOutfit?: string | null;
   dateHistory: DateHistoryEntry[];
+  lastDateBrief: DateBriefSnapshot | null;
+  dateBriefFreshness: DateBriefFreshness;
   transcript: TranscriptTurn[];
   createdAt: string;
   updatedAt: string;

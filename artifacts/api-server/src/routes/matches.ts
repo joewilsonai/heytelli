@@ -94,6 +94,19 @@ function computeFreshness(
   };
 }
 
+const DATE_BRIEF_STALE_MS = 5 * 24 * 60 * 60 * 1000;
+
+function computeDateBriefFreshness(
+  lastDateBrief: { generatedAt: string; screenshotCountAt: number } | null,
+  currentScreenshotCount: number,
+): "current" | "stale" | "missing" {
+  if (!lastDateBrief) return "missing";
+  if (currentScreenshotCount > lastDateBrief.screenshotCountAt) return "stale";
+  const ageMs = Date.now() - new Date(lastDateBrief.generatedAt).getTime();
+  if (Number.isNaN(ageMs) || ageMs > DATE_BRIEF_STALE_MS) return "stale";
+  return "current";
+}
+
 async function loadMatchDetail(matchId: number) {
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
   if (!match) return null;
@@ -103,11 +116,14 @@ async function loadMatchDetail(matchId: number) {
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
   const transcript = normalizeTranscript(match.transcript);
+  const lastDateBrief = match.lastDateBrief ?? null;
   return {
     ...withNormalizedProfile(match),
     transcript,
     screenshots: shots,
     ...computeFreshness(transcript.length, shots),
+    lastDateBrief,
+    dateBriefFreshness: computeDateBriefFreshness(lastDateBrief, shots.length),
   };
 }
 
@@ -644,6 +660,7 @@ router.get("/matches", async (_req, res): Promise<void> => {
       const lastTurn = turns[turns.length - 1];
       const lastAct = lastActivity.get(r.id) ?? null;
       const shotsForMatch = shotsByMatch.get(r.id) ?? [];
+      const lastDateBrief = r.lastDateBrief ?? null;
       return {
         ...withNormalizedProfile(r),
         scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
@@ -655,6 +672,11 @@ router.get("/matches", async (_req, res): Promise<void> => {
         lastSpeaker: lastTurn ? lastTurn.speaker : null,
         lastActivityAt: lastAct ? lastAct.toISOString() : null,
         ...computeFreshness(turns.length, shotsForMatch),
+        lastDateBrief,
+        dateBriefFreshness: computeDateBriefFreshness(
+          lastDateBrief,
+          shotsForMatch.length,
+        ),
       };
     }),
   );

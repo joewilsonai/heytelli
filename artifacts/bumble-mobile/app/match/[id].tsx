@@ -803,21 +803,43 @@ function NextDateCard({
   onChange: () => void;
 }) {
   const c = useColors();
-  const [brief, setBrief] = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [clearing, setClearing] = useState(false);
+
+  const savedBrief = match.lastDateBrief;
+  const freshness = match.dateBriefFreshness;
 
   const loadBrief = async () => {
     setBriefLoading(true);
     try {
-      const res: DateBriefResult = await generateDateBrief(match.id);
-      setBrief(res.brief);
+      await generateDateBrief(match.id);
+      onChange();
     } catch (e: any) {
       Alert.alert("Couldn't generate brief", e?.message ?? "Try again.");
     } finally {
       setBriefLoading(false);
     }
   };
+
+  const briefAgeLabel = (() => {
+    if (!savedBrief) return null;
+    const ms = Date.now() - new Date(savedBrief.generatedAt).getTime();
+    const days = Math.floor(ms / 86_400_000);
+    const hours = Math.floor(ms / 3_600_000);
+    if (days >= 1) return `${days}d ago`;
+    if (hours >= 1) return `${hours}h ago`;
+    const mins = Math.max(1, Math.floor(ms / 60_000));
+    return `${mins}m ago`;
+  })();
+
+  const staleReason = (() => {
+    if (freshness !== "stale" || !savedBrief) return null;
+    const newShots = match.screenshots.length - savedBrief.screenshotCountAt;
+    if (newShots > 0) {
+      return `${newShots} new screenshot${newShots === 1 ? "" : "s"} since`;
+    }
+    return "Older than 5 days";
+  })();
 
   const clearDate = async () => {
     setClearing(true);
@@ -870,7 +892,7 @@ function NextDateCard({
       )}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <Button
-          label={brief ? "Refresh brief" : "AI prep brief"}
+          label={savedBrief ? "Refresh brief" : "AI prep brief"}
           icon="zap"
           onPress={loadBrief}
           loading={briefLoading}
@@ -878,7 +900,7 @@ function NextDateCard({
         />
         <Button label="Clear" onPress={clearDate} loading={clearing} variant="ghost" />
       </View>
-      {brief && (
+      {savedBrief && (
         <View
           style={{
             marginTop: 12,
@@ -887,7 +909,75 @@ function NextDateCard({
             borderRadius: 10,
           }}
         >
-          <Body style={{ fontSize: 13, lineHeight: 19 }}>{brief}</Body>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              marginBottom: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: "Inter_600SemiBold",
+                color: c.mutedForeground,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Prep brief · {briefAgeLabel}
+            </Text>
+            {freshness === "stale" ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 999,
+                  backgroundColor: c.warningBg ?? c.muted,
+                }}
+              >
+                <Feather name="refresh-cw" size={10} color={c.warning ?? c.primary} />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "Inter_600SemiBold",
+                    color: c.warning ?? c.primary,
+                  }}
+                >
+                  {staleReason ?? "Needs refresh"}
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 999,
+                  backgroundColor: c.muted,
+                }}
+              >
+                <Feather name="check" size={10} color={c.success} />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "Inter_600SemiBold",
+                    color: c.success,
+                  }}
+                >
+                  Up to date
+                </Text>
+              </View>
+            )}
+          </View>
+          <Body style={{ fontSize: 13, lineHeight: 19 }}>{savedBrief.brief}</Body>
         </View>
       )}
     </Card>

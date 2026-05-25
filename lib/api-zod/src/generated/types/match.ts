@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DateBriefFreshness } from './dateBriefFreshness';
+import type { DateBriefSnapshot } from './dateBriefSnapshot';
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchAnalysisFreshness } from './matchAnalysisFreshness';
@@ -31,6 +33,8 @@ export interface Match {
   dateHistory: DateHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
+  lastDateBrief: DateBriefSnapshot | null;
+  dateBriefFreshness: DateBriefFreshness;
   scoreHistory?: ScoreHistoryPoint[];
   /**
      * Speaker of the most recent transcript turn, if any

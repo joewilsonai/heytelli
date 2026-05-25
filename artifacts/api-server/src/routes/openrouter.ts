@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, desc, and, ne } from "drizzle-orm";
+import { eq, asc, desc, and, ne, sql } from "drizzle-orm";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
@@ -560,7 +560,27 @@ Tone: punchy, direct, slightly profane is fine. No corporate hedging. No bullet 
       res.status(500).json({ error: "Grok returned an empty brief" });
       return;
     }
-    res.json({ brief, generatedAt: new Date().toISOString() });
+    const generatedAt = new Date().toISOString();
+    // Count only successfully analyzed screenshots — pending/failed ones
+    // aren't in the transcript the brief was built from, so they shouldn't
+    // count as "already captured" or freshness will lie when new uploads
+    // are sitting unanalyzed.
+    const [{ count: screenshotCountAt }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(screenshots)
+      .where(
+        and(
+          eq(screenshots.matchId, matchId),
+          eq(screenshots.extractionStatus, "done"),
+        ),
+      );
+    await db
+      .update(matches)
+      .set({
+        lastDateBrief: { brief, generatedAt, screenshotCountAt },
+      })
+      .where(eq(matches.id, matchId));
+    res.json({ brief, generatedAt });
   } catch (err) {
     req.log.error({ err }, "Date brief generation failed");
     const message = err instanceof Error ? err.message : "Date brief failed";

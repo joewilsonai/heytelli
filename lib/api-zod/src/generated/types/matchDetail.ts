@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DateBriefFreshness } from './dateBriefFreshness';
+import type { DateBriefSnapshot } from './dateBriefSnapshot';
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchDetailAnalysisFreshness } from './matchDetailAnalysisFreshness';
@@ -29,6 +31,8 @@ export interface MatchDetail {
   /** @nullable */
   nextDateOutfit?: string | null;
   dateHistory: DateHistoryEntry[];
+  lastDateBrief: DateBriefSnapshot | null;
+  dateBriefFreshness: DateBriefFreshness;
   transcript: TranscriptTurn[];
   createdAt: Date;
   updatedAt: Date;

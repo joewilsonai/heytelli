@@ -81,6 +81,12 @@ export const ListMatchesResponseItem = zod.object({
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "scoreHistory": zod.array(zod.object({
   "sexPotential": zod.number().min(listMatchesResponseScoreHistoryItemSexPotentialMin).max(listMatchesResponseScoreHistoryItemSexPotentialMax).nullable(),
   "conversionAbility": zod.number().min(listMatchesResponseScoreHistoryItemConversionAbilityMin).max(listMatchesResponseScoreHistoryItemConversionAbilityMax).nullable(),
@@ -215,6 +221,12 @@ export const GetMatchResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -359,6 +371,12 @@ export const UpdateMatchResponse = zod.object({
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "scoreHistory": zod.array(zod.object({
   "sexPotential": zod.number().min(updateMatchResponseScoreHistoryItemSexPotentialMin).max(updateMatchResponseScoreHistoryItemSexPotentialMax).nullable(),
   "conversionAbility": zod.number().min(updateMatchResponseScoreHistoryItemConversionAbilityMin).max(updateMatchResponseScoreHistoryItemConversionAbilityMax).nullable(),
@@ -460,6 +478,12 @@ export const AddScreenshotResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -537,6 +561,12 @@ export const RescoreMatchResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -707,6 +737,12 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -933,6 +969,12 @@ export const InPersonRecordingResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -1054,6 +1096,12 @@ export const VoiceDebriefResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
+  "lastDateBrief": zod.union([zod.object({
+  "brief": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Total screenshot count at the moment this brief was generated')
+}),zod.null()]),
+  "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new screenshots since generation OR generated > 5 days ago.\nmissing = no brief has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()

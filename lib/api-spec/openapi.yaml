@@ -839,6 +839,8 @@ components:
         - pendingScreenshotCount
         - failedScreenshotCount
         - analysisFreshness
+        - lastDateBrief
+        - dateBriefFreshness
       properties:
         id: { type: integer }
         name: { type: string }
@@ -863,6 +865,12 @@ components:
             $ref: "#/components/schemas/DateHistoryEntry"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        lastDateBrief:
+          oneOf:
+            - $ref: "#/components/schemas/DateBriefSnapshot"
+            - type: "null"
+        dateBriefFreshness:
+          $ref: "#/components/schemas/DateBriefFreshness"
         scoreHistory:
           type: array
           items:
@@ -926,6 +934,8 @@ components:
         - pendingScreenshotCount
         - failedScreenshotCount
         - analysisFreshness
+        - lastDateBrief
+        - dateBriefFreshness
       properties:
         id: { type: integer }
         name: { type: string }
@@ -948,6 +958,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DateHistoryEntry"
+        lastDateBrief:
+          oneOf:
+            - $ref: "#/components/schemas/DateBriefSnapshot"
+            - type: "null"
+        dateBriefFreshness:
+          $ref: "#/components/schemas/DateBriefFreshness"
         transcript:
           type: array
           items:
@@ -1115,6 +1131,22 @@ components:
       properties:
         brief: { type: string, description: Markdown-formatted pre-date prep brief }
         generatedAt: { type: string, format: date-time }
+    DateBriefSnapshot:
+      type: object
+      required: [brief, generatedAt, screenshotCountAt]
+      properties:
+        brief: { type: string }
+        generatedAt: { type: string, format: date-time }
+        screenshotCountAt:
+          type: integer
+          description: Total screenshot count at the moment this brief was generated
+    DateBriefFreshness:
+      type: string
+      enum: [current, stale, missing]
+      description: |
+        current = brief is up to date.
+        stale   = new screenshots since generation OR generated > 5 days ago.
+        missing = no brief has ever been generated.
     RedFlag:
       type: object
       required: [severity, label, evidence]
