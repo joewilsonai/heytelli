@@ -834,11 +834,16 @@ function NextDateCard({
 
   const staleReason = (() => {
     if (freshness !== "stale" || !savedBrief) return null;
-    const newShots = match.screenshots.length - savedBrief.screenshotCountAt;
+    const doneShots = match.screenshots.filter(
+      (s) => s.extractionStatus === "done",
+    ).length;
+    const newShots = doneShots - savedBrief.screenshotCountAt;
     if (newShots > 0) {
       return `${newShots} new screenshot${newShots === 1 ? "" : "s"} since`;
     }
-    return "Older than 5 days";
+    const ageDays = (Date.now() - new Date(savedBrief.generatedAt).getTime()) / 86_400_000;
+    if (ageDays > 5) return "Older than 5 days";
+    return "Date details updated";
   })();
 
   const clearDate = async () => {

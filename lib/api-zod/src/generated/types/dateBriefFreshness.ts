@@ -8,7 +8,7 @@
 
 /**
  * current = brief is up to date.
-stale   = new screenshots since generation OR generated > 5 days ago.
+stale   = new analyzed screenshots, changed date details, or > 5 days old.
 missing = no brief has ever been generated.
 
  */

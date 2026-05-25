@@ -9,6 +9,8 @@
 export interface DateBriefSnapshot {
   brief: string;
   generatedAt: Date;
-  /** Total screenshot count at the moment this brief was generated */
+  /** Analyzed (extractionStatus=done) screenshot count at generation time */
   screenshotCountAt: number;
+  /** Hash of date-related context (dateHistory, nextDate*, notes) at generation time */
+  contextHash: string;
 }

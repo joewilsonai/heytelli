@@ -103,13 +103,15 @@ export const MatchAnalysisFreshness = {
 export interface DateBriefSnapshot {
   brief: string;
   generatedAt: string;
-  /** Total screenshot count at the moment this brief was generated */
+  /** Analyzed (extractionStatus=done) screenshot count at generation time */
   screenshotCountAt: number;
+  /** Hash of date-related context (dateHistory, nextDate*, notes) at generation time */
+  contextHash: string;
 }
 
 /**
  * current = brief is up to date.
-stale   = new screenshots since generation OR generated > 5 days ago.
+stale   = new analyzed screenshots, changed date details, or > 5 days old.
 missing = no brief has ever been generated.
 
  */

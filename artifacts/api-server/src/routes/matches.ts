@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, asc, inArray } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import {
   db,
   matches,
@@ -96,12 +97,73 @@ function computeFreshness(
 
 const DATE_BRIEF_STALE_MS = 5 * 24 * 60 * 60 * 1000;
 
+export function dateBriefContextHash(input: {
+  dateHistory: unknown;
+  nextDateAt: Date | string | null;
+  nextDateLocation: string | null;
+  nextDateOutfit: string | null;
+  notes: string | null;
+}): string {
+  // Only include fields the user actually controls. `createdAt` is
+  // synthesized to `new Date()` when missing in normalizeDateHistory, so
+  // including it would re-hash differently every read for legacy rows.
+  // `id` can also be regenerated, so skip it too. Sort by `when` for a
+  // stable ordering independent of insertion order.
+  const stableDateHistory = normalizeDateHistory(input.dateHistory)
+    .map((e) => ({ when: e.when, location: e.location, recap: e.recap }))
+    .sort((a, b) => a.when.localeCompare(b.when));
+  const normalized = {
+    dateHistory: stableDateHistory,
+    nextDateAt:
+      input.nextDateAt instanceof Date
+        ? input.nextDateAt.toISOString()
+        : (input.nextDateAt ?? null),
+    nextDateLocation: input.nextDateLocation ?? null,
+    nextDateOutfit: input.nextDateOutfit ?? null,
+    notes: input.notes ?? "",
+  };
+  return createHash("sha256")
+    .update(JSON.stringify(normalized))
+    .digest("hex")
+    .slice(0, 16);
+}
+
+function normalizeDateBriefSnapshot(
+  raw: unknown,
+): {
+  brief: string;
+  generatedAt: string;
+  screenshotCountAt: number;
+  contextHash: string;
+} | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.brief !== "string" || typeof obj.generatedAt !== "string") {
+    return null;
+  }
+  return {
+    brief: obj.brief,
+    generatedAt: obj.generatedAt,
+    screenshotCountAt:
+      typeof obj.screenshotCountAt === "number" ? obj.screenshotCountAt : 0,
+    // Legacy rows pre-contextHash get "" — guaranteed to mismatch any real
+    // hash, so freshness will correctly resolve to "stale".
+    contextHash: typeof obj.contextHash === "string" ? obj.contextHash : "",
+  };
+}
+
 function computeDateBriefFreshness(
-  lastDateBrief: { generatedAt: string; screenshotCountAt: number } | null,
-  currentScreenshotCount: number,
+  lastDateBrief: {
+    generatedAt: string;
+    screenshotCountAt: number;
+    contextHash: string;
+  } | null,
+  currentDoneScreenshotCount: number,
+  currentContextHash: string,
 ): "current" | "stale" | "missing" {
   if (!lastDateBrief) return "missing";
-  if (currentScreenshotCount > lastDateBrief.screenshotCountAt) return "stale";
+  if (currentDoneScreenshotCount > lastDateBrief.screenshotCountAt) return "stale";
+  if (lastDateBrief.contextHash !== currentContextHash) return "stale";
   const ageMs = Date.now() - new Date(lastDateBrief.generatedAt).getTime();
   if (Number.isNaN(ageMs) || ageMs > DATE_BRIEF_STALE_MS) return "stale";
   return "current";
@@ -116,14 +178,26 @@ async function loadMatchDetail(matchId: number) {
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
   const transcript = normalizeTranscript(match.transcript);
-  const lastDateBrief = match.lastDateBrief ?? null;
+  const lastDateBrief = normalizeDateBriefSnapshot(match.lastDateBrief);
+  const doneShots = shots.filter((s) => s.extractionStatus === "done").length;
+  const currentHash = dateBriefContextHash({
+    dateHistory: match.dateHistory,
+    nextDateAt: match.nextDateAt,
+    nextDateLocation: match.nextDateLocation,
+    nextDateOutfit: match.nextDateOutfit,
+    notes: match.notes,
+  });
   return {
     ...withNormalizedProfile(match),
     transcript,
     screenshots: shots,
     ...computeFreshness(transcript.length, shots),
     lastDateBrief,
-    dateBriefFreshness: computeDateBriefFreshness(lastDateBrief, shots.length),
+    dateBriefFreshness: computeDateBriefFreshness(
+      lastDateBrief,
+      doneShots,
+      currentHash,
+    ),
   };
 }
 
@@ -660,7 +734,17 @@ router.get("/matches", async (_req, res): Promise<void> => {
       const lastTurn = turns[turns.length - 1];
       const lastAct = lastActivity.get(r.id) ?? null;
       const shotsForMatch = shotsByMatch.get(r.id) ?? [];
-      const lastDateBrief = r.lastDateBrief ?? null;
+      const doneShots = shotsForMatch.filter(
+        (s) => s.extractionStatus === "done",
+      ).length;
+      const lastDateBrief = normalizeDateBriefSnapshot(r.lastDateBrief);
+      const currentHash = dateBriefContextHash({
+        dateHistory: r.dateHistory,
+        nextDateAt: r.nextDateAt,
+        nextDateLocation: r.nextDateLocation,
+        nextDateOutfit: r.nextDateOutfit,
+        notes: r.notes,
+      });
       return {
         ...withNormalizedProfile(r),
         scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
@@ -675,7 +759,8 @@ router.get("/matches", async (_req, res): Promise<void> => {
         lastDateBrief,
         dateBriefFreshness: computeDateBriefFreshness(
           lastDateBrief,
-          shotsForMatch.length,
+          doneShots,
+          currentHash,
         ),
       };
     }),

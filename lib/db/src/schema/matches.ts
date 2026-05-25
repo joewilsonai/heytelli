@@ -171,6 +171,7 @@ export const matches = pgTable("matches", {
     brief: string;
     generatedAt: string;
     screenshotCountAt: number;
+    contextHash: string;
   } | null>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

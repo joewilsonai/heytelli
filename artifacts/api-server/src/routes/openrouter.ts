@@ -26,6 +26,7 @@ import {
 } from "@workspace/api-zod";
 import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { dateBriefContextHash } from "./matches";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -574,10 +575,17 @@ Tone: punchy, direct, slightly profane is fine. No corporate hedging. No bullet 
           eq(screenshots.extractionStatus, "done"),
         ),
       );
+    const contextHash = dateBriefContextHash({
+      dateHistory: match.dateHistory,
+      nextDateAt: match.nextDateAt,
+      nextDateLocation: match.nextDateLocation,
+      nextDateOutfit: match.nextDateOutfit,
+      notes: match.notes,
+    });
     await db
       .update(matches)
       .set({
-        lastDateBrief: { brief, generatedAt, screenshotCountAt },
+        lastDateBrief: { brief, generatedAt, screenshotCountAt, contextHash },
       })
       .where(eq(matches.id, matchId));
     res.json({ brief, generatedAt });
