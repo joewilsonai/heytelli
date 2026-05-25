@@ -1,7 +1,7 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type { MatchScore } from "@workspace/db";
 
-const DEBRIEF_MODEL = "gpt-5.2-mini";
+const DEBRIEF_MODEL = "gpt-5.4";
 
 export type DebriefAnalysis = {
   summary: string;

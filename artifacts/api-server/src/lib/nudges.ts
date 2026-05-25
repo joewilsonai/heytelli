@@ -1,7 +1,7 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile, TranscriptTurn } from "@workspace/db";
 
-const MODEL = "gpt-5.2-mini";
+const MODEL = "gpt-5.4";
 
 const SYSTEM = `You are a candid, sharp dating coach helping the user re-engage a match who has gone quiet. Generate exactly 3 distinct re-engagement openers — short (1-2 sentences each), in HIS voice, that reference something specific from the conversation or profile when possible. Mix tone: one playful, one curious, one direct. No emojis unless they fit. No "Hey [name]" — start with the substance.
 

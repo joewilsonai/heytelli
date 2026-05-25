@@ -1,7 +1,7 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile, TranscriptTurn } from "@workspace/db";
 
-const MODEL = "gpt-5.2-mini";
+const MODEL = "gpt-5.4";
 
 export type VoiceNoteFeedback = {
   transcript: string;
