@@ -836,6 +836,9 @@ components:
         - tags
         - createdAt
         - updatedAt
+        - pendingScreenshotCount
+        - failedScreenshotCount
+        - analysisFreshness
       properties:
         id: { type: integer }
         name: { type: string }
@@ -872,6 +875,16 @@ components:
           type: ["string", "null"]
           format: date-time
           description: Timestamp of most recent screenshot upload (or null if none)
+        pendingScreenshotCount:
+          type: integer
+          description: Screenshots awaiting analysis
+        failedScreenshotCount:
+          type: integer
+          description: Screenshots whose analysis failed
+        analysisFreshness:
+          type: string
+          enum: [current, needs-analysis, never-analyzed]
+          description: Whether stored transcript reflects all screenshots
     Screenshot:
       type: object
       required: [id, matchId, objectPath, uploadedAt, extractionStatus, extractionError]
@@ -910,6 +923,9 @@ components:
         - createdAt
         - updatedAt
         - screenshots
+        - pendingScreenshotCount
+        - failedScreenshotCount
+        - analysisFreshness
       properties:
         id: { type: integer }
         name: { type: string }
@@ -942,6 +958,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Screenshot"
+        pendingScreenshotCount:
+          type: integer
+          description: Screenshots awaiting analysis
+        failedScreenshotCount:
+          type: integer
+          description: Screenshots whose analysis failed
+        analysisFreshness:
+          type: string
+          enum: [current, needs-analysis, never-analyzed]
+          description: Whether stored transcript reflects all screenshots
     MatchCreateInput:
       type: object
       required: [screenshotObjectPath]

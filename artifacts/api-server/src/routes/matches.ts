@@ -71,6 +71,29 @@ function withNormalizedProfile<
   };
 }
 
+type FreshnessCounts = {
+  pendingScreenshotCount: number;
+  failedScreenshotCount: number;
+  analysisFreshness: "current" | "needs-analysis" | "never-analyzed";
+};
+
+function computeFreshness(
+  transcriptLength: number,
+  shots: { extractionStatus: string }[],
+): FreshnessCounts {
+  const pending = shots.filter((s) => s.extractionStatus === "pending").length;
+  const failed = shots.filter((s) => s.extractionStatus === "failed").length;
+  let freshness: FreshnessCounts["analysisFreshness"];
+  if (transcriptLength === 0 && shots.length > 0) freshness = "never-analyzed";
+  else if (pending > 0 || failed > 0) freshness = "needs-analysis";
+  else freshness = "current";
+  return {
+    pendingScreenshotCount: pending,
+    failedScreenshotCount: failed,
+    analysisFreshness: freshness,
+  };
+}
+
 async function loadMatchDetail(matchId: number) {
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
   if (!match) return null;
@@ -79,10 +102,12 @@ async function loadMatchDetail(matchId: number) {
     .from(screenshots)
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
+  const transcript = normalizeTranscript(match.transcript);
   return {
     ...withNormalizedProfile(match),
-    transcript: normalizeTranscript(match.transcript),
+    transcript,
     screenshots: shots,
+    ...computeFreshness(transcript.length, shots),
   };
 }
 
@@ -598,14 +623,19 @@ router.get("/matches", async (_req, res): Promise<void> => {
         .select({
           matchId: screenshots.matchId,
           uploadedAt: screenshots.uploadedAt,
+          extractionStatus: screenshots.extractionStatus,
         })
         .from(screenshots)
         .where(inArray(screenshots.matchId, ids))
     : [];
   const lastActivity = new Map<number, Date>();
+  const shotsByMatch = new Map<number, { extractionStatus: string }[]>();
   for (const s of shotRows) {
     const prev = lastActivity.get(s.matchId);
     if (!prev || s.uploadedAt > prev) lastActivity.set(s.matchId, s.uploadedAt);
+    const arr = shotsByMatch.get(s.matchId) ?? [];
+    arr.push({ extractionStatus: s.extractionStatus });
+    shotsByMatch.set(s.matchId, arr);
   }
 
   res.json(
@@ -613,6 +643,7 @@ router.get("/matches", async (_req, res): Promise<void> => {
       const turns = normalizeTranscript(r.transcript);
       const lastTurn = turns[turns.length - 1];
       const lastAct = lastActivity.get(r.id) ?? null;
+      const shotsForMatch = shotsByMatch.get(r.id) ?? [];
       return {
         ...withNormalizedProfile(r),
         scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
@@ -623,6 +654,7 @@ router.get("/matches", async (_req, res): Promise<void> => {
         })),
         lastSpeaker: lastTurn ? lastTurn.speaker : null,
         lastActivityAt: lastAct ? lastAct.toISOString() : null,
+        ...computeFreshness(turns.length, shotsForMatch),
       };
     }),
   );
@@ -790,7 +822,8 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Match not found" });
     return;
   }
-  res.json(withNormalizedProfile(result.updated));
+  const refreshed = await loadMatchDetail(result.updated.id);
+  res.json(refreshed ?? withNormalizedProfile(result.updated));
 });
 
 router.delete("/matches/:id", async (req, res): Promise<void> => {
@@ -853,15 +886,15 @@ router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
     return;
   }
 
-  // Mark the screenshot as "done" immediately. The client batches uploads
-  // and triggers a single /rescore call after the batch, which analyzes
-  // every screenshot together — much cheaper and avoids rate limits.
+  // Insert as "pending" so analysisFreshness flips to "needs-analysis"
+  // until the client's batched /rescore call processes the new uploads.
+  // Rescore is what actually runs OCR + flips them to "done".
   await db
     .insert(screenshots)
     .values({
       matchId: match.id,
       objectPath: body.data.objectPath,
-      extractionStatus: "done",
+      extractionStatus: "pending",
     })
     .returning();
 
@@ -885,6 +918,20 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Match has no screenshots yet" });
     return;
   }
+
+  // Skip re-OCR if everything's already been analyzed. Saves the model call,
+  // the storage round-trip, and a chunk of latency for a no-op.
+  if (
+    detail.analysisFreshness === "current" &&
+    detail.transcript.length > 0
+  ) {
+    res.json(detail);
+    return;
+  }
+
+  // Snapshot the screenshot IDs we're about to analyze. Anything added
+  // mid-flight must remain pending so the next /rescore picks it up.
+  const analyzedShotIds = detail.screenshots.map((s) => s.id);
 
   try {
     const dataUrls = await Promise.all(
@@ -912,12 +959,14 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       .set(updates)
       .where(eq(matches.id, detail.id));
     await recordScoreHistory(detail.id, mergedProfile.scores);
-    // Clear any prior per-screenshot failure badges — we just successfully
-    // read the whole conversation in one shot.
-    await db
-      .update(screenshots)
-      .set({ extractionStatus: "done", extractionError: null })
-      .where(eq(screenshots.matchId, detail.id));
+    // Only flip the snapshot we actually analyzed — screenshots added
+    // mid-flight stay pending so the next rescore catches them.
+    if (analyzedShotIds.length > 0) {
+      await db
+        .update(screenshots)
+        .set({ extractionStatus: "done", extractionError: null })
+        .where(inArray(screenshots.id, analyzedShotIds));
+    }
     const refreshed = await loadMatchDetail(detail.id);
     res.json(refreshed);
   } catch (err) {

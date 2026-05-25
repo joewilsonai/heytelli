@@ -7,6 +7,7 @@
  */
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
+import type { MatchDetailAnalysisFreshness } from './matchDetailAnalysisFreshness';
 import type { MatchStatus } from './matchStatus';
 import type { Screenshot } from './screenshot';
 import type { TranscriptTurn } from './transcriptTurn';
@@ -32,4 +33,10 @@ export interface MatchDetail {
   createdAt: Date;
   updatedAt: Date;
   screenshots: Screenshot[];
+  /** Screenshots awaiting analysis */
+  pendingScreenshotCount: number;
+  /** Screenshots whose analysis failed */
+  failedScreenshotCount: number;
+  /** Whether stored transcript reflects all screenshots */
+  analysisFreshness: MatchDetailAnalysisFreshness;
 }

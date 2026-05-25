@@ -468,6 +468,35 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
             }}
           />
         )}
+        {match.analysisFreshness !== "current" && match.pendingScreenshotCount + match.failedScreenshotCount > 0 && (
+          <View
+            style={{
+              position: "absolute",
+              bottom: -2,
+              right: -2,
+              minWidth: 18,
+              height: 18,
+              paddingHorizontal: 5,
+              borderRadius: 9,
+              backgroundColor: c.warning,
+              borderWidth: 2,
+              borderColor: c.card,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 10,
+                fontFamily: "Inter_700Bold",
+                lineHeight: 12,
+              }}
+            >
+              {match.pendingScreenshotCount + match.failedScreenshotCount}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <View

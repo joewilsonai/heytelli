@@ -88,6 +88,18 @@ export const MatchLastSpeaker = {
   me: 'me',
 } as const;
 
+/**
+ * Whether stored transcript reflects all screenshots
+ */
+export type MatchAnalysisFreshness = typeof MatchAnalysisFreshness[keyof typeof MatchAnalysisFreshness];
+
+
+export const MatchAnalysisFreshness = {
+  current: 'current',
+  'needs-analysis': 'needs-analysis',
+  'never-analyzed': 'never-analyzed',
+} as const;
+
 export interface Match {
   id: number;
   name: string;
@@ -118,6 +130,12 @@ export interface Match {
      * @nullable
      */
   lastActivityAt?: string | null;
+  /** Screenshots awaiting analysis */
+  pendingScreenshotCount: number;
+  /** Screenshots whose analysis failed */
+  failedScreenshotCount: number;
+  /** Whether stored transcript reflects all screenshots */
+  analysisFreshness: MatchAnalysisFreshness;
 }
 
 export type ScreenshotExtractionStatus = typeof ScreenshotExtractionStatus[keyof typeof ScreenshotExtractionStatus];
@@ -152,6 +170,18 @@ export interface TranscriptTurn {
   text: string;
 }
 
+/**
+ * Whether stored transcript reflects all screenshots
+ */
+export type MatchDetailAnalysisFreshness = typeof MatchDetailAnalysisFreshness[keyof typeof MatchDetailAnalysisFreshness];
+
+
+export const MatchDetailAnalysisFreshness = {
+  current: 'current',
+  'needs-analysis': 'needs-analysis',
+  'never-analyzed': 'never-analyzed',
+} as const;
+
 export interface MatchDetail {
   id: number;
   name: string;
@@ -173,6 +203,12 @@ export interface MatchDetail {
   createdAt: string;
   updatedAt: string;
   screenshots: Screenshot[];
+  /** Screenshots awaiting analysis */
+  pendingScreenshotCount: number;
+  /** Screenshots whose analysis failed */
+  failedScreenshotCount: number;
+  /** Whether stored transcript reflects all screenshots */
+  analysisFreshness: MatchDetailAnalysisFreshness;
 }
 
 export interface MatchCreateInput {

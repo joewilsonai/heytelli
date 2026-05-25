@@ -557,6 +557,7 @@ function HeaderCard({
           </View>
         </View>
       </View>
+      <FreshnessChip match={match} />
       {match.vibeTags.length > 0 && (
         <View
           style={{
@@ -572,6 +573,42 @@ function HeaderCard({
         </View>
       )}
     </Card>
+  );
+}
+
+function FreshnessChip({ match }: { match: MatchDetail }) {
+  const c = useColors();
+  if (match.screenshots.length === 0) return null;
+  const f = match.analysisFreshness;
+  const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
+  const isCurrent = f === "current";
+  const tint = isCurrent ? c.success : c.warning;
+  const bg = isCurrent ? c.successBg : c.warningBg;
+  const icon = isCurrent ? "check-circle" : "refresh-cw";
+  const label = isCurrent
+    ? "Analysis up to date"
+    : f === "never-analyzed"
+      ? "Not analyzed yet"
+      : `${pending} new screenshot${pending === 1 ? "" : "s"} to analyze`;
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        alignSelf: "flex-start",
+        backgroundColor: bg,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 999,
+        marginTop: 10,
+      }}
+    >
+      <Feather name={icon} size={11} color={tint} />
+      <Text style={{ fontSize: 11, color: tint, fontFamily: "Inter_600SemiBold" }}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -604,11 +641,23 @@ function ScoresCard({
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <SectionLabel>Scores</SectionLabel>
         <IconButton
-          icon={rescoring ? "loader" : "refresh-cw"}
+          icon={
+            rescoring
+              ? "loader"
+              : match.analysisFreshness === "current"
+                ? "check"
+                : "refresh-cw"
+          }
           onPress={doRescore}
-          color={c.mutedForeground}
+          color={
+            match.analysisFreshness === "current" ? c.success : c.primary
+          }
           size={16}
-          hint="Re-run AI scoring"
+          hint={
+            match.analysisFreshness === "current"
+              ? "Already up to date"
+              : `Analyze ${match.pendingScreenshotCount + match.failedScreenshotCount} new screenshot(s)`
+          }
         />
       </View>
       <View style={{ gap: 12 }}>

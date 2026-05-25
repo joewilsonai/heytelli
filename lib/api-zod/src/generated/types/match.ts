@@ -7,6 +7,7 @@
  */
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
+import type { MatchAnalysisFreshness } from './matchAnalysisFreshness';
 import type { MatchLastSpeaker } from './matchLastSpeaker';
 import type { MatchStatus } from './matchStatus';
 import type { ScoreHistoryPoint } from './scoreHistoryPoint';
@@ -41,4 +42,10 @@ export interface Match {
      * @nullable
      */
   lastActivityAt?: Date | null;
+  /** Screenshots awaiting analysis */
+  pendingScreenshotCount: number;
+  /** Screenshots whose analysis failed */
+  failedScreenshotCount: number;
+  /** Whether stored transcript reflects all screenshots */
+  analysisFreshness: MatchAnalysisFreshness;
 }

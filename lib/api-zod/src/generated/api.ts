@@ -88,7 +88,10 @@ export const ListMatchesResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })).optional(),
   "lastSpeaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullish().describe('Speaker of the most recent transcript turn, if any'),
-  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)')
+  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)'),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 export const ListMatchesResponse = zod.array(ListMatchesResponseItem)
 
@@ -225,7 +228,10 @@ export const GetMatchResponse = zod.object({
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
-}))
+})),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 
 
@@ -360,7 +366,10 @@ export const UpdateMatchResponse = zod.object({
   "createdAt": zod.coerce.date()
 })).optional(),
   "lastSpeaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullish().describe('Speaker of the most recent transcript turn, if any'),
-  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)')
+  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)'),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 
 
@@ -464,7 +473,10 @@ export const AddScreenshotResponse = zod.object({
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
-}))
+})),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 
 
@@ -538,7 +550,10 @@ export const RescoreMatchResponse = zod.object({
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
-}))
+})),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 
 
@@ -705,7 +720,10 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
-}))
+})),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 
 
@@ -928,7 +946,10 @@ export const InPersonRecordingResponse = zod.object({
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
-}))
+})),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 })
 
@@ -1046,7 +1067,10 @@ export const VoiceDebriefResponse = zod.object({
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
   "extractionError": zod.string().nullable()
-}))
+})),
+  "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
+  "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
+  "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
 })
 
