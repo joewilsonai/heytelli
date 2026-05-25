@@ -4,11 +4,13 @@ import {
   db,
   matches,
   matchScoreHistory,
+  matchTagEvents,
   screenshots,
   emptyExtractedProfile,
   normalizeExtractedProfile,
   normalizeDateHistory,
   normalizeTranscript,
+  type TagEventSource,
 } from "@workspace/db";
 import {
   CreateMatchBody,
@@ -36,6 +38,7 @@ import { generateStaleNudgeOpeners } from "../lib/nudges";
 import { analyzeRedFlags } from "../lib/redFlagRadar";
 import { generateCheatSheet } from "../lib/cheatSheet";
 import { generateWeeklyDebrief } from "../lib/weeklyDebrief";
+import { suggestTags } from "../lib/tagSuggestions";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {
   extractFromScreenshot,
@@ -207,6 +210,131 @@ router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
     req.log.error({ err }, "Cheat sheet failed");
     res.status(500).json({ error: "Failed to generate cheat sheet" });
   }
+});
+
+router.get("/matches/:id/tag-suggestions", async (req, res): Promise<void> => {
+  const params = GetMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  if (!match) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  try {
+    const result = await suggestTags({
+      name: match.name,
+      currentTags: match.tags ?? [],
+      profile: normalizeExtractedProfile(match.extractedProfile),
+      transcript: normalizeTranscript(match.transcript),
+      dateHistory: normalizeDateHistory(match.dateHistory),
+      notes: match.notes ?? "",
+    });
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Tag suggestions failed");
+    res.status(500).json({ error: "Failed to generate tag suggestions" });
+  }
+});
+
+router.get("/matches/:id/tag-history", async (req, res): Promise<void> => {
+  const params = GetMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const events = await db
+    .select()
+    .from(matchTagEvents)
+    .where(eq(matchTagEvents.matchId, params.data.id))
+    .orderBy(desc(matchTagEvents.createdAt));
+  res.json({
+    events: events.map((e) => ({
+      id: e.id,
+      tag: e.tag,
+      action: e.action,
+      source: e.source,
+      reason: e.reason,
+      createdAt: e.createdAt.toISOString(),
+    })),
+  });
+});
+
+router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
+  const params = GetMatchParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = req.body as {
+    suggestions?: Array<{ tag: string; action: "add" | "remove"; reason?: string }>;
+  };
+  const suggestions = Array.isArray(body?.suggestions) ? body.suggestions : [];
+  if (suggestions.length === 0) {
+    res.status(400).json({ error: "No suggestions provided" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const [match] = await tx
+      .select()
+      .from(matches)
+      .where(eq(matches.id, params.data.id))
+      .for("update");
+    if (!match) return { notFound: true as const };
+    const current = new Set(match.tags ?? []);
+    const events: Array<{
+      matchId: number;
+      tag: string;
+      action: "added" | "removed";
+      source: TagEventSource;
+      reason: string | null;
+    }> = [];
+    for (const s of suggestions) {
+      if (typeof s?.tag !== "string") continue;
+      const tag = s.tag.trim().toLowerCase();
+      if (!tag) continue;
+      if (s.action === "add" && !current.has(tag)) {
+        current.add(tag);
+        events.push({
+          matchId: params.data.id,
+          tag,
+          action: "added",
+          source: "ai",
+          reason: s.reason?.trim() || null,
+        });
+      } else if (s.action === "remove" && current.has(tag)) {
+        current.delete(tag);
+        events.push({
+          matchId: params.data.id,
+          tag,
+          action: "removed",
+          source: "ai",
+          reason: s.reason?.trim() || null,
+        });
+      }
+    }
+    const nextTags = Array.from(current).sort();
+    await tx
+      .update(matches)
+      .set({ tags: nextTags })
+      .where(eq(matches.id, params.data.id));
+    if (events.length > 0) {
+      await tx.insert(matchTagEvents).values(events);
+    }
+    return { notFound: false as const };
+  });
+  if (result.notFound) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  const detail = await loadMatchDetail(params.data.id);
+  if (!detail) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  res.json(detail);
 });
 
 router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
@@ -608,30 +736,61 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     updates.transcript = normalizeTranscript(body.data.transcript);
   if (body.data.status !== undefined) updates.status = body.data.status;
 
-  if (Object.keys(updates).length === 0) {
-    const [existing] = await db
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
       .select()
       .from(matches)
-      .where(eq(matches.id, params.data.id));
-    if (!existing) {
-      res.status(404).json({ error: "Match not found" });
-      return;
+      .where(eq(matches.id, params.data.id))
+      .for("update");
+    if (!existing) return { notFound: true as const, updated: null };
+
+    let tagDiff: { added: string[]; removed: string[] } | null = null;
+    if (body.data.tags !== undefined) {
+      const before = new Set(existing.tags ?? []);
+      const after = new Set(body.data.tags);
+      tagDiff = {
+        added: [...after].filter((t) => !before.has(t)),
+        removed: [...before].filter((t) => !after.has(t)),
+      };
     }
-    res.json(withNormalizedProfile(existing));
-    return;
-  }
 
-  const [updated] = await db
-    .update(matches)
-    .set(updates)
-    .where(eq(matches.id, params.data.id))
-    .returning();
+    if (Object.keys(updates).length === 0) {
+      return { notFound: false as const, updated: existing };
+    }
 
-  if (!updated) {
+    const [updated] = await tx
+      .update(matches)
+      .set(updates)
+      .where(eq(matches.id, params.data.id))
+      .returning();
+
+    if (tagDiff && (tagDiff.added.length > 0 || tagDiff.removed.length > 0)) {
+      const rows = [
+        ...tagDiff.added.map((tag) => ({
+          matchId: params.data.id,
+          tag,
+          action: "added" as const,
+          source: "user" as TagEventSource,
+          reason: null,
+        })),
+        ...tagDiff.removed.map((tag) => ({
+          matchId: params.data.id,
+          tag,
+          action: "removed" as const,
+          source: "user" as TagEventSource,
+          reason: null,
+        })),
+      ];
+      await tx.insert(matchTagEvents).values(rows);
+    }
+    return { notFound: false as const, updated: updated ?? existing };
+  });
+
+  if (result.notFound || !result.updated) {
     res.status(404).json({ error: "Match not found" });
     return;
   }
-  res.json(withNormalizedProfile(updated));
+  res.json(withNormalizedProfile(result.updated));
 });
 
 router.delete("/matches/:id", async (req, res): Promise<void> => {

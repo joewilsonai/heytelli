@@ -386,6 +386,59 @@ export interface AutoArchiveCandidate {
   reason: string;
 }
 
+export type TagSuggestionAction = typeof TagSuggestionAction[keyof typeof TagSuggestionAction];
+
+
+export const TagSuggestionAction = {
+  add: 'add',
+  remove: 'remove',
+} as const;
+
+export interface TagSuggestion {
+  tag: string;
+  action: TagSuggestionAction;
+  reason: string;
+}
+
+export interface TagSuggestionResult {
+  suggestions: TagSuggestion[];
+  summary: string;
+}
+
+export interface TagSuggestionApplyInput {
+  suggestions: TagSuggestion[];
+}
+
+export type TagEventAction = typeof TagEventAction[keyof typeof TagEventAction];
+
+
+export const TagEventAction = {
+  added: 'added',
+  removed: 'removed',
+} as const;
+
+export type TagEventSource = typeof TagEventSource[keyof typeof TagEventSource];
+
+
+export const TagEventSource = {
+  user: 'user',
+  ai: 'ai',
+} as const;
+
+export interface TagEvent {
+  id: number;
+  tag: string;
+  action: TagEventAction;
+  source: TagEventSource;
+  /** @nullable */
+  reason?: string | null;
+  createdAt: string;
+}
+
+export interface TagHistoryResult {
+  events: TagEvent[];
+}
+
 export interface FunnelStage {
   label: string;
   count: number;

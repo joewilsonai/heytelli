@@ -325,6 +325,75 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/tag-suggestions:
+    get:
+      operationId: getTagSuggestions
+      tags: [matches]
+      summary: AI-proposed tag adds/removes based on latest match context
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Tag suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagSuggestionResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /matches/{id}/tag-history:
+    get:
+      operationId: getTagHistory
+      tags: [matches]
+      summary: Chronological log of every tag add/remove on this match
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Tag history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagHistoryResult"
+  /matches/{id}/tags/apply:
+    post:
+      operationId: applyTagSuggestions
+      tags: [matches]
+      summary: Apply AI tag suggestions, persisting the diff as events
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagSuggestionApplyInput"
+      responses:
+        "200":
+          description: Updated match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /matches/{id}/response-stats:
     get:
       operationId: getResponseStats
@@ -1112,6 +1181,53 @@ components:
         photoObjectPath: { type: ["string", "null"] }
         hoursSinceLastReply: { type: number }
         reason: { type: string }
+    TagSuggestion:
+      type: object
+      required: [tag, action, reason]
+      properties:
+        tag: { type: string }
+        action:
+          type: string
+          enum: [add, remove]
+        reason: { type: string }
+    TagSuggestionResult:
+      type: object
+      required: [suggestions, summary]
+      properties:
+        suggestions:
+          type: array
+          items: { $ref: "#/components/schemas/TagSuggestion" }
+        summary: { type: string }
+    TagSuggestionApplyInput:
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions:
+          type: array
+          items: { $ref: "#/components/schemas/TagSuggestion" }
+    TagEvent:
+      type: object
+      required: [id, tag, action, source, createdAt]
+      properties:
+        id: { type: integer }
+        tag: { type: string }
+        action:
+          type: string
+          enum: [added, removed]
+        source:
+          type: string
+          enum: [user, ai]
+        reason: { type: ["string", "null"] }
+        createdAt:
+          type: string
+          format: date-time
+    TagHistoryResult:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/TagEvent" }
     FunnelStage:
       type: object
       required: [label, count]

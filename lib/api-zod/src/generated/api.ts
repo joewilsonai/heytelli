@@ -592,6 +592,124 @@ export const GetCheatSheetResponse = zod.object({
 
 
 /**
+ * @summary AI-proposed tag adds/removes based on latest match context
+ */
+export const GetTagSuggestionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTagSuggestionsResponse = zod.object({
+  "suggestions": zod.array(zod.object({
+  "tag": zod.string(),
+  "action": zod.enum(['add', 'remove']),
+  "reason": zod.string()
+})),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Chronological log of every tag add/remove on this match
+ */
+export const GetTagHistoryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTagHistoryResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.number(),
+  "tag": zod.string(),
+  "action": zod.enum(['added', 'removed']),
+  "source": zod.enum(['user', 'ai']),
+  "reason": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Apply AI tag suggestions, persisting the diff as events
+ */
+export const ApplyTagSuggestionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ApplyTagSuggestionsBody = zod.object({
+  "suggestions": zod.array(zod.object({
+  "tag": zod.string(),
+  "action": zod.enum(['add', 'remove']),
+  "reason": zod.string()
+}))
+})
+
+export const applyTagSuggestionsResponseExtractedProfileScoresSexPotentialValueOneMin = 0;
+export const applyTagSuggestionsResponseExtractedProfileScoresSexPotentialValueOneMax = 10;
+
+export const applyTagSuggestionsResponseExtractedProfileScoresConversionAbilityValueOneMin = 0;
+export const applyTagSuggestionsResponseExtractedProfileScoresConversionAbilityValueOneMax = 10;
+
+export const applyTagSuggestionsResponseExtractedProfileScoresChemistryValueOneMin = 0;
+export const applyTagSuggestionsResponseExtractedProfileScoresChemistryValueOneMax = 10;
+
+
+
+export const ApplyTagSuggestionsResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoObjectPath": zod.string().nullable(),
+  "status": zod.enum(['active', 'archived', 'ghosted']),
+  "vibeTags": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "extractedProfile": zod.object({
+  "job": zod.string().nullable(),
+  "location": zod.string().nullable(),
+  "interests": zod.array(zod.string()),
+  "mentionedTopics": zod.array(zod.string()),
+  "conversationTone": zod.string().nullable(),
+  "scores": zod.object({
+  "sexPotential": zod.object({
+  "value": zod.union([zod.number().min(applyTagSuggestionsResponseExtractedProfileScoresSexPotentialValueOneMin).max(applyTagSuggestionsResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "conversionAbility": zod.object({
+  "value": zod.union([zod.number().min(applyTagSuggestionsResponseExtractedProfileScoresConversionAbilityValueOneMin).max(applyTagSuggestionsResponseExtractedProfileScoresConversionAbilityValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+}),
+  "chemistry": zod.object({
+  "value": zod.union([zod.number().min(applyTagSuggestionsResponseExtractedProfileScoresChemistryValueOneMin).max(applyTagSuggestionsResponseExtractedProfileScoresChemistryValueOneMax),zod.null()]),
+  "rationale": zod.string().nullable()
+})
+})
+}),
+  "notes": zod.string(),
+  "nextDateAt": zod.coerce.date().nullable(),
+  "nextDateLocation": zod.string().nullable(),
+  "nextDateOutfit": zod.string().nullish(),
+  "dateHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "when": zod.coerce.date(),
+  "location": zod.string(),
+  "recap": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "screenshots": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string(),
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable()
+}))
+})
+
+
+/**
  * @summary Compute her vs. user reply cadence from screenshot history
  */
 export const GetResponseStatsParams = zod.object({

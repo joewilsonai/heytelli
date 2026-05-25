@@ -58,6 +58,7 @@ import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
 import { RedFlagsCard } from "@/components/RedFlagsCard";
 import { CheatSheetCard } from "@/components/CheatSheetCard";
 import { TagsRow } from "@/components/TagsRow";
+import { TagHistoryCard } from "@/components/TagHistoryCard";
 import { ResponseStatsCard } from "@/components/ResponseStatsCard";
 import { addDateToCalendar } from "@/lib/calendar";
 import {
@@ -177,6 +178,7 @@ export default function MatchDetailScreen() {
         </Pressable>
         <TranscriptCard match={data} onChange={() => refetch()} />
         <TagsRow matchId={data.id} tags={data.tags ?? []} onChange={() => refetch()} />
+        <TagHistoryCard matchId={data.id} />
         <NotesCard match={data} onChange={() => refetch()} />
         <StatusActionsCard match={data} onChange={() => refetch()} onArchived={() => router.back()} />
       </ScrollView>

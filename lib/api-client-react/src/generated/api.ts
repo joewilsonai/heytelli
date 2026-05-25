@@ -43,6 +43,9 @@ import type {
   Screenshot,
   ScreenshotInput,
   StaleNudge,
+  TagHistoryResult,
+  TagSuggestionApplyInput,
+  TagSuggestionResult,
   UploadUrlRequest,
   UploadUrlResponse,
   VoiceDebriefInput,
@@ -1029,6 +1032,232 @@ export function useGetCheatSheet<TData = Awaited<ReturnType<typeof getCheatSheet
 
 
 
+
+export const getGetTagSuggestionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/tag-suggestions`
+}
+
+/**
+ * @summary AI-proposed tag adds/removes based on latest match context
+ */
+export const getTagSuggestions = async (id: number, options?: RequestInit): Promise<TagSuggestionResult> => {
+
+  return customFetch<TagSuggestionResult>(getGetTagSuggestionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTagSuggestionsQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}/tag-suggestions`
+    ] as const;
+    }
+
+
+export const getGetTagSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof getTagSuggestions>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTagSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTagSuggestionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTagSuggestions>>> = ({ signal }) => getTagSuggestions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTagSuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTagSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof getTagSuggestions>>>
+export type GetTagSuggestionsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary AI-proposed tag adds/removes based on latest match context
+ */
+
+export function useGetTagSuggestions<TData = Awaited<ReturnType<typeof getTagSuggestions>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTagSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTagSuggestionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetTagHistoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/tag-history`
+}
+
+/**
+ * @summary Chronological log of every tag add/remove on this match
+ */
+export const getTagHistory = async (id: number, options?: RequestInit): Promise<TagHistoryResult> => {
+
+  return customFetch<TagHistoryResult>(getGetTagHistoryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTagHistoryQueryKey = (id: number,) => {
+    return [
+    `/api/matches/${id}/tag-history`
+    ] as const;
+    }
+
+
+export const getGetTagHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getTagHistory>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTagHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTagHistoryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTagHistory>>> = ({ signal }) => getTagHistory(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTagHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTagHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getTagHistory>>>
+export type GetTagHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Chronological log of every tag add/remove on this match
+ */
+
+export function useGetTagHistory<TData = Awaited<ReturnType<typeof getTagHistory>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTagHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTagHistoryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getApplyTagSuggestionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/matches/${id}/tags/apply`
+}
+
+/**
+ * @summary Apply AI tag suggestions, persisting the diff as events
+ */
+export const applyTagSuggestions = async (id: number,
+    tagSuggestionApplyInput: TagSuggestionApplyInput, options?: RequestInit): Promise<MatchDetail> => {
+
+  return customFetch<MatchDetail>(getApplyTagSuggestionsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      tagSuggestionApplyInput,)
+  }
+);}
+
+
+
+
+export const getApplyTagSuggestionsMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyTagSuggestions>>, TError,{id: number;data: BodyType<TagSuggestionApplyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyTagSuggestions>>, TError,{id: number;data: BodyType<TagSuggestionApplyInput>}, TContext> => {
+
+const mutationKey = ['applyTagSuggestions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyTagSuggestions>>, {id: number;data: BodyType<TagSuggestionApplyInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  applyTagSuggestions(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyTagSuggestionsMutationResult = NonNullable<Awaited<ReturnType<typeof applyTagSuggestions>>>
+    export type ApplyTagSuggestionsMutationBody = BodyType<TagSuggestionApplyInput>
+    export type ApplyTagSuggestionsMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Apply AI tag suggestions, persisting the diff as events
+ */
+export const useApplyTagSuggestions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyTagSuggestions>>, TError,{id: number;data: BodyType<TagSuggestionApplyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applyTagSuggestions>>,
+        TError,
+        {id: number;data: BodyType<TagSuggestionApplyInput>},
+        TContext
+      > => {
+      return useMutation(getApplyTagSuggestionsMutationOptions(options));
+    }
 
 export const getGetResponseStatsUrl = (id: number,) => {
 
