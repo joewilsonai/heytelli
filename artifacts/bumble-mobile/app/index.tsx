@@ -134,22 +134,32 @@ export default function MatchesScreen() {
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
                 style={({ pressed }) => ({
-                  width: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: c.primary,
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
+                  gap: 6,
+                  height: 44,
+                  paddingHorizontal: 14,
+                  borderRadius: 22,
+                  backgroundColor: c.primary,
                   opacity: pressed ? 0.7 : 1,
                   shadowColor: "#000",
-                  shadowOpacity: 0.1,
+                  shadowOpacity: 0.15,
                   shadowRadius: 8,
                   shadowOffset: { width: 0, height: 4 },
                   elevation: 3,
                 })}
                 accessibilityLabel="Add match"
               >
-                <Feather name="plus" size={24} color={c.primaryForeground} />
+                <Feather name="plus" size={20} color={c.primaryForeground} />
+                <Text
+                  style={{
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 14,
+                    color: c.primaryForeground,
+                  }}
+                >
+                  Add
+                </Text>
               </Pressable>
             </Link>
           </View>
