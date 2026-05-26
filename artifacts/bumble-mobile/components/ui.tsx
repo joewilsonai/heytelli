@@ -14,6 +14,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 
 type MatchStatus = "active" | "archived" | "ghosted";
+type ColorToken = Exclude<keyof ReturnType<typeof useColors>, "radius">;
 
 export function Card({
   children,
@@ -174,7 +175,7 @@ export function IconButton({
 
 const STATUS_STYLES: Record<
   MatchStatus,
-  { bg: keyof ReturnType<typeof useColors>; fg: keyof ReturnType<typeof useColors>; label: string; icon: keyof typeof Feather.glyphMap }
+  { bg: ColorToken; fg: ColorToken; label: string; icon: keyof typeof Feather.glyphMap }
 > = {
   active: { bg: "successBg", fg: "success", label: "Active", icon: "circle" },
   archived: { bg: "muted", fg: "mutedForeground", label: "Archived", icon: "archive" },

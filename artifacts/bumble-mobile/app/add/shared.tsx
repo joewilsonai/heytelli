@@ -1,6 +1,5 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useIncomingShare } from "expo-sharing";
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
@@ -16,16 +15,52 @@ import { Button, Card, H1, SectionLabel } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import {
   MAX_SHARED_SCREENSHOTS,
+  type ResolvedSharePayload,
   getSharedImageOverflowCount,
   getSharedImages,
 } from "@/lib/share-intake";
+
+declare const require: (moduleName: string) => unknown;
+
+type IncomingShareResult = {
+  resolvedSharedPayloads: ResolvedSharePayload[];
+  isResolving: boolean;
+  error: Error | null;
+  clearSharedPayloads: () => void;
+};
+
+type UseIncomingShare = () => IncomingShareResult;
+
+function loadIncomingShareHook(): UseIncomingShare | null {
+  try {
+    const mod = require("expo-sharing") as {
+      useIncomingShare?: UseIncomingShare;
+    };
+    return typeof mod.useIncomingShare === "function"
+      ? mod.useIncomingShare
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const useIncomingShareSafe =
+  loadIncomingShareHook() ??
+  (() => ({
+    resolvedSharedPayloads: [],
+    isResolving: false,
+    error: new Error(
+      "Screenshot sharing is not linked in this development build.",
+    ),
+    clearSharedPayloads: () => {},
+  }));
 
 export default function SharedImportScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { resolvedSharedPayloads, isResolving, error, clearSharedPayloads } =
-    useIncomingShare();
+    useIncomingShareSafe();
   const images = useMemo(
     () => getSharedImages(resolvedSharedPayloads),
     [resolvedSharedPayloads],

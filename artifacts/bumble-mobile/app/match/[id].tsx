@@ -67,6 +67,7 @@ import {
 } from "@/lib/notifications";
 import { formatDateTime, formatTimeAgo, isPast } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
+import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 
 export default function MatchDetailScreen() {
@@ -136,6 +137,7 @@ export default function MatchDetailScreen() {
         }
       >
         <HeaderCard match={data} onChange={() => refetch()} />
+        <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
         <RedFlagsCard matchId={data.id} promoted />
         <ResponseStatsCard matchId={data.id} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />
@@ -609,6 +611,211 @@ function FreshnessChip({ match }: { match: MatchDetail }) {
         {label}
       </Text>
     </View>
+  );
+}
+
+function useScreenshotUpload({
+  match,
+  onChange,
+}: {
+  match: MatchDetail;
+  onChange: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
+
+  const upload = async () => {
+    if (uploading) return;
+
+    const uris = await pickScreenshotUris();
+    if (uris.length === 0) return;
+
+    setUploading(true);
+    setUploadCount(uris.length);
+    try {
+      const result = await attachScreenshotsToMatch(match.id, uris);
+      if (result.savedCount > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+      onChange();
+      if (result.failedCount > 0) {
+        Alert.alert(
+          result.savedCount > 0 ? "Some screenshots failed" : "Upload failed",
+          result.savedCount > 0
+            ? `${result.savedCount} screenshot${result.savedCount === 1 ? "" : "s"} saved. ${result.failedCount} did not upload.`
+            : "No screenshots were added. Try again.",
+        );
+      }
+    } catch (e: any) {
+      onChange();
+      Alert.alert(
+        uris.length === 1 ? "Upload failed" : "Some screenshots failed",
+        e?.message ?? "Try again.",
+      );
+    } finally {
+      setUploading(false);
+      setUploadCount(0);
+    }
+  };
+
+  return { upload, uploading, uploadCount };
+}
+
+async function pickScreenshotUris(): Promise<string[]> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert("Photos access needed", "Allow photo library access to add screenshots.");
+    return [];
+  }
+
+  const res = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    quality: 0.85,
+    allowsMultipleSelection: true,
+    selectionLimit: MAX_SHARED_SCREENSHOTS,
+    orderedSelection: true,
+  });
+  if (res.canceled) return [];
+
+  return res.assets
+    .map((asset) => asset.uri)
+    .filter((uri): uri is string => Boolean(uri))
+    .slice(0, MAX_SHARED_SCREENSHOTS);
+}
+
+async function attachScreenshotsToMatch(matchId: number, uris: string[]) {
+  let savedCount = 0;
+  let failedCount = 0;
+
+  for (const uri of uris) {
+    try {
+      const path = await uploadImage(uri);
+      await addScreenshot(matchId, { objectPath: path });
+      savedCount += 1;
+    } catch {
+      failedCount += 1;
+    }
+  }
+
+  if (savedCount > 0) {
+    // Keep the match read fresh even when only part of a batch lands.
+    try {
+      await rescoreMatch(matchId);
+    } catch {
+      // Non-fatal. The Scores card still exposes manual analysis.
+    }
+  }
+
+  return { savedCount, failedCount };
+}
+
+function ScreenshotIntakeCard({
+  match,
+  onChange,
+}: {
+  match: MatchDetail;
+  onChange: () => void;
+}) {
+  const c = useColors();
+  const { upload, uploading, uploadCount } = useScreenshotUpload({ match, onChange });
+  const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
+  const savedCount = match.screenshots.length;
+  const status = uploading
+    ? uploadCount === 1
+      ? "Uploading screenshot..."
+      : `Uploading ${uploadCount} screenshots...`
+    : pending > 0
+      ? `${pending} screenshot${pending === 1 ? "" : "s"} waiting`
+      : savedCount > 0
+        ? `${savedCount} saved`
+        : "Start with the latest chat";
+
+  return (
+    <Pressable
+      onPress={upload}
+      disabled={uploading}
+      accessibilityRole="button"
+      accessibilityLabel={`Upload screenshots for ${match.name}`}
+      style={({ pressed }) => ({
+        backgroundColor: c.primary,
+        borderRadius: c.radius,
+        padding: 16,
+        minHeight: 92,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        opacity: uploading ? 0.78 : pressed ? 0.86 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: "rgba(255,255,255,0.18)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Feather name="upload-cloud" size={23} color={c.primaryForeground} />
+      </View>
+      <View style={{ flex: 1, gap: 5, minWidth: 0 }}>
+        <Text
+          style={{
+            fontSize: 17,
+            fontFamily: "Inter_700Bold",
+            color: c.primaryForeground,
+          }}
+          numberOfLines={1}
+        >
+          Upload screenshots
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            fontFamily: "Inter_500Medium",
+            color: c.primaryForeground,
+            opacity: 0.82,
+          }}
+          numberOfLines={1}
+        >
+          Select up to {MAX_SHARED_SCREENSHOTS} profile or chat shots
+        </Text>
+        <View
+          style={{
+            alignSelf: "flex-start",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: "rgba(255,255,255,0.16)",
+          }}
+        >
+          <Feather
+            name={pending > 0 ? "refresh-cw" : savedCount > 0 ? "check" : "plus"}
+            size={11}
+            color={c.primaryForeground}
+          />
+          <Text
+            style={{
+              fontSize: 11,
+              fontFamily: "Inter_600SemiBold",
+              color: c.primaryForeground,
+            }}
+            numberOfLines={1}
+          >
+            {status}
+          </Text>
+        </View>
+      </View>
+      {uploading ? (
+        <ActivityIndicator color={c.primaryForeground} />
+      ) : (
+        <Feather name="chevron-right" size={20} color={c.primaryForeground} />
+      )}
+    </Pressable>
   );
 }
 
@@ -1174,37 +1381,7 @@ function ScreenshotsCard({
 }) {
   const c = useColors();
   const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  const add = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Photos access needed", "Allow photo library access to add a screenshot.");
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-    });
-    if (res.canceled) return;
-    setUploading(true);
-    try {
-      const path = await uploadImage(res.assets[0].uri);
-      await addScreenshot(match.id, { objectPath: path });
-      // Match web behavior: rescore after upload so transcript/scores reflect new data.
-      try {
-        await rescoreMatch(match.id);
-      } catch {
-        // Non-fatal — user can rescore manually from the Scores card.
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      onChange();
-    } catch (e: any) {
-      Alert.alert("Upload failed", e?.message ?? "Try again.");
-    } finally {
-      setUploading(false);
-    }
-  };
+  const { upload, uploading } = useScreenshotUpload({ match, onChange });
 
   return (
     <Card>
@@ -1249,9 +1426,9 @@ function ScreenshotsCard({
             </ScrollView>
           )}
           <Button
-            label="Add screenshot"
+            label="Add screenshots"
             icon="plus"
-            onPress={add}
+            onPress={upload}
             loading={uploading}
             variant="secondary"
           />

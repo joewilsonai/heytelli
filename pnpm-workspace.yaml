@@ -42,6 +42,20 @@ onlyBuiltDependencies:
   - msw
   - unrs-resolver
 
+packageExtensions:
+  lucide-react@*:
+    peerDependencies:
+      '@types/react': '*'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+  react-day-picker@*:
+    peerDependencies:
+      '@types/react': '*'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
 overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'

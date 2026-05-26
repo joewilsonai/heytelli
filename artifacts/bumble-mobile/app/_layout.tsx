@@ -16,17 +16,19 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { getApiBaseUrl } from "@/lib/api-base";
 
 // API base URL — Expo bundles run outside the web proxy and need an absolute URL.
 // Hard-fail fast in dev if missing so the broken state is visible (vs. silent
 // relative-URL fetches that fail with confusing errors).
-if (!process.env.EXPO_PUBLIC_DOMAIN) {
+const apiBaseUrl = getApiBaseUrl();
+if (!apiBaseUrl) {
   console.error(
-    "EXPO_PUBLIC_DOMAIN is not set. API requests will fail. " +
+    "EXPO_PUBLIC_API_BASE_URL or EXPO_PUBLIC_DOMAIN is not set. API requests will fail. " +
       "This env var should be injected by the workflow script.",
   );
 } else {
-  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+  setBaseUrl(apiBaseUrl);
 }
 
 SplashScreen.preventAutoHideAsync();

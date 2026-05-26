@@ -3,7 +3,10 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
-import { useGetTagHistory } from "@workspace/api-client-react";
+import {
+  getGetTagHistoryQueryKey,
+  useGetTagHistory,
+} from "@workspace/api-client-react";
 
 import { Body, Card, SectionLabel } from "./ui";
 
@@ -24,7 +27,7 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
   const c = useColors();
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useGetTagHistory(matchId, {
-    query: { enabled: open },
+    query: { queryKey: getGetTagHistoryQueryKey(matchId), enabled: open },
   });
 
   return (

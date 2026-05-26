@@ -76,11 +76,23 @@ export default function AddMatchScreen() {
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       quality: 0.85,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_SHARED_SCREENSHOTS,
+      orderedSelection: true,
     });
     if (res.canceled) return;
-    await uploadAndPreview(res.assets[0].uri);
+    const uris = res.assets
+      .map((asset) => asset.uri)
+      .filter((uri): uri is string => Boolean(uri))
+      .slice(0, MAX_SHARED_SCREENSHOTS);
+    if (uris.length === 0) return;
+    if (uris.length === 1) {
+      await uploadAndPreview(uris[0]);
+    } else {
+      await uploadSharedBatch(uris);
+    }
   };
 
   const pickFromCamera = async () => {
@@ -158,16 +170,20 @@ export default function AddMatchScreen() {
         screenshotObjectPath: objectPath,
         ...(name.trim() ? { name: name.trim() } : {}),
       });
-      for (const path of extraObjectPaths) {
-        await addScreenshot(match.id, { objectPath: path });
-      }
-      if (extraObjectPaths.length > 0) {
-        await rescoreMatch(match.id);
-      }
+      const extraResult = await attachExtraScreenshots(match.id, extraObjectPaths);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
       router.replace(`/match/${match.id}`);
+      if (extraResult.failedCount > 0) {
+        setTimeout(() => {
+          const totalSaved = extraResult.savedCount + 1;
+          Alert.alert(
+            "Saved with fewer screenshots",
+            `${totalSaved} screenshot${totalSaved === 1 ? "" : "s"} saved. ${extraResult.failedCount} did not attach.`,
+          );
+        }, 250);
+      }
     } catch (e: any) {
       Alert.alert("Couldn't create match", e?.message ?? "Try again.");
     } finally {
@@ -395,6 +411,30 @@ export default function AddMatchScreen() {
       )}
     </ScrollView>
   );
+}
+
+async function attachExtraScreenshots(matchId: number, objectPaths: string[]) {
+  let savedCount = 0;
+  let failedCount = 0;
+
+  for (const objectPath of objectPaths) {
+    try {
+      await addScreenshot(matchId, { objectPath });
+      savedCount += 1;
+    } catch {
+      failedCount += 1;
+    }
+  }
+
+  if (savedCount > 0) {
+    try {
+      await rescoreMatch(matchId);
+    } catch {
+      // Non-fatal. The match can be rescored from its detail screen.
+    }
+  }
+
+  return { savedCount, failedCount };
 }
 
 function parseSharedImageUris(value: string | string[] | undefined): string[] {

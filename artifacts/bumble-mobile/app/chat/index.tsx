@@ -205,7 +205,7 @@ function ConversationRow({
           {conv.title}
         </Text>
         <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
-          {matchName ?? "All matches"} · {formatTimeAgo(conv.updatedAt ?? conv.createdAt)}
+          {matchName ?? "All matches"} · {formatTimeAgo(conv.createdAt)}
         </Text>
       </View>
       <Feather name="chevron-right" size={18} color={c.mutedForeground} />

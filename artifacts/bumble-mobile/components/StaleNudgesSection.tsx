@@ -15,8 +15,9 @@ export function StaleNudgesSection() {
   const c = useColors();
   const router = useRouter();
   const { data } = useGetStaleNudges();
+  const nudges = Array.isArray(data) ? data : [];
 
-  if (!data || data.length === 0) return null;
+  if (nudges.length === 0) return null;
 
   return (
     <View style={{ paddingHorizontal: 20, marginTop: 8, gap: 10 }}>
@@ -31,12 +32,12 @@ export function StaleNudgesSection() {
             textTransform: "uppercase",
           }}
         >
-          Re-engage ({data.length})
+          Re-engage ({nudges.length})
         </Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 12, paddingRight: 20 }}>
-          {data.map((nudge) => {
+          {nudges.map((nudge) => {
             const photo = objectPathToUrl(nudge.photoObjectPath);
             const opener = nudge.openers[0] ?? "";
             return (

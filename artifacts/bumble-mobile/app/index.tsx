@@ -71,23 +71,27 @@ export default function MatchesScreen() {
   const [sort, setSort] = useState<SortKey>("recent");
   const [sortOpen, setSortOpen] = useState(false);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const matchData = useMemo<Match[]>(
+    () => (Array.isArray(data) ? data : []),
+    [data],
+  );
 
   const allTags = useMemo(() => {
     const s = new Set<string>();
-    (data ?? []).forEach((m) => (m.tags ?? []).forEach((t) => s.add(t)));
+    matchData.forEach((m) => (m.tags ?? []).forEach((t) => s.add(t)));
     return Array.from(s).sort();
-  }, [data]);
+  }, [matchData]);
 
   const counts = useMemo(() => {
     const c = { active: 0, archived: 0, ghosted: 0 };
-    (data ?? []).forEach((m) => {
+    matchData.forEach((m) => {
       c[m.status as StatusFilter] = (c[m.status as StatusFilter] ?? 0) + 1;
     });
     return c;
-  }, [data]);
+  }, [matchData]);
 
   const matches = useMemo(() => {
-    const list = (data ?? []).filter(
+    const list = matchData.filter(
       (m) =>
         m.status === filter &&
         (!tagFilter || (m.tags ?? []).includes(tagFilter)),
@@ -98,7 +102,7 @@ export default function MatchesScreen() {
       return scoreOf(b, sort) - scoreOf(a, sort);
     });
     return list;
-  }, [data, filter, sort, tagFilter]);
+  }, [matchData, filter, sort, tagFilter]);
 
   const renderRow = ({ item }: { item: Match }) => (
     <MatchRow match={item} onPress={() => router.push(`/match/${item.id}`)} />

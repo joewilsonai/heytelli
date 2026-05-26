@@ -1,5 +1,3 @@
-import type { ResolvedSharePayload } from "expo-sharing";
-
 export const MAX_SHARED_SCREENSHOTS = 5;
 
 export type SharedImage = {
@@ -7,6 +5,14 @@ export type SharedImage = {
   name: string;
   mimeType: string | null;
   size: number | null;
+};
+
+export type ResolvedSharePayload = {
+  contentType?: string | null;
+  contentUri?: string | null;
+  originalName?: string | null;
+  contentMimeType?: string | null;
+  contentSize?: number | null;
 };
 
 type ResolvedImagePayload = ResolvedSharePayload & {

@@ -16,7 +16,9 @@ export function AutoArchiveBanner({ onChange }: { onChange: () => void }) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [actingId, setActingId] = useState<number | null>(null);
 
-  const items = (data ?? []).filter((d) => !dismissed.has(d.matchId));
+  const items = (Array.isArray(data) ? data : []).filter(
+    (d) => !dismissed.has(d.matchId),
+  );
   if (items.length === 0) return null;
 
   const first = items[0];

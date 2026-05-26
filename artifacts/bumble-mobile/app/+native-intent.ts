@@ -1,4 +1,20 @@
-import { getSharedPayloads } from "expo-sharing";
+declare const require: (moduleName: string) => unknown;
+
+type SharedPayload = {
+  shareType?: string;
+  mimeType?: string | null;
+};
+
+function getSharedPayloadsSafe(): SharedPayload[] {
+  try {
+    const mod = require("expo-sharing") as {
+      getSharedPayloads?: () => SharedPayload[];
+    };
+    return mod.getSharedPayloads?.() ?? [];
+  } catch {
+    return [];
+  }
+}
 
 function parseIncomingPath(path: string) {
   try {
@@ -25,9 +41,9 @@ export async function redirectSystemPath({
       return path;
     }
 
-    let payloads: ReturnType<typeof getSharedPayloads> = [];
+    let payloads: SharedPayload[] = [];
     try {
-      payloads = getSharedPayloads();
+      payloads = getSharedPayloadsSafe();
     } catch {
       return "/add/shared";
     }
