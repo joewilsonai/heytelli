@@ -85,3 +85,39 @@ test("hero uses pattern language for saved high-severity concerns", () => {
   assert.match(model.body, /saved pattern/);
   assert.ok(model.chips.includes("Saved pattern"));
 });
+
+test("hero chips stay unique when Date Mode is active", () => {
+  const model = getMatchDetailHeroModel({
+    ...baseMatch,
+    nextDateAt: "2026-05-24T00:00:00.000Z",
+    nextDateLocation: "Paper Plane",
+    dateSafetyPlan: {
+      trustedCircleName: "Claire",
+      transportPlan: "Rideshare both ways",
+      checkInAt: "2026-05-24T01:00:00.000Z",
+      expectedEndAt: "2026-05-24T03:00:00.000Z",
+      codeWord: null,
+      circleNote: null,
+      shareLiveLocation: false,
+      safeDateChecklist: {
+        publicPlace: true,
+        ownTransport: true,
+        circleHasPlan: true,
+        profileReviewed: true,
+        noPrivateLocationPressure: true,
+        noMoneyOrPhotoPressure: true,
+      },
+      circleCheckStatus: "planned",
+      lastCircleCheckAt: null,
+      coverModeEnabled: true,
+      coverModeTheme: "clock",
+      dateModeStatus: "on_date",
+      dateModeStartedAt: "2026-05-24T00:10:00.000Z",
+      dateModeClosedAt: null,
+      updatedAt: "2026-05-24T00:10:00.000Z",
+    },
+  });
+
+  assert.equal(model.chips.filter((chip) => chip === "Date Mode").length, 1);
+  assert.equal(new Set(model.chips).size, model.chips.length);
+});

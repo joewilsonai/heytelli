@@ -19,6 +19,11 @@ export function getMatchDetailHeroModel(
 ): MatchDetailHeroModel {
   const model = getHomeMatchCardModel(match, now);
   const { kind } = model.primaryAction;
+  const chips = [
+    model.signal.label,
+    model.read.freshnessLabel,
+    ...model.contextChips,
+  ].filter((chip): chip is string => Boolean(chip));
 
   const bodyByKind: Record<HomePrimaryActionKind, string> = {
     add_screenshots:
@@ -45,12 +50,6 @@ export function getMatchDetailHeroModel(
     title: model.primaryAction.label,
     body: bodyByKind[kind],
     tone: model.primaryAction.tone,
-    chips: [
-      model.signal.label,
-      model.read.freshnessLabel,
-      ...model.contextChips,
-    ]
-      .filter(Boolean)
-      .slice(0, 4),
+    chips: Array.from(new Set(chips)).slice(0, 4),
   };
 }
