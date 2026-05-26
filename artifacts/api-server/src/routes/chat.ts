@@ -28,11 +28,14 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { selectScreenshotsForVision } from "../lib/screenshotRetention";
 import { dateBriefContextHash } from "./matches";
+import { requireAuth, requireUserId } from "../lib/auth";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
 const MODEL = "gpt-5.4";
 const MAX_IMAGES_PER_TURN = 8;
+
+router.use(requireAuth);
 
 async function objectPathToCompressedDataUrl(
   objectPath: string,
@@ -202,12 +205,14 @@ function render(template: string, vars: Record<string, string>): string {
 async function loadPriorHeyTelliChats(
   matchId: number,
   excludeConversationId: number,
+  userId: number,
 ): Promise<string> {
   const pastConvs = await db
     .select()
     .from(conversations)
     .where(
       and(
+        eq(conversations.userId, userId),
         eq(conversations.matchId, matchId),
         ne(conversations.id, excludeConversationId),
       ),
@@ -231,9 +236,7 @@ async function loadPriorHeyTelliChats(
       minute: "2-digit",
     });
     const body = msgs
-      .map(
-        (m) => `${m.role === "user" ? "User" : "HeyTelli"}: ${m.content}`,
-      )
+      .map((m) => `${m.role === "user" ? "User" : "HeyTelli"}: ${m.content}`)
       .join("\n");
     blocks.push(`--- "${c.title}" (${when}) ---\n${body}`);
   }
@@ -242,6 +245,7 @@ async function loadPriorHeyTelliChats(
 
 async function buildSystemPrompt(
   matchId: number | null,
+  userId: number,
   currentConversationId: number | null = null,
 ): Promise<string> {
   const sections = await loadPromptSections();
@@ -251,6 +255,7 @@ async function buildSystemPrompt(
     const all = await db
       .select()
       .from(matches)
+      .where(eq(matches.userId, userId))
       .orderBy(desc(matches.updatedAt));
     if (all.length === 0) {
       return render(sections.noMatches, { BASE: base });
@@ -272,7 +277,7 @@ async function buildSystemPrompt(
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, matchId));
+    .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
   if (!match) return base;
   const norm = {
     ...match,
@@ -286,6 +291,7 @@ async function buildSystemPrompt(
     const priorChats = await loadPriorHeyTelliChats(
       matchId,
       currentConversationId,
+      userId,
     );
     if (priorChats) {
       summary += `\n\nPrevious HeyTelli chats about ${match.name} (oldest first). The user's read may have evolved across these — treat the newest chat as the most current take, but consider the full arc:\n\n${priorChats}`;
@@ -298,15 +304,26 @@ async function buildSystemPrompt(
   });
 }
 
-async function hasTranscript(matchId: number): Promise<boolean> {
+async function hasTranscript(
+  matchId: number,
+  userId: number,
+): Promise<boolean> {
   const [m] = await db
     .select({ transcript: matches.transcript })
     .from(matches)
-    .where(eq(matches.id, matchId));
+    .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
   return !!m && normalizeTranscript(m.transcript).length > 0;
 }
 
-async function loadMatchImages(matchId: number): Promise<string[]> {
+async function loadMatchImages(
+  matchId: number,
+  userId: number,
+): Promise<string[]> {
+  const [match] = await db
+    .select({ id: matches.id })
+    .from(matches)
+    .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
+  if (!match) return [];
   const shots = await db
     .select()
     .from(screenshots)
@@ -319,23 +336,39 @@ async function loadMatchImages(matchId: number): Promise<string[]> {
   return results.filter((u): u is string => u !== null);
 }
 
-router.get("/chat/conversations", async (_req, res): Promise<void> => {
+router.get("/chat/conversations", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const rows = await db
     .select()
     .from(conversations)
+    .where(eq(conversations.userId, userId))
     .orderBy(desc(conversations.createdAt));
   res.json(rows);
 });
 
 router.post("/chat/conversations", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const parsed = CreateChatConversationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.matchId != null) {
+    const [match] = await db
+      .select({ id: matches.id })
+      .from(matches)
+      .where(
+        and(eq(matches.id, parsed.data.matchId), eq(matches.userId, userId)),
+      );
+    if (!match) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+  }
   const [created] = await db
     .insert(conversations)
     .values({
+      userId,
       title: parsed.data.title,
       matchId: parsed.data.matchId ?? null,
     })
@@ -344,6 +377,7 @@ router.post("/chat/conversations", async (req, res): Promise<void> => {
 });
 
 router.get("/chat/conversations/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GetChatConversationParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -352,7 +386,12 @@ router.get("/chat/conversations/:id", async (req, res): Promise<void> => {
   const [conv] = await db
     .select()
     .from(conversations)
-    .where(eq(conversations.id, params.data.id));
+    .where(
+      and(
+        eq(conversations.id, params.data.id),
+        eq(conversations.userId, userId),
+      ),
+    );
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -365,32 +404,49 @@ router.get("/chat/conversations/:id", async (req, res): Promise<void> => {
   res.json({ ...conv, messages: msgs });
 });
 
-router.delete(
-  "/chat/conversations/:id",
-  async (req, res): Promise<void> => {
-    const params = DeleteChatConversationParams.safeParse(req.params);
-    if (!params.success) {
-      res.status(400).json({ error: params.error.message });
-      return;
-    }
-    const [deleted] = await db
-      .delete(conversations)
-      .where(eq(conversations.id, params.data.id))
-      .returning();
-    if (!deleted) {
-      res.status(404).json({ error: "Conversation not found" });
-      return;
-    }
-    res.sendStatus(204);
-  },
-);
+router.delete("/chat/conversations/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
+  const params = DeleteChatConversationParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [deleted] = await db
+    .delete(conversations)
+    .where(
+      and(
+        eq(conversations.id, params.data.id),
+        eq(conversations.userId, userId),
+      ),
+    )
+    .returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  res.sendStatus(204);
+});
 
 router.get(
   "/chat/conversations/:id/messages",
   async (req, res): Promise<void> => {
+    const userId = requireUserId(req);
     const params = ListChatMessagesParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const [conv] = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, params.data.id),
+          eq(conversations.userId, userId),
+        ),
+      );
+    if (!conv) {
+      res.status(404).json({ error: "Conversation not found" });
       return;
     }
     const msgs = await db
@@ -405,6 +461,7 @@ router.get(
 router.post(
   "/chat/conversations/:id/messages",
   async (req, res): Promise<void> => {
+    const userId = requireUserId(req);
     const params = SendChatMessageParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -419,7 +476,12 @@ router.post(
     const [conv] = await db
       .select()
       .from(conversations)
-      .where(eq(conversations.id, params.data.id));
+      .where(
+        and(
+          eq(conversations.id, params.data.id),
+          eq(conversations.userId, userId),
+        ),
+      );
     if (!conv) {
       res.status(404).json({ error: "Conversation not found" });
       return;
@@ -438,14 +500,14 @@ router.post(
       .where(eq(messages.conversationId, conv.id))
       .orderBy(asc(messages.createdAt));
 
-    const systemPrompt = await buildSystemPrompt(conv.matchId, conv.id);
+    const systemPrompt = await buildSystemPrompt(conv.matchId, userId, conv.id);
     // We now persist the parsed chat transcript on each match (see extraction.ts),
     // so the chat history is already inside the system prompt as text. Only fall
     // back to attaching screenshots when no transcript exists yet (e.g. legacy
     // matches that haven't been re-extracted).
     const images =
-      conv.matchId != null && !(await hasTranscript(conv.matchId))
-        ? await loadMatchImages(conv.matchId)
+      conv.matchId != null && !(await hasTranscript(conv.matchId, userId))
+        ? await loadMatchImages(conv.matchId, userId)
         : [];
 
     // Build chat history. Most messages are plain text. The most recent user
@@ -517,6 +579,7 @@ router.post(
 );
 
 router.post("/matches/:id/date-brief", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GenerateDateBriefParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -526,7 +589,7 @@ router.post("/matches/:id/date-brief", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, matchId));
+    .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -622,7 +685,7 @@ Tone: direct, calm, and specific. No corporate hedging. No bullet padding. If a 
       .set({
         lastDateBrief: { brief, generatedAt, screenshotCountAt, contextHash },
       })
-      .where(eq(matches.id, matchId));
+      .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
     res.json({ brief, generatedAt });
   } catch (err) {
     req.log.error({ err }, "Date brief generation failed");

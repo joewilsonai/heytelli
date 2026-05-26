@@ -3,7 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +34,7 @@ import type { ChatMessage } from "@workspace/api-client-react";
 
 import { Body, EmptyState, IconButton } from "@/components/ui";
 import { getApiBaseUrl } from "@/lib/api-base";
+import { getAuthHeader } from "@/lib/auth-session";
 
 const apiBaseUrl = getApiBaseUrl();
 
@@ -72,11 +79,19 @@ export default function ChatScreen() {
       if (!apiBaseUrl) {
         throw new Error("API base URL is not configured.");
       }
+      const authHeader = await getAuthHeader();
+      if (!authHeader.Authorization) {
+        throw new Error("Sign in again to keep chatting.");
+      }
       const res = await expoFetch(
         `${apiBaseUrl}/api/chat/conversations/${convId}/messages`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          headers: {
+            Authorization: authHeader.Authorization,
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+          },
           body: JSON.stringify({ content: text }),
           signal: controller.signal,
         },
@@ -108,9 +123,9 @@ export default function ChatScreen() {
           }
         }
       }
-      Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success,
-      ).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
     } catch (e: any) {
       if (e?.name !== "AbortError") {
         Alert.alert("Chat error", e?.message ?? "Stream failed.");
@@ -200,7 +215,9 @@ export default function ChatScreen() {
       />
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator color={c.primary} />
         </View>
       ) : bubbles.length === 0 ? (
@@ -266,8 +283,7 @@ export default function ChatScreen() {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor:
-              isStreaming || !input.trim() ? c.muted : c.primary,
+            backgroundColor: isStreaming || !input.trim() ? c.muted : c.primary,
             alignItems: "center",
             justifyContent: "center",
             opacity: pressed ? 0.7 : 1,

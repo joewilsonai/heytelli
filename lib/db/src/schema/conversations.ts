@@ -3,14 +3,20 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 import { matches } from "./matches";
+import { users } from "./users";
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   matchId: integer("match_id").references(() => matches.id, {
     onDelete: "cascade",
   }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({

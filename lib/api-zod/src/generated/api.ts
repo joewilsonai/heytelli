@@ -18,6 +18,44 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Sign in to the HeyTelli beta
+ */
+
+export const loginBetaUserBodyDisplayNameMax = 80;
+
+
+
+export const LoginBetaUserBody = zod.object({
+  "email": zod.string().email(),
+  "inviteCode": zod.string().min(1),
+  "displayName": zod.string().min(1).max(loginBetaUserBodyDisplayNameMax).optional()
+})
+
+export const LoginBetaUserResponse = zod.object({
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "email": zod.string().email(),
+  "displayName": zod.string().nullable(),
+  "role": zod.enum(['user', 'admin'])
+})
+})
+
+
+/**
+ * @summary Return the current signed-in beta user
+ */
+export const GetCurrentUserResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number(),
+  "email": zod.string().email(),
+  "displayName": zod.string().nullable(),
+  "role": zod.enum(['user', 'admin'])
+})
+})
+
+
+/**
  * @summary List all matches
  */
 export const listMatchesResponseExtractedProfileScoresSexPotentialValueOneMin = 0;

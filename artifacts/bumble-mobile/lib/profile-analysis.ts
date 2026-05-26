@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "./api-base";
+import { getAuthHeader } from "./auth-session";
 import { batchProfileAnalysisDataUrls } from "./profile-analysis-batches";
 import {
   prepareProfileScreenshotsForAnalysis,
@@ -67,9 +68,16 @@ async function postProfileAnalysisBatch(
     | "skippedOversizedScreenshotUris"
   >
 > {
+  const authHeader = await getAuthHeader();
+  if (!authHeader.Authorization) {
+    throw new Error("Sign in again to analyze your profile.");
+  }
   const response = await fetch(`${apiBaseUrl}/api/settings/profile/analyze`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      Authorization: authHeader.Authorization,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ images }),
   });
 

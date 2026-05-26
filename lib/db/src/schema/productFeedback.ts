@@ -9,9 +9,13 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 
 import { matches } from "./matches";
+import { users } from "./users";
 
 export const productFeedback = pgTable("product_feedback", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   matchId: integer("match_id").references(() => matches.id, {
     onDelete: "set null",
   }),

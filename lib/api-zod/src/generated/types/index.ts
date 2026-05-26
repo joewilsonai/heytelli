@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './authLoginInput';
+export * from './authSession';
+export * from './authUser';
+export * from './authUserRole';
 export * from './autoArchiveCandidate';
 export * from './chatConversation';
 export * from './chatConversationInput';
@@ -31,6 +35,7 @@ export * from './extractionPreview';
 export * from './funnelStage';
 export * from './funnelStats';
 export * from './funnelStatsTotals';
+export * from './getCurrentUser200';
 export * from './greenFlag';
 export * from './healthStatus';
 export * from './inPersonRecordingInput';

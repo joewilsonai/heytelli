@@ -13,6 +13,38 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface AuthLoginInput {
+  email: string;
+  /** @minLength 1 */
+  inviteCode: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  displayName?: string;
+}
+
+export type AuthUserRole = typeof AuthUserRole[keyof typeof AuthUserRole];
+
+
+export const AuthUserRole = {
+  user: 'user',
+  admin: 'admin',
+} as const;
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  /** @nullable */
+  displayName: string | null;
+  role: AuthUserRole;
+}
+
+export interface AuthSession {
+  token: string;
+  user: AuthUser;
+}
+
 /**
  * Allowlisted context only; no screenshots, phone numbers, transcripts, or notes.
  */
@@ -884,4 +916,8 @@ export interface ChatConversationWithMessages {
   createdAt: string;
   messages: ChatMessage[];
 }
+
+export type GetCurrentUser200 = {
+  user: AuthUser;
+};
 

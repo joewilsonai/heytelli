@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Beta authentication operations
   - name: matches
     description: Bumble CRM matches
   - name: storage
@@ -32,6 +34,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/login:
+    post:
+      operationId: loginBetaUser
+      tags: [auth]
+      summary: Sign in to the HeyTelli beta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginInput"
+      responses:
+        "200":
+          description: Signed-in beta session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Invalid invite code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Return the current signed-in beta user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current beta user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /matches:
     get:
       operationId: listMatches
@@ -762,6 +818,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: HeyTelli
   schemas:
     HealthStatus:
       type: object
@@ -773,6 +834,30 @@ components:
       required: [error]
       properties:
         error: { type: string }
+    AuthLoginInput:
+      type: object
+      required: [email, inviteCode]
+      properties:
+        email: { type: string, format: email }
+        inviteCode: { type: string, minLength: 1 }
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+    AuthUser:
+      type: object
+      required: [id, email, displayName, role]
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        displayName: { type: ["string", "null"] }
+        role:
+          type: string
+          enum: [user, admin]
+    AuthSession:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/AuthUser"
     ProductFeedbackInput:
       type: object
       required: [event, answer]

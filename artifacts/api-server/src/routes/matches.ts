@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, asc, inArray } from "drizzle-orm";
+import { and, eq, desc, asc, inArray } from "drizzle-orm";
 import { createHash, randomUUID } from "node:crypto";
 import {
   db,
@@ -82,10 +82,13 @@ import {
   type RedFlagRadarHistoryResult,
   type RedFlagSummary,
 } from "../lib/redFlagHistory";
+import { requireAuth, requireUserId } from "../lib/auth";
 import type { RedFlag, RedFlagRadarResult } from "../lib/redFlagRadar";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
+
+router.use(requireAuth);
 
 type DeleteMatchDatabase = Pick<typeof db, "transaction">;
 type MatchObjectStorage = Pick<ObjectStorageService, "getObjectEntityFile">;
@@ -93,12 +96,26 @@ type MatchObjectStorage = Pick<ObjectStorageService, "getObjectEntityFile">;
 export async function deleteMatchAndHistory(
   database: DeleteMatchDatabase,
   matchId: number,
+  userId?: number,
 ) {
   return database.transaction(async (tx) => {
-    await tx.delete(conversations).where(eq(conversations.matchId, matchId));
+    await tx
+      .delete(conversations)
+      .where(
+        userId == null
+          ? eq(conversations.matchId, matchId)
+          : and(
+              eq(conversations.matchId, matchId),
+              eq(conversations.userId, userId),
+            ),
+      );
     const [deleted] = await tx
       .delete(matches)
-      .where(eq(matches.id, matchId))
+      .where(
+        userId == null
+          ? eq(matches.id, matchId)
+          : and(eq(matches.id, matchId), eq(matches.userId, userId)),
+      )
       .returning();
     return deleted ?? null;
   });
@@ -132,11 +149,15 @@ export async function deleteMatchObjects(
   return { deletedCount, failedCount };
 }
 
-async function listMatchObjectPaths(matchId: number) {
+function ownedMatchWhere(matchId: number, userId: number) {
+  return and(eq(matches.id, matchId), eq(matches.userId, userId));
+}
+
+async function listMatchObjectPaths(matchId: number, userId: number) {
   const [match] = await db
     .select({ photoObjectPath: matches.photoObjectPath })
     .from(matches)
-    .where(eq(matches.id, matchId));
+    .where(ownedMatchWhere(matchId, userId));
   const shotRows = await db
     .select({ objectPath: screenshots.objectPath })
     .from(screenshots)
@@ -147,6 +168,24 @@ async function listMatchObjectPaths(matchId: number) {
     ...shotRows.map((shot) => shot.objectPath),
   ];
 }
+
+router.param("id", async (req, res, next, value): Promise<void> => {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) {
+    next();
+    return;
+  }
+  const userId = requireUserId(req);
+  const [match] = await db
+    .select({ id: matches.id })
+    .from(matches)
+    .where(ownedMatchWhere(id, userId));
+  if (!match) {
+    res.status(404).json({ error: "Match not found" });
+    return;
+  }
+  next();
+});
 
 async function objectPathToDataUrl(objectPath: string): Promise<string> {
   const file = await storage.getObjectEntityFile(objectPath);
@@ -538,11 +577,11 @@ async function persistDebriefAnalysis(input: {
   });
 }
 
-async function loadMatchDetail(matchId: number) {
+async function loadMatchDetail(matchId: number, userId: number) {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, matchId));
+    .where(ownedMatchWhere(matchId, userId));
   if (!match) return null;
   const shots = await db
     .select()
@@ -597,10 +636,11 @@ async function loadMatchDetail(matchId: number) {
 // doesn't try to parse "stale-nudges" as a numeric id.
 router.get("/matches/stale-nudges", async (req, res): Promise<void> => {
   try {
+    const userId = requireUserId(req);
     const rows = await db
       .select()
       .from(matches)
-      .where(eq(matches.status, "active"));
+      .where(and(eq(matches.userId, userId), eq(matches.status, "active")));
 
     const ids = rows.map((r) => r.id);
     const shotRows = ids.length
@@ -670,6 +710,7 @@ router.get("/matches/stale-nudges", async (req, res): Promise<void> => {
 });
 
 router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GetMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -678,7 +719,7 @@ router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, params.data.id));
+    .where(ownedMatchWhere(params.data.id, userId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -709,6 +750,7 @@ router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
 });
 
 router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GetMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -717,7 +759,7 @@ router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, params.data.id));
+    .where(ownedMatchWhere(params.data.id, userId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -736,6 +778,7 @@ router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
 });
 
 router.get("/matches/:id/tag-suggestions", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GetMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -744,7 +787,7 @@ router.get("/matches/:id/tag-suggestions", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, params.data.id));
+    .where(ownedMatchWhere(params.data.id, userId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -789,6 +832,7 @@ router.get("/matches/:id/tag-history", async (req, res): Promise<void> => {
 });
 
 router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GetMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -810,7 +854,7 @@ router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
     const [match] = await tx
       .select()
       .from(matches)
-      .where(eq(matches.id, params.data.id))
+      .where(ownedMatchWhere(params.data.id, userId))
       .for("update");
     if (!match) return { notFound: true as const };
     const current = new Set(match.tags ?? []);
@@ -849,7 +893,7 @@ router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
     await tx
       .update(matches)
       .set({ tags: nextTags })
-      .where(eq(matches.id, params.data.id));
+      .where(ownedMatchWhere(params.data.id, userId));
     if (events.length > 0) {
       await tx.insert(matchTagEvents).values(events);
     }
@@ -859,7 +903,7 @@ router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Match not found" });
     return;
   }
-  const detail = await loadMatchDetail(params.data.id);
+  const detail = await loadMatchDetail(params.data.id, requireUserId(req));
   if (!detail) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -868,6 +912,7 @@ router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
 });
 
 router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = GetMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -876,7 +921,7 @@ router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, params.data.id));
+    .where(ownedMatchWhere(params.data.id, userId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -942,7 +987,11 @@ router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
 
 router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
   try {
-    const allMatches = await db.select().from(matches);
+    const userId = requireUserId(req);
+    const allMatches = await db
+      .select()
+      .from(matches)
+      .where(eq(matches.userId, userId));
     const active = allMatches.filter((m) => m.status === "active");
     const oneWeekAgo = Date.now() - 7 * 24 * 3_600_000;
     const newThisWeek = allMatches.filter(
@@ -1027,7 +1076,12 @@ router.get(
       const active = await db
         .select()
         .from(matches)
-        .where(eq(matches.status, "active"));
+        .where(
+          and(
+            eq(matches.userId, requireUserId(req)),
+            eq(matches.status, "active"),
+          ),
+        );
       const ids = active.map((m) => m.id);
       const shotRows = ids.length
         ? await db
@@ -1082,8 +1136,12 @@ router.get(
   },
 );
 
-router.get("/analytics/funnel", async (_req, res): Promise<void> => {
-  const allMatches = await db.select().from(matches);
+router.get("/analytics/funnel", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
+  const allMatches = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.userId, userId));
   const totals = {
     matches: allMatches.length,
     active: allMatches.filter((m) => m.status === "active").length,
@@ -1121,8 +1179,13 @@ router.get("/analytics/funnel", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/matches", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(matches).orderBy(desc(matches.updatedAt));
+router.get("/matches", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
+  const rows = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.userId, userId))
+    .orderBy(desc(matches.updatedAt));
   const ids = rows.map((r) => r.id);
   const history = ids.length
     ? await db
@@ -1251,6 +1314,7 @@ router.post("/matches/preview", async (req, res): Promise<void> => {
 });
 
 router.post("/matches", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const parsed = CreateMatchBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -1263,6 +1327,7 @@ router.post("/matches", async (req, res): Promise<void> => {
   const [created] = await db
     .insert(matches)
     .values({
+      userId,
       name: initialName,
       photoObjectPath: screenshotObjectPath,
       vibeTags: [],
@@ -1284,7 +1349,7 @@ router.post("/matches", async (req, res): Promise<void> => {
     applySuggestedName: true,
   });
 
-  const detail = await loadMatchDetail(created.id);
+  const detail = await loadMatchDetail(created.id, userId);
   res.status(201).json(detail);
 });
 
@@ -1294,7 +1359,7 @@ router.get("/matches/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const detail = await loadMatchDetail(params.data.id);
+  const detail = await loadMatchDetail(params.data.id, requireUserId(req));
   if (!detail) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -1303,6 +1368,7 @@ router.get("/matches/:id", async (req, res): Promise<void> => {
 });
 
 router.patch("/matches/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = UpdateMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -1343,7 +1409,7 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     const [existing] = await tx
       .select()
       .from(matches)
-      .where(eq(matches.id, params.data.id))
+      .where(ownedMatchWhere(params.data.id, userId))
       .for("update");
     if (!existing) return { notFound: true as const, updated: null };
 
@@ -1405,7 +1471,7 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     const [updated] = await tx
       .update(matches)
       .set(updates)
-      .where(eq(matches.id, params.data.id))
+      .where(ownedMatchWhere(params.data.id, userId))
       .returning();
 
     if (tagDiff && (tagDiff.added.length > 0 || tagDiff.removed.length > 0)) {
@@ -1444,18 +1510,22 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Match not found" });
     return;
   }
-  const refreshed = await loadMatchDetail(result.updated.id);
+  const refreshed = await loadMatchDetail(
+    result.updated.id,
+    requireUserId(req),
+  );
   res.json(refreshed ?? withNormalizedProfile(result.updated));
 });
 
 router.delete("/matches/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = DeleteMatchParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const objectPaths = await listMatchObjectPaths(params.data.id);
-  const deleted = await deleteMatchAndHistory(db, params.data.id);
+  const objectPaths = await listMatchObjectPaths(params.data.id, userId);
+  const deleted = await deleteMatchAndHistory(db, params.data.id, userId);
   if (!deleted) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -1471,6 +1541,7 @@ router.delete("/matches/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/matches/:id/screenshots", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = ListScreenshotsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -1479,7 +1550,7 @@ router.get("/matches/:id/screenshots", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, params.data.id));
+    .where(ownedMatchWhere(params.data.id, userId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -1493,6 +1564,7 @@ router.get("/matches/:id/screenshots", async (req, res): Promise<void> => {
 });
 
 router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
   const params = AddScreenshotParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -1507,7 +1579,7 @@ router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
   const [match] = await db
     .select()
     .from(matches)
-    .where(eq(matches.id, params.data.id));
+    .where(ownedMatchWhere(params.data.id, userId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -1525,7 +1597,7 @@ router.post("/matches/:id/screenshots", async (req, res): Promise<void> => {
     })
     .returning();
 
-  const detail = await loadMatchDetail(match.id);
+  const detail = await loadMatchDetail(match.id, requireUserId(req));
   res.json(detail);
 });
 
@@ -1536,7 +1608,7 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
     return;
   }
 
-  const detail = await loadMatchDetail(params.data.id);
+  const detail = await loadMatchDetail(params.data.id, requireUserId(req));
   if (!detail) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -1558,7 +1630,7 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
         matchPhotoObjectPath: detail.photoObjectPath,
         shots: retainedAnalyzedShots,
       });
-      const refreshed = await loadMatchDetail(detail.id);
+      const refreshed = await loadMatchDetail(detail.id, requireUserId(req));
       res.json(refreshed);
       return;
     }
@@ -1626,7 +1698,7 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       matchPhotoObjectPath: detail.photoObjectPath,
       shots: shotsForVision,
     });
-    const refreshed = await loadMatchDetail(detail.id);
+    const refreshed = await loadMatchDetail(detail.id, requireUserId(req));
     res.json(refreshed);
   } catch (err) {
     req.log.error({ err }, "Rescore failed");
@@ -1648,7 +1720,7 @@ router.post(
       return;
     }
 
-    const detail = await loadMatchDetail(params.data.id);
+    const detail = await loadMatchDetail(params.data.id, requireUserId(req));
     if (!detail) {
       res.status(404).json({ error: "Match not found" });
       return;
@@ -1694,7 +1766,7 @@ router.post(
       return;
     }
 
-    const detail = await loadMatchDetail(params.data.id);
+    const detail = await loadMatchDetail(params.data.id, requireUserId(req));
     if (!detail) {
       res.status(404).json({ error: "Match not found" });
       return;
@@ -1722,7 +1794,7 @@ router.post(
         addToDateHistory: body.data.addToDateHistory === true,
       });
 
-      const refreshed = await loadMatchDetail(detail.id);
+      const refreshed = await loadMatchDetail(detail.id, requireUserId(req));
       res.json({
         transcript,
         analysis,
@@ -1748,7 +1820,7 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     return;
   }
 
-  const detail = await loadMatchDetail(params.data.id);
+  const detail = await loadMatchDetail(params.data.id, requireUserId(req));
   if (!detail) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -1777,7 +1849,7 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
       addToDateHistory: body.data.addToDateHistory === true,
     });
 
-    const refreshed = await loadMatchDetail(detail.id);
+    const refreshed = await loadMatchDetail(detail.id, requireUserId(req));
     res.json({
       transcript,
       analysis,

@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AuthLoginInput,
+  AuthSession,
   AutoArchiveCandidate,
   ChatConversation,
   ChatConversationInput,
@@ -31,6 +33,7 @@ import type {
   ErrorEnvelope,
   ExtractionPreview,
   FunnelStats,
+  GetCurrentUser200,
   HealthStatus,
   InPersonRecordingInput,
   Match,
@@ -133,6 +136,154 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getLoginBetaUserUrl = () => {
+
+
+
+
+  return `/api/auth/login`
+}
+
+/**
+ * @summary Sign in to the HeyTelli beta
+ */
+export const loginBetaUser = async (authLoginInput: AuthLoginInput, options?: RequestInit): Promise<AuthSession> => {
+
+  return customFetch<AuthSession>(getLoginBetaUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      authLoginInput,)
+  }
+);}
+
+
+
+
+export const getLoginBetaUserMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBetaUser>>, TError,{data: BodyType<AuthLoginInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginBetaUser>>, TError,{data: BodyType<AuthLoginInput>}, TContext> => {
+
+const mutationKey = ['loginBetaUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginBetaUser>>, {data: BodyType<AuthLoginInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginBetaUser(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginBetaUserMutationResult = NonNullable<Awaited<ReturnType<typeof loginBetaUser>>>
+    export type LoginBetaUserMutationBody = BodyType<AuthLoginInput>
+    export type LoginBetaUserMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Sign in to the HeyTelli beta
+ */
+export const useLoginBetaUser = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginBetaUser>>, TError,{data: BodyType<AuthLoginInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginBetaUser>>,
+        TError,
+        {data: BodyType<AuthLoginInput>},
+        TContext
+      > => {
+      return useMutation(getLoginBetaUserMutationOptions(options));
+    }
+
+export const getGetCurrentUserUrl = () => {
+
+
+
+
+  return `/api/auth/me`
+}
+
+/**
+ * @summary Return the current signed-in beta user
+ */
+export const getCurrentUser = async ( options?: RequestInit): Promise<GetCurrentUser200> => {
+
+  return customFetch<GetCurrentUser200>(getGetCurrentUserUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentUserQueryKey = () => {
+    return [
+    `/api/auth/me`
+    ] as const;
+    }
+
+
+export const getGetCurrentUserQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentUser>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentUserQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({ signal }) => getCurrentUser({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentUserQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>
+export type GetCurrentUserQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Return the current signed-in beta user
+ */
+
+export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUser>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentUserQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

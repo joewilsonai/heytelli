@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
 import { analyzeUserDatingProfile } from "../lib/userProfileAnalysis";
+import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
+
+router.use(requireAuth);
 
 function isDataImage(value: unknown): value is string {
   return (

@@ -1,6 +1,15 @@
-import { jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+import { users } from "./users";
 
 export type MatchScore = {
   value: number | null;
@@ -211,6 +220,9 @@ export type MatchStatus = "active" | "archived" | "ghosted";
 
 export const matches = pgTable("matches", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   photoObjectPath: text("photo_object_path"),
   status: text("status").$type<MatchStatus>().notNull().default("active"),
