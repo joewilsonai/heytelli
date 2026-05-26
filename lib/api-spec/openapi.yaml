@@ -817,6 +817,26 @@ components:
         location: { type: string }
         recap: { type: string }
         createdAt: { type: string, format: date-time }
+    MatchReadSnapshot:
+      type: object
+      required: [body, generatedAt, screenshotCountAt]
+      properties:
+        body:
+          type: string
+          description: Persisted latest AI read for this connection.
+        generatedAt:
+          type: string
+          format: date-time
+        screenshotCountAt:
+          type: integer
+          description: Successfully analyzed screenshot count at generation time.
+    MatchReadFreshness:
+      type: string
+      enum: [current, stale, missing]
+      description: |
+        current = the persisted read reflects all analyzed screenshots.
+        stale   = newer screenshots exist or some screenshots need analysis.
+        missing = no read has ever been generated.
     MatchStatus:
       type: string
       enum: [active, archived, ghosted]
@@ -841,6 +861,8 @@ components:
         - analysisFreshness
         - lastDateBrief
         - dateBriefFreshness
+        - lastRead
+        - readFreshness
       properties:
         id: { type: integer }
         name: { type: string }
@@ -871,6 +893,12 @@ components:
             - type: "null"
         dateBriefFreshness:
           $ref: "#/components/schemas/DateBriefFreshness"
+        lastRead:
+          oneOf:
+            - $ref: "#/components/schemas/MatchReadSnapshot"
+            - type: "null"
+        readFreshness:
+          $ref: "#/components/schemas/MatchReadFreshness"
         scoreHistory:
           type: array
           items:
@@ -936,6 +964,8 @@ components:
         - analysisFreshness
         - lastDateBrief
         - dateBriefFreshness
+        - lastRead
+        - readFreshness
       properties:
         id: { type: integer }
         name: { type: string }
@@ -964,6 +994,12 @@ components:
             - type: "null"
         dateBriefFreshness:
           $ref: "#/components/schemas/DateBriefFreshness"
+        lastRead:
+          oneOf:
+            - $ref: "#/components/schemas/MatchReadSnapshot"
+            - type: "null"
+        readFreshness:
+          $ref: "#/components/schemas/MatchReadFreshness"
         transcript:
           type: array
           items:

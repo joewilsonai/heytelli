@@ -29,6 +29,8 @@ export * from './matchCreateInput';
 export * from './matchDetail';
 export * from './matchDetailAnalysisFreshness';
 export * from './matchLastSpeaker';
+export * from './matchReadFreshness';
+export * from './matchReadSnapshot';
 export * from './matchScore';
 export * from './matchScores';
 export * from './matchStatus';

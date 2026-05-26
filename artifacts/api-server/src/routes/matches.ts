@@ -3,6 +3,7 @@ import { eq, desc, asc, inArray } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import {
   db,
+  conversations,
   matches,
   matchScoreHistory,
   matchTagEvents,
@@ -41,6 +42,7 @@ import { generateCheatSheet } from "../lib/cheatSheet";
 import { generateWeeklyDebrief } from "../lib/weeklyDebrief";
 import { suggestTags } from "../lib/tagSuggestions";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { logger } from "../lib/logger";
 import {
   extractFromScreenshot,
   extractFromScreenshots,
@@ -50,9 +52,75 @@ import {
   recordScoreHistory,
   runExtractionInBackground,
 } from "../lib/extraction";
+import {
+  buildMatchReadSnapshot,
+  computeMatchReadFreshness,
+  normalizeMatchReadSnapshot,
+} from "../lib/matchRead";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
+
+type DeleteMatchDatabase = Pick<typeof db, "transaction">;
+type MatchObjectStorage = Pick<ObjectStorageService, "getObjectEntityFile">;
+
+export async function deleteMatchAndHistory(
+  database: DeleteMatchDatabase,
+  matchId: number,
+) {
+  return database.transaction(async (tx) => {
+    await tx.delete(conversations).where(eq(conversations.matchId, matchId));
+    const [deleted] = await tx
+      .delete(matches)
+      .where(eq(matches.id, matchId))
+      .returning();
+    return deleted ?? null;
+  });
+}
+
+export async function deleteMatchObjects(
+  storageClient: MatchObjectStorage,
+  objectPaths: Array<string | null | undefined>,
+) {
+  let deletedCount = 0;
+  let failedCount = 0;
+  const uniqueObjectPaths = Array.from(
+    new Set(
+      objectPaths.filter(
+        (objectPath): objectPath is string =>
+          typeof objectPath === "string" && objectPath.length > 0,
+      ),
+    ),
+  );
+
+  for (const objectPath of uniqueObjectPaths) {
+    try {
+      const file = await storageClient.getObjectEntityFile(objectPath);
+      await file.delete();
+      deletedCount += 1;
+    } catch {
+      failedCount += 1;
+    }
+  }
+
+  return { deletedCount, failedCount };
+}
+
+async function listMatchObjectPaths(matchId: number) {
+  const [match] = await db
+    .select({ photoObjectPath: matches.photoObjectPath })
+    .from(matches)
+    .where(eq(matches.id, matchId));
+  const shotRows = await db
+    .select({ objectPath: screenshots.objectPath })
+    .from(screenshots)
+    .where(eq(screenshots.matchId, matchId));
+
+  return [
+    match?.photoObjectPath ?? null,
+    ...shotRows.map((shot) => shot.objectPath),
+  ];
+}
 
 async function objectPathToDataUrl(objectPath: string): Promise<string> {
   const file = await storage.getObjectEntityFile(objectPath);
@@ -78,15 +146,17 @@ type FreshnessCounts = {
   analysisFreshness: "current" | "needs-analysis" | "never-analyzed";
 };
 
-function computeFreshness(
+export function computeFreshness(
   transcriptLength: number,
   shots: { extractionStatus: string }[],
 ): FreshnessCounts {
   const pending = shots.filter((s) => s.extractionStatus === "pending").length;
   const failed = shots.filter((s) => s.extractionStatus === "failed").length;
+  const done = shots.filter((s) => s.extractionStatus === "done").length;
   let freshness: FreshnessCounts["analysisFreshness"];
-  if (transcriptLength === 0 && shots.length > 0) freshness = "never-analyzed";
-  else if (pending > 0 || failed > 0) freshness = "needs-analysis";
+  if (pending > 0 || failed > 0) freshness = "needs-analysis";
+  else if (shots.length > 0 && done === 0 && transcriptLength === 0)
+    freshness = "never-analyzed";
   else freshness = "current";
   return {
     pendingScreenshotCount: pending,
@@ -179,7 +249,9 @@ async function loadMatchDetail(matchId: number) {
     .orderBy(asc(screenshots.uploadedAt));
   const transcript = normalizeTranscript(match.transcript);
   const lastDateBrief = normalizeDateBriefSnapshot(match.lastDateBrief);
+  const lastRead = normalizeMatchReadSnapshot(match.lastRead);
   const doneShots = shots.filter((s) => s.extractionStatus === "done").length;
+  const freshnessCounts = computeFreshness(transcript.length, shots);
   const currentHash = dateBriefContextHash({
     dateHistory: match.dateHistory,
     nextDateAt: match.nextDateAt,
@@ -191,13 +263,20 @@ async function loadMatchDetail(matchId: number) {
     ...withNormalizedProfile(match),
     transcript,
     screenshots: shots,
-    ...computeFreshness(transcript.length, shots),
+    ...freshnessCounts,
     lastDateBrief,
     dateBriefFreshness: computeDateBriefFreshness(
       lastDateBrief,
       doneShots,
       currentHash,
     ),
+    lastRead,
+    readFreshness: computeMatchReadFreshness({
+      lastRead,
+      doneScreenshotCount: doneShots,
+      pendingScreenshotCount: freshnessCounts.pendingScreenshotCount,
+      failedScreenshotCount: freshnessCounts.failedScreenshotCount,
+    }),
   };
 }
 
@@ -738,6 +817,8 @@ router.get("/matches", async (_req, res): Promise<void> => {
         (s) => s.extractionStatus === "done",
       ).length;
       const lastDateBrief = normalizeDateBriefSnapshot(r.lastDateBrief);
+      const lastRead = normalizeMatchReadSnapshot(r.lastRead);
+      const freshnessCounts = computeFreshness(turns.length, shotsForMatch);
       const currentHash = dateBriefContextHash({
         dateHistory: r.dateHistory,
         nextDateAt: r.nextDateAt,
@@ -755,13 +836,20 @@ router.get("/matches", async (_req, res): Promise<void> => {
         })),
         lastSpeaker: lastTurn ? lastTurn.speaker : null,
         lastActivityAt: lastAct ? lastAct.toISOString() : null,
-        ...computeFreshness(turns.length, shotsForMatch),
+        ...freshnessCounts,
         lastDateBrief,
         dateBriefFreshness: computeDateBriefFreshness(
           lastDateBrief,
           doneShots,
           currentHash,
         ),
+        lastRead,
+        readFreshness: computeMatchReadFreshness({
+          lastRead,
+          doneScreenshotCount: doneShots,
+          pendingScreenshotCount: freshnessCounts.pendingScreenshotCount,
+          failedScreenshotCount: freshnessCounts.failedScreenshotCount,
+        }),
       };
     }),
   );
@@ -939,13 +1027,18 @@ router.delete("/matches/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [deleted] = await db
-    .delete(matches)
-    .where(eq(matches.id, params.data.id))
-    .returning();
+  const objectPaths = await listMatchObjectPaths(params.data.id);
+  const deleted = await deleteMatchAndHistory(db, params.data.id);
   if (!deleted) {
     res.status(404).json({ error: "Match not found" });
     return;
+  }
+  const objectDeleteResult = await deleteMatchObjects(storage, objectPaths);
+  if (objectDeleteResult.failedCount > 0) {
+    logger.warn(
+      { matchId: params.data.id, failedCount: objectDeleteResult.failedCount },
+      "Failed to delete some match object files",
+    );
   }
   res.sendStatus(204);
 });
@@ -1030,7 +1123,7 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
   // the storage round-trip, and a chunk of latency for a no-op.
   if (
     detail.analysisFreshness === "current" &&
-    detail.transcript.length > 0
+    detail.lastRead
   ) {
     res.json(detail);
     return;
@@ -1054,9 +1147,18 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       extraction.profile,
     );
     const mergedTags = mergeVibeTags(detail.vibeTags, extraction.vibeTags);
+    const mergedTranscript =
+      extraction.transcript.length > 0 ? extraction.transcript : detail.transcript;
+    const lastRead = buildMatchReadSnapshot({
+      profile: mergedProfile,
+      transcript: mergedTranscript,
+      explicitRead: extraction.read,
+      screenshotCountAt: analyzedShotIds.length,
+    });
     const updates: Record<string, unknown> = {
       extractedProfile: mergedProfile,
       vibeTags: mergedTags,
+      lastRead,
     };
     if (extraction.transcript.length > 0) {
       updates.transcript = extraction.transcript;

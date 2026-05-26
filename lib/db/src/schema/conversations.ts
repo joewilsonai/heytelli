@@ -8,7 +8,7 @@ export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   matchId: integer("match_id").references(() => matches.id, {
-    onDelete: "set null",
+    onDelete: "cascade",
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -19,20 +20,28 @@ import { useColors } from "@/hooks/useColors";
 import {
   addScreenshot,
   createMatch,
+  getGetMatchQueryKey,
+  getListMatchesQueryKey,
+  listMatches,
   previewMatchExtraction,
-  rescoreMatch,
 } from "@workspace/api-client-react";
-import type { ExtractionPreview } from "@workspace/api-client-react";
+import type { ExtractionPreview, Match } from "@workspace/api-client-react";
 
 import { Body, Button, Card, SectionLabel, VibeTag } from "@/components/ui";
+import {
+  resolveImportTarget,
+  type ImportRouteMatch,
+} from "@/lib/import-routing";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 
 type Step = "pick" | "preview" | "done";
+type SelectedImportTarget = number | "new" | null;
 
 export default function AddMatchScreen() {
   const c = useColors();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { sharedImageUris } = useLocalSearchParams<{
     sharedImageUris?: string;
   }>();
@@ -44,8 +53,29 @@ export default function AddMatchScreen() {
   const [sharedImportCount, setSharedImportCount] = useState(0);
   const [preview, setPreview] = useState<ExtractionPreview | null>(null);
   const [name, setName] = useState("");
+  const [existingMatches, setExistingMatches] = useState<ImportRouteMatch[]>([]);
+  const [selectedImportTarget, setSelectedImportTarget] =
+    useState<SelectedImportTarget>("new");
+  const [targetTouched, setTargetTouched] = useState(false);
+  const [targetLookupBusy, setTargetLookupBusy] = useState(false);
+  const [targetLookupError, setTargetLookupError] = useState<string | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const autoLaunched = useRef(false);
+  const importTarget = resolveImportTarget(name, existingMatches);
+  const selectedExistingMatch =
+    typeof selectedImportTarget === "number"
+      ? existingMatches.find((match) => match.id === selectedImportTarget) ??
+        null
+      : null;
+  const visibleImportTargets =
+    selectedExistingMatch &&
+    !importTarget.candidates.some(
+      (candidate) => candidate.id === selectedExistingMatch.id,
+    )
+      ? [selectedExistingMatch, ...importTarget.candidates]
+      : importTarget.candidates;
 
   useEffect(() => {
     if (autoLaunched.current || sharedImageUris) return;
@@ -106,6 +136,51 @@ export default function AddMatchScreen() {
     await uploadAndPreview(res.assets[0].uri);
   };
 
+  const applyDefaultImportTarget = (
+    extractedName: string | null,
+    candidates: ImportRouteMatch[],
+  ) => {
+    const resolution = resolveImportTarget(extractedName, candidates);
+    if (resolution.mode === "existing") {
+      setSelectedImportTarget(resolution.match.id);
+    } else if (resolution.mode === "ambiguous") {
+      setSelectedImportTarget(null);
+    } else {
+      setSelectedImportTarget("new");
+    }
+  };
+
+  const loadImportTargets = async (extractedName: string | null) => {
+    setTargetLookupBusy(true);
+    setTargetLookupError(null);
+    try {
+      const rows = await listMatches();
+      const candidates = rows.map(toImportRouteMatch);
+      setExistingMatches(candidates);
+      setTargetTouched(false);
+      applyDefaultImportTarget(extractedName, candidates);
+    } catch {
+      setExistingMatches([]);
+      setSelectedImportTarget("new");
+      setTargetTouched(false);
+      setTargetLookupError("Could not check existing connections.");
+    } finally {
+      setTargetLookupBusy(false);
+    }
+  };
+
+  const updateName = (next: string) => {
+    setName(next);
+    if (!targetTouched) {
+      applyDefaultImportTarget(next, existingMatches);
+    }
+  };
+
+  const chooseImportTarget = (target: SelectedImportTarget) => {
+    setTargetTouched(true);
+    setSelectedImportTarget(target);
+  };
+
   const uploadAndPreview = async (uri: string) => {
     setBusy(true);
     setImageUri(uri);
@@ -116,7 +191,9 @@ export default function AddMatchScreen() {
       setObjectPath(path);
       const p = await previewMatchExtraction({ objectPath: path });
       setPreview(p);
-      setName(p.suggestedName ?? "");
+      const extractedName = p.suggestedName ?? "";
+      setName(extractedName);
+      await loadImportTargets(extractedName);
       setStep("preview");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
@@ -149,7 +226,9 @@ export default function AddMatchScreen() {
       setExtraObjectPaths(paths.slice(1));
       const p = await previewMatchExtraction({ objectPath: primaryObjectPath });
       setPreview(p);
-      setName(p.suggestedName ?? "");
+      const extractedName = p.suggestedName ?? "";
+      setName(extractedName);
+      await loadImportTargets(extractedName);
       setStep("preview");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
@@ -164,13 +243,62 @@ export default function AddMatchScreen() {
 
   const save = async () => {
     if (!objectPath) return;
+    if (selectedImportTarget === null) {
+      Alert.alert(
+        "Choose a connection",
+        "Pick where these screenshots should be saved.",
+      );
+      return;
+    }
     setBusy(true);
     try {
+      if (selectedExistingMatch) {
+        const attachResult = await attachScreenshotsToMatch(
+          selectedExistingMatch.id,
+          [objectPath, ...extraObjectPaths],
+        );
+        if (attachResult.savedCount === 0) {
+          throw new Error("No screenshots were added.");
+        }
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getListMatchesQueryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getGetMatchQueryKey(selectedExistingMatch.id),
+          }),
+        ]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => {},
+        );
+        router.replace(`/match/${selectedExistingMatch.id}`);
+        if (attachResult.failedCount > 0) {
+          setTimeout(() => {
+            Alert.alert(
+              "Saved with fewer screenshots",
+              `${attachResult.savedCount} screenshot${attachResult.savedCount === 1 ? "" : "s"} saved. ${attachResult.failedCount} did not attach.`,
+            );
+          }, 250);
+        }
+        return;
+      }
+
       const match = await createMatch({
         screenshotObjectPath: objectPath,
         ...(name.trim() ? { name: name.trim() } : {}),
       });
-      const extraResult = await attachExtraScreenshots(match.id, extraObjectPaths);
+      const extraResult = await attachScreenshotsToMatch(
+        match.id,
+        extraObjectPaths,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListMatchesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetMatchQueryKey(match.id),
+        }),
+      ]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
@@ -199,6 +327,11 @@ export default function AddMatchScreen() {
     setSharedImportCount(0);
     setPreview(null);
     setName("");
+    setExistingMatches([]);
+    setSelectedImportTarget("new");
+    setTargetTouched(false);
+    setTargetLookupBusy(false);
+    setTargetLookupError(null);
   };
 
   return (
@@ -304,7 +437,7 @@ export default function AddMatchScreen() {
             <SectionLabel>Name</SectionLabel>
             <TextInput
               value={name}
-              onChangeText={setName}
+              onChangeText={updateName}
               placeholder="Their name"
               placeholderTextColor={c.mutedForeground}
               style={{
@@ -318,6 +451,41 @@ export default function AddMatchScreen() {
                 color: c.foreground,
               }}
             />
+          </Card>
+          <Card>
+            <SectionLabel>Import target</SectionLabel>
+            {targetLookupBusy ? (
+              <Body muted>Checking existing connections...</Body>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {targetLookupError && <Body muted>{targetLookupError}</Body>}
+                {importTarget.mode === "ambiguous" && (
+                  <Body muted>
+                    More than one connection has this name. Pick one or create
+                    a new connection.
+                  </Body>
+                )}
+                {visibleImportTargets.map((match) => (
+                  <ImportTargetOption
+                    key={match.id}
+                    label={match.name}
+                    detail="Add screenshots to this connection"
+                    selected={selectedImportTarget === match.id}
+                    onPress={() => chooseImportTarget(match.id)}
+                  />
+                ))}
+                <ImportTargetOption
+                  label="Create new connection"
+                  detail={
+                    name.trim()
+                      ? `Start a separate connection for ${name.trim()}`
+                      : "Start a separate connection"
+                  }
+                  selected={selectedImportTarget === "new"}
+                  onPress={() => chooseImportTarget("new")}
+                />
+              </View>
+            )}
           </Card>
           {sharedImportCount > 1 && (
             <Card>
@@ -400,10 +568,13 @@ export default function AddMatchScreen() {
               style={{ flex: 1 }}
             />
             <Button
-              label="Save connection"
+              label={
+                selectedExistingMatch ? "Add screenshots" : "Save connection"
+              }
               icon="check"
               onPress={save}
               loading={busy}
+              disabled={selectedImportTarget === null}
               style={{ flex: 2 }}
             />
           </View>
@@ -413,7 +584,7 @@ export default function AddMatchScreen() {
   );
 }
 
-async function attachExtraScreenshots(matchId: number, objectPaths: string[]) {
+async function attachScreenshotsToMatch(matchId: number, objectPaths: string[]) {
   let savedCount = 0;
   let failedCount = 0;
 
@@ -426,15 +597,15 @@ async function attachExtraScreenshots(matchId: number, objectPaths: string[]) {
     }
   }
 
-  if (savedCount > 0) {
-    try {
-      await rescoreMatch(matchId);
-    } catch {
-      // Non-fatal. The match can be rescored from its detail screen.
-    }
-  }
-
   return { savedCount, failedCount };
+}
+
+function toImportRouteMatch(match: Match): ImportRouteMatch {
+  return {
+    id: match.id,
+    name: match.name,
+    status: match.status,
+  };
 }
 
 function parseSharedImageUris(value: string | string[] | undefined): string[] {
@@ -463,5 +634,63 @@ function Row({ label, value }: { label: string; value: string }) {
         {value}
       </Text>
     </View>
+  );
+}
+
+function ImportTargetOption({
+  label,
+  detail,
+  selected,
+  onPress,
+}: {
+  label: string;
+  detail: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        borderWidth: 1,
+        borderColor: selected ? c.primary : c.border,
+        backgroundColor: selected ? c.secondary : c.card,
+        borderRadius: 10,
+        padding: 12,
+        opacity: pressed ? 0.82 : 1,
+      })}
+    >
+      <Feather
+        name={selected ? "check-circle" : "circle"}
+        size={18}
+        color={selected ? c.primary : c.mutedForeground}
+      />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: c.foreground,
+            fontFamily: "Inter_600SemiBold",
+            fontSize: 14,
+          }}
+        >
+          {label}
+        </Text>
+        <Text
+          numberOfLines={2}
+          style={{
+            color: c.mutedForeground,
+            fontSize: 12,
+            marginTop: 2,
+          }}
+        >
+          {detail}
+        </Text>
+      </View>
+    </Pressable>
   );
 }

@@ -88,6 +88,12 @@ export const ListMatchesResponseItem = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "scoreHistory": zod.array(zod.object({
   "sexPotential": zod.number().min(listMatchesResponseScoreHistoryItemSexPotentialMin).max(listMatchesResponseScoreHistoryItemSexPotentialMax).nullable(),
   "conversionAbility": zod.number().min(listMatchesResponseScoreHistoryItemConversionAbilityMin).max(listMatchesResponseScoreHistoryItemConversionAbilityMax).nullable(),
@@ -229,6 +235,12 @@ export const GetMatchResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -380,6 +392,12 @@ export const UpdateMatchResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "scoreHistory": zod.array(zod.object({
   "sexPotential": zod.number().min(updateMatchResponseScoreHistoryItemSexPotentialMin).max(updateMatchResponseScoreHistoryItemSexPotentialMax).nullable(),
   "conversionAbility": zod.number().min(updateMatchResponseScoreHistoryItemConversionAbilityMin).max(updateMatchResponseScoreHistoryItemConversionAbilityMax).nullable(),
@@ -488,6 +506,12 @@ export const AddScreenshotResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -572,6 +596,12 @@ export const RescoreMatchResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -749,6 +779,12 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -982,6 +1018,12 @@ export const InPersonRecordingResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -1110,6 +1152,12 @@ export const VoiceDebriefResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "lastRead": zod.union([zod.object({
+  "body": zod.string().describe('Persisted latest AI read for this connection.'),
+  "generatedAt": zod.coerce.date(),
+  "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
+}),zod.null()]),
+  "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()

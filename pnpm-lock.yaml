@@ -155,6 +155,11 @@ overrides:
 
 packageExtensionsChecksum: sha256-Sft1e0bGw9Gx9BlblVgJRD3Vqu08JdQHewej7L30w7s=
 
+patchedDependencies:
+  expo-sharing@56.0.13:
+    hash: 1ea4f4975509620f6851e5f8b029f60b077fa6cc74e42e43c045b3bfe0aefc3c
+    path: patches/expo-sharing@56.0.13.patch
+
 importers:
 
   .:
@@ -258,7 +263,7 @@ importers:
         version: 0.32.17(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       expo-sharing:
         specifier: ~56.0.13
-        version: 56.0.13(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
+        version: 56.0.13(patch_hash=1ea4f4975509620f6851e5f8b029f60b077fa6cc74e42e43c045b3bfe0aefc3c)(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
     devDependencies:
       '@babel/core':
         specifier: ^7.25.2
@@ -11203,7 +11208,7 @@ snapshots:
 
   expo-server@1.0.6: {}
 
-  expo-sharing@56.0.13(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3):
+  expo-sharing@56.0.13(patch_hash=1ea4f4975509620f6851e5f8b029f60b077fa6cc74e42e43c045b3bfe0aefc3c)(expo@54.0.34)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3):
     dependencies:
       '@expo/config-plugins': 56.0.8(typescript@5.9.3)
       '@expo/config-types': 56.0.5

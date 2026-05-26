@@ -23,8 +23,11 @@ import { useColors } from "@/hooks/useColors";
 import {
   addScreenshot,
   createOpenrouterConversation,
+  deleteMatch,
   generateDateBrief,
   generateMatchReplies,
+  getGetMatchQueryKey,
+  getListMatchesQueryKey,
   getListOpenrouterConversationsQueryKey,
   rescoreMatch,
   updateMatch,
@@ -46,7 +49,6 @@ import {
   EmptyState,
   H2,
   IconButton,
-  ScoreBar,
   SectionLabel,
   Skeleton,
   StatusPill,
@@ -138,6 +140,7 @@ export default function MatchDetailScreen() {
       >
         <HeaderCard match={data} onChange={() => refetch()} />
         <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
+        <LatestReadCard match={data} onChange={() => refetch()} />
         <RedFlagsCard matchId={data.id} promoted />
         <ResponseStatsCard matchId={data.id} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />
@@ -156,7 +159,6 @@ export default function MatchDetailScreen() {
         {!data.nextDateAt && <ScheduleDateCard match={data} onChange={() => refetch()} />}
         <CheatSheetCard matchId={data.id} />
         <RepliesCard matchId={data.id} />
-        <ScoresCard match={data} onChange={() => refetch()} />
         <ScreenshotsCard match={data} onChange={() => refetch()} />
         <Pressable
           onPress={() => router.push(`/match/${data.id}/photos`)}
@@ -182,7 +184,12 @@ export default function MatchDetailScreen() {
         <TagsRow matchId={data.id} tags={data.tags ?? []} onChange={() => refetch()} />
         <TagHistoryCard matchId={data.id} />
         <NotesCard match={data} onChange={() => refetch()} />
-        <StatusActionsCard match={data} onChange={() => refetch()} onArchived={() => router.back()} />
+        <StatusActionsCard
+          match={data}
+          onChange={() => refetch()}
+          onArchived={() => router.back()}
+          onDeleted={() => router.replace("/")}
+        />
       </ScrollView>
     </>
   );
@@ -697,15 +704,6 @@ async function attachScreenshotsToMatch(matchId: number, uris: string[]) {
     }
   }
 
-  if (savedCount > 0) {
-    // Keep the match read fresh even when only part of a batch lands.
-    try {
-      await rescoreMatch(matchId);
-    } catch {
-      // Non-fatal. The Scores card still exposes manual analysis.
-    }
-  }
-
   return { savedCount, failedCount };
 }
 
@@ -819,7 +817,7 @@ function ScreenshotIntakeCard({
   );
 }
 
-function ScoresCard({
+function LatestReadCard({
   match,
   onChange,
 }: {
@@ -828,7 +826,19 @@ function ScoresCard({
 }) {
   const c = useColors();
   const [rescoring, setRescoring] = useState(false);
-  const s = match.extractedProfile.scores;
+  const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
+  const hasRead = Boolean(match.lastRead?.body?.trim());
+  const isCurrent = match.readFreshness === "current";
+  const isStale = match.readFreshness === "stale" || pending > 0;
+  const statusLabel = isCurrent
+    ? "Up to date"
+    : pending > 0
+      ? `${pending} screenshot${pending === 1 ? "" : "s"} not analyzed`
+      : hasRead
+        ? "Needs reanalysis"
+        : "No read yet";
+  const statusColor = isCurrent ? c.success : c.warning;
+  const statusBg = isCurrent ? c.successBg : c.warningBg;
 
   const doRescore = async () => {
     setRescoring(true);
@@ -837,47 +847,66 @@ function ScoresCard({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       onChange();
     } catch (e: any) {
-      Alert.alert("Couldn't rescore", e?.message ?? "Try again.");
+      Alert.alert("Couldn't reanalyze", e?.message ?? "Try again.");
     } finally {
       setRescoring(false);
     }
   };
 
   return (
-    <Card>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <SectionLabel>Scores</SectionLabel>
-        <IconButton
-          icon={
-            rescoring
-              ? "loader"
-              : match.analysisFreshness === "current"
-                ? "check"
-                : "refresh-cw"
-          }
-          onPress={doRescore}
-          color={
-            match.analysisFreshness === "current" ? c.success : c.primary
-          }
-          size={16}
-          hint={
-            match.analysisFreshness === "current"
-              ? "Already up to date"
-              : `Analyze ${match.pendingScreenshotCount + match.failedScreenshotCount} new screenshot(s)`
-          }
-        />
-      </View>
-      <View style={{ gap: 12 }}>
-        <ScoreBar label="Sex potential" value={s.sexPotential.value} />
-        <ScoreBar label="Conversion" value={s.conversionAbility.value} />
-        <ScoreBar label="Chemistry" value={s.chemistry.value} />
-      </View>
-      {s.chemistry.rationale && (
-        <View style={{ marginTop: 12, padding: 10, backgroundColor: c.muted, borderRadius: 10 }}>
-          <Body muted style={{ fontSize: 12, fontStyle: "italic" }}>
-            "{s.chemistry.rationale}"
-          </Body>
+    <Card style={{ borderColor: isStale ? c.warning : c.border }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 10,
+        }}
+      >
+        <SectionLabel>Latest read</SectionLabel>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: statusBg,
+          }}
+        >
+          <Feather
+            name={isCurrent ? "check-circle" : "refresh-cw"}
+            size={11}
+            color={statusColor}
+          />
+          <Text
+            style={{
+              fontSize: 11,
+              color: statusColor,
+              fontFamily: "Inter_600SemiBold",
+            }}
+            numberOfLines={1}
+          >
+            {statusLabel}
+          </Text>
         </View>
+      </View>
+      <Body muted={!hasRead} style={{ fontSize: 13, lineHeight: 19 }}>
+        {hasRead
+          ? match.lastRead!.body
+          : "Upload screenshots, then reanalyze to generate the first read."}
+      </Body>
+      {!isCurrent && (
+        <Button
+          label={hasRead ? "Reanalyze screenshots" : "Analyze screenshots"}
+          icon="refresh-cw"
+          onPress={doRescore}
+          loading={rescoring}
+          variant="secondary"
+          style={{ marginTop: 12 }}
+        />
       )}
     </Card>
   );
@@ -1015,6 +1044,10 @@ function NextDateCard({
 
   const savedBrief = match.lastDateBrief;
   const freshness = match.dateBriefFreshness;
+  const pendingAnalysis =
+    match.pendingScreenshotCount + match.failedScreenshotCount;
+  const hasUnanalyzedScreens =
+    match.analysisFreshness !== "current" && pendingAnalysis > 0;
 
   const loadBrief = async () => {
     setBriefLoading(true);
@@ -1052,6 +1085,13 @@ function NextDateCard({
     if (ageDays > 5) return "Older than 5 days";
     return "Date details updated";
   })();
+
+  const readStatusLabel = hasUnanalyzedScreens
+    ? `${pendingAnalysis} screenshot${pendingAnalysis === 1 ? "" : "s"} not analyzed`
+    : freshness === "stale"
+      ? staleReason ?? "Needs refresh"
+      : "Up to date";
+  const readStatusWarning = hasUnanalyzedScreens || freshness === "stale";
 
   const clearDate = async () => {
     setClearing(true);
@@ -1141,7 +1181,7 @@ function NextDateCard({
             >
               Prep brief · {briefAgeLabel}
             </Text>
-            {freshness === "stale" ? (
+            {readStatusWarning ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -1161,7 +1201,7 @@ function NextDateCard({
                     color: c.warning ?? c.primary,
                   }}
                 >
-                  {staleReason ?? "Needs refresh"}
+                  {readStatusLabel}
                 </Text>
               </View>
             ) : (
@@ -1550,13 +1590,17 @@ function StatusActionsCard({
   match,
   onChange,
   onArchived,
+  onDeleted,
 }: {
   match: MatchDetail;
   onChange: () => void;
   onArchived: () => void;
+  onDeleted: () => void;
 }) {
   const c = useColors();
+  const qc = useQueryClient();
   const [busy, setBusy] = useState<MatchStatus | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const set = (status: MatchStatus) => {
     Alert.alert(
@@ -1571,6 +1615,7 @@ function StatusActionsCard({
             setBusy(status);
             try {
               await updateMatch(match.id, { status });
+              await qc.invalidateQueries({ queryKey: getListMatchesQueryKey() });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
               if (status !== "active") onArchived();
               else onChange();
@@ -1578,6 +1623,41 @@ function StatusActionsCard({
               Alert.alert("Couldn't update status", e?.message ?? "Try again.");
             } finally {
               setBusy(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      `Delete ${match.name}?`,
+      "This removes the connection, screenshots, chat history, notes, dates, scores, and tags. This can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteMatch(match.id);
+              qc.removeQueries({ queryKey: getGetMatchQueryKey(match.id) });
+              await Promise.all([
+                qc.invalidateQueries({ queryKey: getListMatchesQueryKey() }),
+                qc.invalidateQueries({
+                  queryKey: getListOpenrouterConversationsQueryKey(),
+                }),
+              ]);
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              ).catch(() => {});
+              onDeleted();
+            } catch (e: any) {
+              Alert.alert("Couldn't delete connection", e?.message ?? "Try again.");
+            } finally {
+              setDeleting(false);
             }
           },
         },
@@ -1619,6 +1699,21 @@ function StatusActionsCard({
           />
         )}
       </View>
+      <View
+        style={{
+          height: 1,
+          backgroundColor: c.border,
+          marginVertical: 14,
+        }}
+      />
+      <Button
+        label="Delete connection"
+        icon="trash-2"
+        onPress={confirmDelete}
+        loading={deleting}
+        disabled={busy !== null}
+        variant="destructive"
+      />
     </Card>
   );
 }

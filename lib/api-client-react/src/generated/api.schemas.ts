@@ -67,6 +67,29 @@ export interface DateHistoryEntry {
   createdAt: string;
 }
 
+export interface MatchReadSnapshot {
+  /** Persisted latest AI read for this connection. */
+  body: string;
+  generatedAt: string;
+  /** Successfully analyzed screenshot count at generation time. */
+  screenshotCountAt: number;
+}
+
+/**
+ * current = the persisted read reflects all analyzed screenshots.
+stale   = newer screenshots exist or some screenshots need analysis.
+missing = no read has ever been generated.
+
+ */
+export type MatchReadFreshness = typeof MatchReadFreshness[keyof typeof MatchReadFreshness];
+
+
+export const MatchReadFreshness = {
+  current: 'current',
+  stale: 'stale',
+  missing: 'missing',
+} as const;
+
 export type MatchStatus = typeof MatchStatus[keyof typeof MatchStatus];
 
 
@@ -145,6 +168,8 @@ export interface Match {
   updatedAt: string;
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  lastRead: MatchReadSnapshot | null;
+  readFreshness: MatchReadFreshness;
   scoreHistory?: ScoreHistoryPoint[];
   /**
      * Speaker of the most recent transcript turn, if any
@@ -227,6 +252,8 @@ export interface MatchDetail {
   dateHistory: DateHistoryEntry[];
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  lastRead: MatchReadSnapshot | null;
+  readFreshness: MatchReadFreshness;
   transcript: TranscriptTurn[];
   createdAt: string;
   updatedAt: string;

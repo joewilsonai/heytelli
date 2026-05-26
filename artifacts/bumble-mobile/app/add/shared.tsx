@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,7 @@ import {
 declare const require: (moduleName: string) => unknown;
 
 type IncomingShareResult = {
+  sharedPayloads?: unknown[];
   resolvedSharedPayloads: ResolvedSharePayload[];
   isResolving: boolean;
   error: Error | null;
@@ -47,6 +48,7 @@ function loadIncomingShareHook(): UseIncomingShare | null {
 const useIncomingShareSafe =
   loadIncomingShareHook() ??
   (() => ({
+    sharedPayloads: [],
     resolvedSharedPayloads: [],
     isResolving: false,
     error: new Error(
@@ -59,8 +61,15 @@ export default function SharedImportScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { resolvedSharedPayloads, isResolving, error, clearSharedPayloads } =
-    useIncomingShareSafe();
+  const {
+    sharedPayloads = [],
+    resolvedSharedPayloads,
+    isResolving,
+    error,
+    clearSharedPayloads,
+  } = useIncomingShareSafe();
+  const didForward = useRef(false);
+  const [emptyPayloadTimedOut, setEmptyPayloadTimedOut] = useState(false);
   const images = useMemo(
     () => getSharedImages(resolvedSharedPayloads),
     [resolvedSharedPayloads],
@@ -69,6 +78,37 @@ export default function SharedImportScreen() {
     () => getSharedImageOverflowCount(resolvedSharedPayloads),
     [resolvedSharedPayloads],
   );
+  const hasIncomingPayloads =
+    sharedPayloads.length > 0 || resolvedSharedPayloads.length > 0;
+  const isWaitingForPayload =
+    !error &&
+    !isResolving &&
+    images.length === 0 &&
+    !hasIncomingPayloads &&
+    !emptyPayloadTimedOut;
+
+  useEffect(() => {
+    if (didForward.current || isResolving || error || images.length === 0) {
+      return;
+    }
+
+    didForward.current = true;
+    const encodedUris = encodeURIComponent(
+      JSON.stringify(images.map((image) => image.uri)),
+    );
+    clearSharedPayloads();
+    router.replace(`/add?sharedImageUris=${encodedUris}`);
+  }, [clearSharedPayloads, error, images, isResolving, router]);
+
+  useEffect(() => {
+    if (hasIncomingPayloads || isResolving || error || images.length > 0) {
+      setEmptyPayloadTimedOut(false);
+      return;
+    }
+
+    const timeout = setTimeout(() => setEmptyPayloadTimedOut(true), 1500);
+    return () => clearTimeout(timeout);
+  }, [error, hasIncomingPayloads, images.length, isResolving]);
 
   const cancel = () => {
     clearSharedPayloads();
@@ -102,25 +142,35 @@ export default function SharedImportScreen() {
     >
       <H1>Import to HeyTelli</H1>
       <Text style={{ color: c.mutedForeground, fontSize: 14 }}>
-        Review the screenshots before HeyTelli reads the conversation.
+        Receiving screenshots from the share sheet.
       </Text>
 
-      {isResolving ? (
+      {isResolving || isWaitingForPayload ? (
         <Card>
           <ActivityIndicator color={c.primary} />
+          <Text
+            style={{
+              marginTop: 12,
+              color: c.mutedForeground,
+              textAlign: "center",
+            }}
+          >
+            Preparing your import...
+          </Text>
         </Card>
       ) : error ? (
         <Card>
-          <SectionLabel>Share Error</SectionLabel>
+          <SectionLabel>Import failed</SectionLabel>
           <Text style={{ color: c.destructive }}>
             {error.message || "HeyTelli could not read the shared screenshots."}
           </Text>
         </Card>
       ) : images.length === 0 ? (
         <Card>
-          <SectionLabel>No Images</SectionLabel>
+          <SectionLabel>No screenshots found</SectionLabel>
           <Text style={{ color: c.foreground }}>
-            Share screenshots or photos to import them.
+            The shared item did not include a screenshot or photo HeyTelli can
+            import.
           </Text>
         </Card>
       ) : (
@@ -160,7 +210,7 @@ export default function SharedImportScreen() {
       )}
 
       <Button
-        label="Continue"
+        label="Continue import"
         icon="arrow-right"
         onPress={continueImport}
         disabled={isResolving || !!error || images.length === 0}

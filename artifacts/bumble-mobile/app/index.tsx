@@ -26,32 +26,32 @@ import {
   H1,
   IconButton,
   Skeleton,
-  StatusPill,
-  VibeTag,
 } from "@/components/ui";
 import { StaleNudgesSection } from "@/components/StaleNudgesSection";
 import { AutoArchiveBanner } from "@/components/AutoArchiveBanner";
 import { formatTimeAgo } from "@/lib/format";
+import {
+  getHomeMatchCardModel,
+  type HomeSignalTone,
+} from "@/lib/home-match-card";
 import { objectPathToUrl } from "@/lib/image";
 
 type StatusFilter = "active" | "archived" | "ghosted";
-type SortKey = "recent" | "name" | "chemistry" | "sex" | "conversion";
+type SortKey = "recent" | "attention" | "name" | "connection" | "momentum";
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
+  attention: "Needs attention",
   name: "Name",
-  chemistry: "Chemistry",
-  sex: "Sex potential",
-  conversion: "Conversion",
+  connection: "Connection",
+  momentum: "Momentum",
 };
 
 function scoreOf(m: Match, key: SortKey): number {
   switch (key) {
-    case "chemistry":
+    case "connection":
       return m.extractedProfile.scores.chemistry.value ?? -1;
-    case "sex":
-      return m.extractedProfile.scores.sexPotential.value ?? -1;
-    case "conversion":
+    case "momentum":
       return m.extractedProfile.scores.conversionAbility.value ?? -1;
     default:
       return 0;
@@ -68,7 +68,7 @@ export default function MatchesScreen() {
   const router = useRouter();
   const { data, isLoading, refetch, isRefetching, error } = useListMatches();
   const [filter, setFilter] = useState<StatusFilter>("active");
-  const [sort, setSort] = useState<SortKey>("recent");
+  const [sort, setSort] = useState<SortKey>("attention");
   const [sortOpen, setSortOpen] = useState(false);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const matchData = useMemo<Match[]>(
@@ -99,6 +99,12 @@ export default function MatchesScreen() {
     list.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "recent") return lastActivity(b) - lastActivity(a);
+      if (sort === "attention") {
+        const rank =
+          getHomeMatchCardModel(b).attentionRank -
+          getHomeMatchCardModel(a).attentionRank;
+        return rank || lastActivity(b) - lastActivity(a);
+      }
       return scoreOf(b, sort) - scoreOf(a, sort);
     });
     return list;
@@ -121,7 +127,7 @@ export default function MatchesScreen() {
       >
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <H1>Haystack</H1>
+            <H1>HeyTelli</H1>
             <Body muted style={{ marginTop: 2 }}>
               Vet before you meet · {counts.active} active
             </Body>
@@ -411,12 +417,15 @@ export default function MatchesScreen() {
 function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
   const c = useColors();
   const photo = objectPathToUrl(match.photoObjectPath);
-  const scores = match.extractedProfile.scores;
+  const model = getHomeMatchCardModel(match);
   const isStale =
-    match.status === "active" &&
-    match.lastSpeaker === "her" &&
-    match.lastActivityAt &&
-    Date.now() - new Date(match.lastActivityAt).getTime() > 1000 * 60 * 60 * 48;
+    model.signal.label === "Stale" || model.status.label === "Needs reply";
+  const profileLine = [
+    match.extractedProfile.job,
+    match.extractedProfile.location,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Pressable
@@ -513,16 +522,16 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
         >
           <Text
             style={{
-              fontSize: 16,
+              fontSize: 17,
               fontFamily: "Inter_600SemiBold",
               color: c.foreground,
               flex: 1,
             }}
             numberOfLines={1}
           >
-            {match.name}
+            {model.name}
           </Text>
-          {match.status !== "active" && <StatusPill status={match.status} small />}
+          <DashboardPill label={model.status.label} tone={model.status.tone} />
         </View>
         <Text
           style={{
@@ -532,52 +541,157 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
           }}
           numberOfLines={1}
         >
-          {match.extractedProfile.job ?? "—"}
-          {match.extractedProfile.location ? ` · ${match.extractedProfile.location}` : ""}
+          {profileLine || formatTimeAgo(match.lastActivityAt)}
         </Text>
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 10,
-            marginTop: 2,
+            gap: 7,
+            marginTop: 4,
           }}
         >
-          <ScoreChip label="Sex" value={scores.sexPotential.value} />
-          <ScoreChip label="Conv" value={scores.conversionAbility.value} />
-          <ScoreChip label="Chem" value={scores.chemistry.value} />
-          <View style={{ flex: 1 }} />
-          <Text style={{ fontSize: 11, color: c.mutedForeground }}>
-            {formatTimeAgo(match.lastActivityAt)}
+          <DashboardPill label={model.signal.label} tone={model.signal.tone} />
+          <Text
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 12,
+              color: c.foreground,
+              fontFamily: "Inter_500Medium",
+            }}
+            numberOfLines={1}
+          >
+            {model.nextAction}
           </Text>
+        </View>
+        <View
+          style={{
+            backgroundColor: c.muted,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
+            gap: 5,
+            marginTop: 3,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                color: c.mutedForeground,
+                fontFamily: "Inter_600SemiBold",
+                textTransform: "uppercase",
+              }}
+              numberOfLines={1}
+            >
+              {model.read.title}
+            </Text>
+            <DashboardPill
+              label={model.read.freshnessLabel}
+              tone={model.read.tone}
+            />
+          </View>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 12,
+              lineHeight: 17,
+              fontFamily: "Inter_400Regular",
+            }}
+            numberOfLines={2}
+          >
+            {model.read.body}
+          </Text>
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+          {model.contextChips.map((chip) => (
+            <ContextChip key={chip} label={chip} />
+          ))}
+          {match.lastActivityAt && profileLine && (
+            <Text
+              style={{
+                fontSize: 11,
+                color: c.mutedForeground,
+                paddingVertical: 3,
+              }}
+            >
+              {formatTimeAgo(match.lastActivityAt)}
+            </Text>
+          )}
         </View>
       </View>
     </Pressable>
   );
 }
 
-function ScoreChip({ label, value }: { label: string; value: number | null }) {
+function toneColors(
+  tone: HomeSignalTone,
+  c: ReturnType<typeof useColors>,
+): { bg: string; fg: string; border: string } {
+  if (tone === "success") {
+    return { bg: c.successBg, fg: c.success, border: c.success + "44" };
+  }
+  if (tone === "warning") {
+    return { bg: c.warningBg, fg: c.warning, border: c.warning + "44" };
+  }
+  if (tone === "danger") {
+    return { bg: c.destructive + "12", fg: c.destructive, border: c.destructive + "44" };
+  }
+  if (tone === "primary") {
+    return { bg: c.secondary, fg: c.secondaryForeground, border: c.border };
+  }
+  return { bg: c.muted, fg: c.mutedForeground, border: c.border };
+}
+
+function DashboardPill({ label, tone }: { label: string; tone: HomeSignalTone }) {
   const c = useColors();
-  const color =
-    value == null
-      ? c.mutedForeground
-      : value >= 8
-        ? c.success
-        : value >= 5
-          ? c.warning
-          : c.destructive;
+  const colors = toneColors(tone, c);
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-      <Text style={{ fontSize: 10, color: c.mutedForeground }}>{label}</Text>
+    <View
+      style={{
+        backgroundColor: colors.bg,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        alignSelf: "flex-start",
+      }}
+    >
       <Text
         style={{
-          fontSize: 12,
+          color: colors.fg,
+          fontSize: 11,
           fontFamily: "Inter_600SemiBold",
-          color,
         }}
+        numberOfLines={1}
       >
-        {value ?? "—"}
+        {label}
       </Text>
+    </View>
+  );
+}
+
+function ContextChip({ label }: { label: string }) {
+  const c = useColors();
+  return (
+    <View
+      style={{
+        backgroundColor: c.muted,
+        borderRadius: 999,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+      }}
+    >
+      <Text style={{ fontSize: 11, color: c.mutedForeground }}>{label}</Text>
     </View>
   );
 }

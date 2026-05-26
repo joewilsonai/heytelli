@@ -19,28 +19,37 @@ import {
 } from "@workspace/db";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
+import { buildMatchReadSnapshot } from "./matchRead";
 
 export type ExtractionResult = {
   suggestedName: string | null;
   vibeTags: string[];
+  read: string | null;
   profile: ExtractedProfile;
   transcript: TranscriptTurn[];
 };
 
-const SYSTEM_PROMPT = `You are an assistant helping a single MALE user (referred to as "me") track women he's talking to from dating apps.
+export const EXTRACTION_SYSTEM_PROMPT = `You are HeyTelli, a private dating clarity app for women. Help the user make sense of dating screenshots without ranking, diagnosing, or making safety claims about another person.
 
-You'll be given screenshots from a dating app profile/chat (Bumble, Hinge, Tinder, etc.) OR a text-message thread (iMessage, SMS, WhatsApp, Instagram DMs) once the conversation has moved off the app. Treat all of these the same.
+You'll be given screenshots from a dating app profile/chat (Bumble, Hinge, Tinder, etc.) OR a text-message thread (iMessage, SMS, WhatsApp, Instagram DMs) once the conversation has moved off the app. Treat all of these as private context for the user's connection.
 
 ## Identifying who is speaking — READ CAREFULLY
 
 In every chat UI on these platforms, message bubbles are visually divided by author:
 
-- The OTHER PERSON (the woman, "her") = bubbles on the LEFT side of the screen, usually grey/white background, often with her name or profile photo next to them at the top of the thread.
-- THE USER ("me") = bubbles on the RIGHT side of the screen, usually a colored/branded background (Bumble yellow, iMessage blue/green, Hinge dark, WhatsApp green, Instagram gradient, etc.). Never has her name next to them.
+- The OTHER PERSON = bubbles on the LEFT side of the screen, usually grey/white background, often with their name or profile photo next to them at the top of the thread. In the legacy transcript schema this speaker is called "her"; use "her" to mean "the other person" regardless of gender.
+- THE USER ("me") = bubbles on the RIGHT side of the screen, usually a colored/branded background (Bumble yellow, iMessage blue/green, Hinge dark, WhatsApp green, Instagram gradient, etc.). Never has the other person's name next to them.
 
-If a screenshot is ONLY her dating-app profile (no chat bubbles), there is no transcript — return an empty transcript array.
+If a screenshot is ONLY a dating-app profile (no chat bubbles), there is no transcript — return an empty transcript array.
 
 Do not guess. If a bubble's side or color is genuinely ambiguous, omit it from the transcript rather than mis-attributing it.
+
+## Guardrails
+
+- Do not call anyone safe, unsafe, dangerous, toxic, narcissistic, abusive, or manipulative.
+- Do not rate attraction, sexual likelihood, dateability, or relationship worth.
+- Do not write tactical escalation advice.
+- The "read" should preserve uncertainty and help the user notice context: consistency, effort, cadence, warmth, pressure, clarity, and planning energy.
 
 ## Output
 
@@ -53,6 +62,7 @@ Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
   "interests": string[],                 // Hobbies / interests they've mentioned (concise nouns/phrases)
   "mentionedTopics": string[],           // Specific things they brought up (e.g. "their dog Milo", "trip to Lisbon", "coffee snob")
   "conversationTone": string | null,     // Brief description of overall tone (e.g. "warm and playful", "dry witty banter") - null if no chat visible
+  "read": string | null,                 // 1-2 sentence private read of the current dynamic. Preserve uncertainty. Do not diagnose, score, or make safety claims.
 
   // Full chat transcript across ALL screenshots, in chronological order (top-to-bottom within each screenshot, earliest screenshot first).
   // Each turn is { "speaker": "her" | "me", "text": "<exact message text>" }.
@@ -61,14 +71,15 @@ Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
   // Return [] if no chat bubbles are visible (e.g. profile-only screenshot).
   "transcript": [{ "speaker": "her" | "me", "text": string }],
 
-  // Scores: each is an integer 0-10 plus a short rationale (1 sentence).
-  // Return null for both value and rationale if there is not enough signal to judge.
-  "sexPotentialScore":      { "value": number | null, "rationale": string | null },  // Likelihood that a first date would lead to sex, based on flirtation level, sexual undertones, openness, and overall energy
-  "conversionAbilityScore": { "value": number | null, "rationale": string | null },  // How skilled SHE is at moving the chat toward an actual date — asks questions, suggests plans, keeps momentum, doesn't ghost
-  "chemistryScore":         { "value": number | null, "rationale": string | null }   // Mutual chemistry between the two people in the chat — banter quality, matching energy, shared humor, reciprocity
+  // Deprecated compatibility fields. Return null for value and rationale.
+  "sexPotentialScore":      { "value": null, "rationale": null },
+  "conversionAbilityScore": { "value": null, "rationale": null },
+  "chemistryScore":         { "value": null, "rationale": null }
 }
 
 If a field cannot be determined, use null (for scalars) or [] (for arrays). Keep lists short and high-signal. Be honest with the scores — don't inflate them.`;
+
+const SYSTEM_PROMPT = EXTRACTION_SYSTEM_PROMPT;
 
 function toStringOrNull(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
@@ -135,7 +146,7 @@ function formatMatchContext(ctx: MatchContext | undefined): string {
     }
   }
   if (lines.length === 0) return "";
-  return `\n\nReal-world dating context (NOT from the chat — provided by the user):\n${lines.join("\n")}\n\nFactor this into the scores: an upcoming/past in-person date is strong evidence she's interested. Past date recaps describe what actually happened IRL — weight them heavily over chat banter when judging chemistry, sex potential, and conversion ability.`;
+  return `\n\nReal-world dating context (NOT from the chat — provided by the user):\n${lines.join("\n")}\n\nUse this context only to improve the neutral read, timeline facts, and planning context. Do not turn it into attraction, sex, or safety scores.`;
 }
 
 export async function extractFromScreenshot(
@@ -178,7 +189,7 @@ export async function extractFromScreenshots(
   );
   const baseText =
     imageDataUrls.length > 1
-      ? `Extract structured information from these ${imageDataUrls.length} screenshots, which together form one continuous conversation (chronological order). Score the conversation as a whole.`
+      ? `Extract structured information from these ${imageDataUrls.length} screenshots, which together form one continuous conversation (chronological order). Produce one current private read.`
       : "Extract structured information from this conversation or profile screenshot.";
   const userText = baseText + formatMatchContext(context);
   const completion = await openai.chat.completions.create({
@@ -219,6 +230,7 @@ export async function extractFromScreenshots(
   return {
     suggestedName: toStringOrNull(parsed.suggestedName),
     vibeTags: toStringArray(parsed.vibeTags),
+    read: toStringOrNull(parsed.read),
     transcript: normalizeTranscript(parsed.transcript),
     profile: {
       job: toStringOrNull(parsed.job),
@@ -348,9 +360,20 @@ export function runExtractionInBackground(
 
       const mergedProfile = mergeExtraction(match.extractedProfile, extraction.profile);
       const mergedTags = mergeVibeTags(match.vibeTags, extraction.vibeTags);
+      const mergedTranscript =
+        extraction.transcript.length > 0
+          ? extraction.transcript
+          : normalizeTranscript(match.transcript);
+      const lastRead = buildMatchReadSnapshot({
+        profile: mergedProfile,
+        transcript: mergedTranscript,
+        explicitRead: extraction.read,
+        screenshotCountAt: allShots.length,
+      });
       const updates: Record<string, unknown> = {
         extractedProfile: mergedProfile,
         vibeTags: mergedTags,
+        lastRead,
       };
       // Transcript is re-extracted from ALL screenshots each time, so replace
       // wholesale rather than merge — but only if we actually got turns back

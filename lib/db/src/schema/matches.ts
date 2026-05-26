@@ -58,6 +58,14 @@ export type DateHistoryEntry = {
 
 export const emptyDateHistory: DateHistoryEntry[] = [];
 
+export type MatchReadSnapshot = {
+  body: string;
+  /** ISO timestamp of when the read was generated. */
+  generatedAt: string;
+  /** Successfully analyzed screenshot count at generation time. */
+  screenshotCountAt: number;
+};
+
 function toIsoString(v: unknown): string | null {
   if (v instanceof Date) {
     return Number.isNaN(v.getTime()) ? null : v.toISOString();
@@ -173,6 +181,7 @@ export const matches = pgTable("matches", {
     screenshotCountAt: number;
     contextHash: string;
   } | null>(),
+  lastRead: jsonb("last_read").$type<MatchReadSnapshot | null>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

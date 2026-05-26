@@ -11,6 +11,8 @@ import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchAnalysisFreshness } from './matchAnalysisFreshness';
 import type { MatchLastSpeaker } from './matchLastSpeaker';
+import type { MatchReadFreshness } from './matchReadFreshness';
+import type { MatchReadSnapshot } from './matchReadSnapshot';
 import type { MatchStatus } from './matchStatus';
 import type { ScoreHistoryPoint } from './scoreHistoryPoint';
 
@@ -35,6 +37,8 @@ export interface Match {
   updatedAt: Date;
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  lastRead: MatchReadSnapshot | null;
+  readFreshness: MatchReadFreshness;
   scoreHistory?: ScoreHistoryPoint[];
   /**
      * Speaker of the most recent transcript turn, if any

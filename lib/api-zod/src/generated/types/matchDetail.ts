@@ -10,6 +10,8 @@ import type { DateBriefSnapshot } from './dateBriefSnapshot';
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchDetailAnalysisFreshness } from './matchDetailAnalysisFreshness';
+import type { MatchReadFreshness } from './matchReadFreshness';
+import type { MatchReadSnapshot } from './matchReadSnapshot';
 import type { MatchStatus } from './matchStatus';
 import type { Screenshot } from './screenshot';
 import type { TranscriptTurn } from './transcriptTurn';
@@ -33,6 +35,8 @@ export interface MatchDetail {
   dateHistory: DateHistoryEntry[];
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  lastRead: MatchReadSnapshot | null;
+  readFreshness: MatchReadFreshness;
   transcript: TranscriptTurn[];
   createdAt: Date;
   updatedAt: Date;
