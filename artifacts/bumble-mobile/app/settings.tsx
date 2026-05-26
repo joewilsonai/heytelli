@@ -18,9 +18,14 @@ import { Body, Button, Card, H1, H2, SectionLabel } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import {
   MAX_PROFILE_SCREENSHOTS,
+  deleteProfileScreenshotUris,
+  filterExistingProfileScreenshotUris,
   saveProfileScreenshotUris,
 } from "@/lib/local-profile-screenshots";
-import { analyzeDatingProfileScreenshots } from "@/lib/profile-analysis";
+import {
+  analyzeDatingProfileScreenshots,
+  isProfileScreenshotUnavailableError,
+} from "@/lib/profile-analysis";
 import { pickTrustedCircleContact } from "@/lib/trusted-circle-contacts";
 import { useUserSettings } from "@/lib/use-user-settings";
 import {
@@ -177,9 +182,17 @@ export default function SettingsScreen() {
   };
 
   const pickProfileScreenshots = async () => {
+    const existingScreenshots = filterExistingProfileScreenshotUris(
+      draft.datingProfile.profileScreenshotUris,
+    );
+    if (existingScreenshots.skippedScreenshotUris.length > 0) {
+      updateProfile({
+        profileScreenshotUris: existingScreenshots.profileScreenshotUris,
+      });
+    }
     const remainingProfileScreenshotSlots =
       MAX_PROFILE_SCREENSHOTS -
-      draft.datingProfile.profileScreenshotUris.length;
+      existingScreenshots.profileScreenshotUris.length;
     if (remainingProfileScreenshotSlots <= 0) {
       Alert.alert(
         "Profile screenshots full",
@@ -208,7 +221,7 @@ export default function SettingsScreen() {
       );
       updateProfile({
         profileScreenshotUris: [
-          ...draft.datingProfile.profileScreenshotUris,
+          ...existingScreenshots.profileScreenshotUris,
           ...localUris,
         ].slice(0, MAX_PROFILE_SCREENSHOTS),
       });
@@ -218,6 +231,26 @@ export default function SettingsScreen() {
         error?.message ?? "Try picking them again.",
       );
     }
+  };
+
+  const clearProfileScreenshots = () => {
+    const uris = draft.datingProfile.profileScreenshotUris;
+    if (uris.length === 0) return;
+    Alert.alert(
+      "Clear profile screenshots?",
+      "This only removes the local screenshot copies from Settings.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear screenshots",
+          style: "destructive",
+          onPress: () => {
+            deleteProfileScreenshotUris(uris);
+            updateProfile({ profileScreenshotUris: [] });
+          },
+        },
+      ],
+    );
   };
 
   const analyzeProfile = async () => {
@@ -231,6 +264,7 @@ export default function SettingsScreen() {
         draft.datingProfile.profileScreenshotUris,
       );
       updateProfile({
+        profileScreenshotUris: analysis.profileScreenshotUris,
         profileText: analysis.profileText,
         lookingFor: analysis.lookingFor,
         boundaries: analysis.boundaries,
@@ -239,8 +273,18 @@ export default function SettingsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
-      Alert.alert("Profile analyzed", "HeyTelli filled your profile fields.");
+      Alert.alert(
+        "Profile analyzed",
+        analysis.skippedScreenshotUris.length > 0
+          ? `HeyTelli filled your profile fields and removed ${analysis.skippedScreenshotUris.length} unavailable screenshot${analysis.skippedScreenshotUris.length === 1 ? "" : "s"}.`
+          : "HeyTelli filled your profile fields.",
+      );
     } catch (error: any) {
+      if (isProfileScreenshotUnavailableError(error)) {
+        updateProfile({ profileScreenshotUris: error.profileScreenshotUris });
+        Alert.alert("Screenshots removed", error.message);
+        return;
+      }
       Alert.alert("Couldn't analyze profile", error?.message ?? "Try again.");
     } finally {
       setAnalyzingProfile(false);
@@ -309,6 +353,14 @@ export default function SettingsScreen() {
             variant="secondary"
             onPress={pickProfileScreenshots}
           />
+          {draft.datingProfile.profileScreenshotUris.length > 0 ? (
+            <Button
+              label="Clear screenshots"
+              icon="trash-2"
+              variant="ghost"
+              onPress={clearProfileScreenshots}
+            />
+          ) : null}
           <Button
             label="Analyze Profile"
             icon="zap"

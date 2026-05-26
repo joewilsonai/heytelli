@@ -33,14 +33,25 @@ test("settings profile screenshots allow ten and analyze into profile fields", (
   const analysis = read("./profile-analysis.ts");
 
   assert.match(localScreenshots, /MAX_PROFILE_SCREENSHOTS = 10/);
+  assert.match(localScreenshots, /prepareProfileScreenshotsForAnalysis/);
+  assert.match(localScreenshots, /deleteProfileScreenshotUris/);
+  assert.match(localScreenshots, /\.exists/);
   assert.match(screen, /selectionLimit: remainingProfileScreenshotSlots/);
   assert.match(screen, /Analyze Profile/);
+  assert.match(screen, /Clear screenshots/);
+  assert.match(screen, /clearProfileScreenshots/);
   assert.match(screen, /setAnalyzingProfile\(true\)/);
+  assert.match(screen, /skippedScreenshotUris/);
+  assert.match(
+    screen,
+    /profileScreenshotUris: analysis\.profileScreenshotUris/,
+  );
   assert.match(screen, /profileText: analysis\.profileText/);
   assert.match(screen, /lookingFor: analysis\.lookingFor/);
   assert.match(screen, /boundaries: analysis\.boundaries/);
   assert.match(screen, /photoNotes: analysis\.photoNotes/);
   assert.match(analysis, /\/api\/settings\/profile\/analyze/);
+  assert.match(analysis, /prepareProfileScreenshotsForAnalysis/);
 });
 
 test("trusted circle contact picker statically imports expo contacts", () => {
