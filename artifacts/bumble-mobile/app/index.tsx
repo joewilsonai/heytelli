@@ -30,8 +30,11 @@ import { StaleNudgesSection } from "@/components/StaleNudgesSection";
 import { AutoArchiveBanner } from "@/components/AutoArchiveBanner";
 import { formatTimeAgo } from "@/lib/format";
 import {
+  getHomeDailyBriefModel,
   getHomeMatchCardModel,
-  type HomeDashboardSection,
+  getHomeTrendSnapshot,
+  type HomeBriefItem,
+  type HomeTrendSnapshot,
   type HomeSignalTone,
 } from "@/lib/home-match-card";
 
@@ -109,20 +112,14 @@ export default function MatchesScreen() {
     return list;
   }, [matchData, filter, sort, tagFilter]);
 
-  const dashboard = useMemo(() => {
-    const sections: Record<HomeDashboardSection, number> = {
-      date: 0,
-      "needs-review": 0,
-      current: 0,
-      quiet: 0,
-    };
-    matchData
-      .filter((m) => m.status === "active")
-      .forEach((m) => {
-        sections[getHomeMatchCardModel(m).section.key] += 1;
-      });
-    return sections;
-  }, [matchData]);
+  const dailyBrief = useMemo(
+    () => getHomeDailyBriefModel(matchData),
+    [matchData],
+  );
+  const trendSnapshot = useMemo(
+    () => getHomeTrendSnapshot(matchData),
+    [matchData],
+  );
 
   const renderRow = ({ item }: { item: Match }) => (
     <MatchRow match={item} onPress={() => router.push(`/match/${item.id}`)} />
@@ -143,7 +140,7 @@ export default function MatchesScreen() {
           <View style={{ flex: 1 }}>
             <H1>HeyTelli</H1>
             <Body muted style={{ marginTop: 2 }}>
-              Vet before you meet · {counts.active} active
+              Your private dating bestie · {counts.active} active
             </Body>
           </View>
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -180,7 +177,7 @@ export default function MatchesScreen() {
                   justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                 })}
-                accessibilityLabel="Settings"
+                accessibilityLabel="My dating OS"
               >
                 <Feather name="settings" size={20} color={c.foreground} />
               </Pressable>
@@ -417,7 +414,7 @@ export default function MatchesScreen() {
           ListHeaderComponent={
             filter === "active" ? (
               <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
-                <DashboardOverview sections={dashboard} />
+                <HomeBriefCard brief={dailyBrief} trend={trendSnapshot} />
                 <ShareSheetOnboardingCard />
                 <AutoArchiveBanner onChange={() => refetch()} />
                 <StaleNudgesSection />
@@ -455,95 +452,206 @@ export default function MatchesScreen() {
   );
 }
 
-function DashboardOverview({
-  sections,
+function HomeBriefCard({
+  brief,
+  trend,
 }: {
-  sections: Record<HomeDashboardSection, number>;
+  brief: ReturnType<typeof getHomeDailyBriefModel>;
+  trend: HomeTrendSnapshot;
 }) {
   const c = useColors();
-  const items = [
-    {
-      label: "Dates",
-      value: sections.date,
-      icon: "calendar" as const,
-      bg: c.infoBg,
-      fg: c.info,
-    },
-    {
-      label: "Review",
-      value: sections["needs-review"],
-      icon: "eye" as const,
-      bg: c.warningBg,
-      fg: c.warning,
-    },
-    {
-      label: "Current",
-      value: sections.current,
-      icon: "check-circle" as const,
-      bg: c.successBg,
-      fg: c.success,
-    },
-  ];
+  const trendColors = toneColors(trend.tone, c);
 
   return (
     <View
       style={{
         marginHorizontal: 20,
         marginBottom: 12,
-        flexDirection: "row",
-        gap: 8,
+        borderRadius: c.radius,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.card,
+        padding: 16,
+        gap: 14,
       }}
     >
-      {items.map((item) => (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View
-          key={item.label}
           style={{
-            flex: 1,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: c.border,
-            backgroundColor: c.card,
-            padding: 10,
-            gap: 7,
-            minHeight: 78,
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: c.secondary,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <View
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 13,
-              backgroundColor: item.bg,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name={item.icon} size={13} color={item.fg} />
-          </View>
+          <Feather name="star" size={19} color={c.secondaryForeground} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
           <Text
             style={{
               color: c.foreground,
               fontSize: 20,
               fontFamily: "Inter_700Bold",
-              fontVariant: ["tabular-nums"],
             }}
           >
-            {item.value}
+            {brief.headline}
           </Text>
           <Text
             style={{
               color: c.mutedForeground,
-              fontSize: 11,
-              fontFamily: "Inter_600SemiBold",
+              fontSize: 13,
+              lineHeight: 18,
+            }}
+          >
+            {brief.body}
+          </Text>
+        </View>
+      </View>
+      <View style={{ gap: 8 }}>
+        {brief.items.length > 0 ? (
+          brief.items.map((item) => (
+            <BriefItemRow key={item.body} item={item} />
+          ))
+        ) : (
+          <View
+            style={{
+              borderRadius: 12,
+              backgroundColor: c.muted,
+              padding: 12,
+              flexDirection: "row",
+              gap: 10,
+              alignItems: "center",
+            }}
+          >
+            <Feather name="check-circle" size={18} color={c.success} />
+            <Text
+              style={{
+                color: c.foreground,
+                fontSize: 13,
+                lineHeight: 18,
+                flex: 1,
+              }}
+            >
+              Nothing is yelling for attention. Very civilized of everyone.
+            </Text>
+          </View>
+        )}
+      </View>
+      <View
+        style={{
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: trendColors.border,
+          backgroundColor: trendColors.bg,
+          padding: 12,
+          gap: 4,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+          <Feather name="activity" size={14} color={trendColors.fg} />
+          <Text
+            style={{
+              color: trendColors.fg,
+              fontSize: 12,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            {trend.title}
+          </Text>
+        </View>
+        <Text
+          style={{ color: c.foreground, fontSize: 13, lineHeight: 18 }}
+          numberOfLines={3}
+        >
+          {trend.body}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function BriefItemRow({ item }: { item: HomeBriefItem }) {
+  const c = useColors();
+  const colors = toneColors(item.tone, c);
+  return (
+    <View
+      style={{
+        borderRadius: 12,
+        backgroundColor: c.background,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: 11,
+        flexDirection: "row",
+        gap: 10,
+        alignItems: "flex-start",
+      }}
+    >
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          backgroundColor: colors.bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Feather name={briefIcon(item)} size={15} color={colors.fg} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 13,
+              fontFamily: "Inter_700Bold",
+              flex: 1,
             }}
             numberOfLines={1}
           >
-            {item.label}
+            {item.title}
+          </Text>
+          <Text
+            style={{
+              color: colors.fg,
+              fontSize: 11,
+              fontFamily: "Inter_700Bold",
+            }}
+            numberOfLines={1}
+          >
+            {item.matchName}
           </Text>
         </View>
-      ))}
+        <Text
+          style={{ color: c.mutedForeground, fontSize: 12, lineHeight: 17 }}
+          numberOfLines={2}
+        >
+          {item.body}
+        </Text>
+      </View>
     </View>
   );
+}
+
+function briefIcon(item: HomeBriefItem): keyof typeof Feather.glyphMap {
+  switch (item.actionKind) {
+    case "review_screenshots":
+    case "add_screenshots":
+      return "image";
+    case "make_date_card":
+    case "share_date_card":
+      return "calendar";
+    case "review_pattern":
+      return "alert-circle";
+    case "review_reply":
+      return "message-circle";
+    case "decide_next_move":
+      return "shuffle";
+    case "wait":
+      return "clock";
+  }
 }
 
 function ShareSheetOnboardingCard() {

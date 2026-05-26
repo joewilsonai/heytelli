@@ -28,4 +28,6 @@ test("mobile copy avoids old product and verdict language", () => {
     combined,
     /red flags first|flags above|FLAG.*TAKE A BEAT/,
   );
+  assert.match(combined, /Telli noticed/);
+  assert.match(combined, /My dating OS/);
 });
