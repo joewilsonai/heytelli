@@ -48,6 +48,7 @@ import { analyzeRedFlags } from "../lib/redFlagRadar";
 import { generateCheatSheet } from "../lib/cheatSheet";
 import { generateWeeklyDebrief } from "../lib/weeklyDebrief";
 import { suggestTags } from "../lib/tagSuggestions";
+import { buildDateSchedulePatchPlan } from "../lib/dateScheduling";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logger } from "../lib/logger";
 import {
@@ -546,7 +547,10 @@ async function loadMatchDetail(matchId: number) {
     .select()
     .from(matchTimelineEvents)
     .where(eq(matchTimelineEvents.matchId, matchId))
-    .orderBy(desc(matchTimelineEvents.occurredAt), desc(matchTimelineEvents.id));
+    .orderBy(
+      desc(matchTimelineEvents.occurredAt),
+      desc(matchTimelineEvents.id),
+    );
   const lastDateBrief = normalizeDateBriefSnapshot(match.lastDateBrief);
   const lastRead = normalizeMatchReadSnapshot(match.lastRead);
   const doneShots = shots.filter((s) => s.extractionStatus === "done").length;
@@ -1340,6 +1344,35 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
       };
     }
 
+    const dateScheduleTouched =
+      body.data.nextDateAt !== undefined ||
+      body.data.nextDateLocation !== undefined ||
+      body.data.nextDateOutfit !== undefined;
+    const dateSchedulePlan = dateScheduleTouched
+      ? buildDateSchedulePatchPlan({
+          matchId: existing.id,
+          matchName: body.data.name ?? existing.name,
+          existingNextDateAt: existing.nextDateAt,
+          existingNextDateLocation: existing.nextDateLocation,
+          existingNextDateOutfit: existing.nextDateOutfit,
+          nextDateAt:
+            body.data.nextDateAt !== undefined
+              ? (updates.nextDateAt as Date | null)
+              : existing.nextDateAt,
+          nextDateLocation:
+            body.data.nextDateLocation !== undefined
+              ? body.data.nextDateLocation
+              : existing.nextDateLocation,
+          nextDateOutfit:
+            body.data.nextDateOutfit !== undefined
+              ? body.data.nextDateOutfit
+              : existing.nextDateOutfit,
+        })
+      : { clearLastDateBrief: false, timelineEvent: null };
+    if (dateSchedulePlan.clearLastDateBrief) {
+      updates.lastDateBrief = null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return { notFound: false as const, updated: existing };
     }
@@ -1368,6 +1401,11 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
         })),
       ];
       await tx.insert(matchTagEvents).values(rows);
+    }
+    if (dateSchedulePlan.timelineEvent) {
+      await tx
+        .insert(matchTimelineEvents)
+        .values(dateSchedulePlan.timelineEvent);
     }
     return { notFound: false as const, updated: updated ?? existing };
   });
@@ -1692,7 +1730,12 @@ router.post(
       });
 
       const refreshed = await loadMatchDetail(detail.id);
-      res.json({ transcript, analysis, timelineEvents: plan.timelineEvents, match: refreshed });
+      res.json({
+        transcript,
+        analysis,
+        timelineEvents: plan.timelineEvents,
+        match: refreshed,
+      });
     } catch (err) {
       req.log.error({ err }, "In-person recording analysis failed");
       res.status(500).json({ error: "Recording analysis failed" });
@@ -1742,7 +1785,12 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     });
 
     const refreshed = await loadMatchDetail(detail.id);
-    res.json({ transcript, analysis, timelineEvents: plan.timelineEvents, match: refreshed });
+    res.json({
+      transcript,
+      analysis,
+      timelineEvents: plan.timelineEvents,
+      match: refreshed,
+    });
   } catch (err) {
     req.log.error({ err }, "Voice debrief failed");
     res.status(500).json({ error: "Voice debrief failed" });

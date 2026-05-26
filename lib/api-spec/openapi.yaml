@@ -1334,6 +1334,7 @@ components:
           type: string
           enum:
             [
+              date_scheduled,
               voice_debrief,
               date_debrief,
               in_person_recording,

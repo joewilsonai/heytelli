@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -25,7 +25,6 @@ import {
   createChatConversation,
   deleteMatch,
   generateDateBrief,
-  generateMatchReplies,
   getGetMatchQueryKey,
   getListMatchesQueryKey,
   getListChatConversationsQueryKey,
@@ -34,13 +33,10 @@ import {
   useGetMatch,
 } from "@workspace/api-client-react";
 import type {
-  DateBriefResult,
   DateHistoryEntry,
   MatchDetail,
   MatchTimelineEvent,
   MatchStatus,
-  ReplyResult,
-  TranscriptTurn,
 } from "@workspace/api-client-react";
 
 import {
@@ -48,7 +44,6 @@ import {
   Button,
   Card,
   EmptyState,
-  H2,
   IconButton,
   SectionLabel,
   Skeleton,
@@ -176,7 +171,6 @@ export default function MatchDetailScreen() {
           <ScheduleDateCard match={data} onChange={() => refetch()} />
         )}
         <CheatSheetCard matchId={data.id} />
-        <RepliesCard matchId={data.id} />
         <ScreenshotsCard match={data} onChange={() => refetch()} />
         <Pressable
           onPress={() => router.push(`/match/${data.id}/photos`)}
@@ -417,6 +411,7 @@ function TimelineCard({ events }: { events: MatchTimelineEvent[] }) {
   const primaryEvents = events
     .filter((event) =>
       [
+        "date_scheduled",
         "voice_debrief",
         "date_debrief",
         "in_person_recording",
@@ -456,11 +451,7 @@ function TimelineCard({ events }: { events: MatchTimelineEvent[] }) {
                 justifyContent: "center",
               }}
             >
-              <Feather
-                name={timelineIcon(event.type)}
-                size={14}
-                color="#fff"
-              />
+              <Feather name={timelineIcon(event.type)} size={14} color="#fff" />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <View
@@ -511,6 +502,7 @@ function TimelineCard({ events }: { events: MatchTimelineEvent[] }) {
 function timelineIcon(
   type: MatchTimelineEvent["type"],
 ): keyof typeof Feather.glyphMap {
+  if (type === "date_scheduled") return "calendar";
   if (type === "date_debrief") return "calendar";
   if (type === "in_person_recording") return "radio";
   if (type === "chat_insight") return "message-circle";
@@ -518,7 +510,11 @@ function timelineIcon(
   return "mic";
 }
 
-function timelineColor(type: MatchTimelineEvent["type"], c: ReturnType<typeof useColors>) {
+function timelineColor(
+  type: MatchTimelineEvent["type"],
+  c: ReturnType<typeof useColors>,
+) {
+  if (type === "date_scheduled") return c.primary;
   if (type === "date_debrief") return c.accentForeground;
   if (type === "in_person_recording") return c.foreground;
   if (type === "chat_insight") return c.primary;
@@ -1098,6 +1094,98 @@ function LatestReadCard({
   );
 }
 
+function PickerRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const c = useColors();
+  return (
+    <View
+      style={{
+        minHeight: 44,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        backgroundColor: c.background,
+      }}
+    >
+      <Text
+        style={{
+          color: c.foreground,
+          fontSize: 14,
+          fontFamily: "Inter_500Medium",
+        }}
+      >
+        {label}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function PickerTriggerRow({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        minHeight: 44,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        backgroundColor: c.background,
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      <Text
+        style={{
+          color: c.foreground,
+          fontSize: 14,
+          fontFamily: "Inter_500Medium",
+        }}
+      >
+        {label}
+      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Text
+          style={{
+            color: c.mutedForeground,
+            fontSize: 14,
+            fontFamily: "Inter_500Medium",
+          }}
+        >
+          {value}
+        </Text>
+        <Feather name="chevron-right" size={16} color={c.mutedForeground} />
+      </View>
+    </Pressable>
+  );
+}
+
 function ScheduleDateCard({
   match,
   onChange,
@@ -1107,24 +1195,30 @@ function ScheduleDateCard({
 }) {
   const c = useColors();
   const [open, setOpen] = useState(false);
-  const [when, setWhen] = useState("");
+  const initialDate = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(19, 0, 0, 0);
+    return date;
+  }, []);
+  const [selectedAt, setSelectedAt] = useState(initialDate);
+  const [androidPickerMode, setAndroidPickerMode] = useState<
+    "date" | "time" | null
+  >(null);
   const [where, setWhere] = useState("");
   const [outfit, setOutfit] = useState("");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
-    if (!when.trim()) {
-      Alert.alert(
-        "When?",
-        "Enter a date/time like 'Friday 7pm' or '2026-06-01 19:00'.",
-      );
+    const parsed = selectedAt;
+    if (Number.isNaN(parsed.getTime())) {
+      Alert.alert("When?", "Pick the date and time for this date.");
       return;
     }
-    const parsed = new Date(when);
-    if (Number.isNaN(parsed.getTime())) {
+    if (parsed.getTime() <= Date.now()) {
       Alert.alert(
-        "Couldn't read that time",
-        "Try a format like 2026-06-01 19:00 or June 1, 2026 7:00 PM.",
+        "Pick a future time",
+        "Date prep works best when the next date is still ahead.",
       );
       return;
     }
@@ -1169,8 +1263,8 @@ function ScheduleDateCard({
 
       onChange();
       setOpen(false);
-      setWhen("");
       setWhere("");
+      setOutfit("");
     } catch (e: any) {
       Alert.alert("Couldn't schedule", e?.message ?? "Try again.");
     } finally {
@@ -1189,12 +1283,97 @@ function ScheduleDateCard({
           variant="secondary"
         />
       ) : (
-        <View style={{ gap: 8 }}>
-          <Input
-            placeholder="When (e.g. 2026-06-01 19:00)"
-            value={when}
-            onChangeText={setWhen}
-          />
+        <View style={{ gap: 10 }}>
+          {Platform.OS === "ios" ? (
+            <>
+              <PickerRow label="Date">
+                <DateTimePicker
+                  value={selectedAt}
+                  mode="date"
+                  display="compact"
+                  minimumDate={new Date()}
+                  onChange={(_, date) => {
+                    if (!date) return;
+                    setSelectedAt((current) => {
+                      const next = new Date(current);
+                      next.setFullYear(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate(),
+                      );
+                      return next;
+                    });
+                  }}
+                />
+              </PickerRow>
+              <PickerRow label="Time">
+                <DateTimePicker
+                  value={selectedAt}
+                  mode="time"
+                  display="compact"
+                  minuteInterval={15}
+                  onChange={(_, date) => {
+                    if (!date) return;
+                    setSelectedAt((current) => {
+                      const next = new Date(current);
+                      next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+                      return next;
+                    });
+                  }}
+                />
+              </PickerRow>
+            </>
+          ) : (
+            <>
+              <PickerTriggerRow
+                label="Date"
+                value={selectedAt.toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+                onPress={() => setAndroidPickerMode("date")}
+              />
+              <PickerTriggerRow
+                label="Time"
+                value={selectedAt.toLocaleTimeString(undefined, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                onPress={() => setAndroidPickerMode("time")}
+              />
+              {androidPickerMode && (
+                <DateTimePicker
+                  value={selectedAt}
+                  mode={androidPickerMode}
+                  display="default"
+                  minimumDate={
+                    androidPickerMode === "date" ? new Date() : undefined
+                  }
+                  minuteInterval={15}
+                  onChange={(_, date) => {
+                    setAndroidPickerMode(null);
+                    if (!date) return;
+                    setSelectedAt((current) => {
+                      const next = new Date(current);
+                      if (androidPickerMode === "date") {
+                        next.setFullYear(
+                          date.getFullYear(),
+                          date.getMonth(),
+                          date.getDate(),
+                        );
+                      } else {
+                        next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+                      }
+                      return next;
+                    });
+                  }}
+                />
+              )}
+            </>
+          )}
+          <Body muted style={{ fontSize: 12 }}>
+            {formatDateTime(selectedAt.toISOString())}
+          </Body>
           <Input
             placeholder="Where (optional)"
             value={where}
@@ -1281,17 +1460,30 @@ function NextDateCard({
     return "Date details updated";
   })();
 
-  const readStatusLabel = hasUnanalyzedScreens
+  const briefStatusLabel = hasUnanalyzedScreens
     ? `${pendingAnalysis} screenshot${pendingAnalysis === 1 ? "" : "s"} not analyzed`
-    : freshness === "stale"
-      ? (staleReason ?? "Needs refresh")
-      : "Up to date";
-  const readStatusWarning = hasUnanalyzedScreens || freshness === "stale";
+    : freshness === "missing"
+      ? "Needs date brief"
+      : freshness === "stale"
+        ? (staleReason ?? "Brief needs refresh")
+        : "Brief ready";
+  const briefStatusWarning = hasUnanalyzedScreens || freshness !== "current";
+  const briefStatusColor = briefStatusWarning ? c.warning : c.success;
+  const briefStatusBg = briefStatusWarning ? c.warningBg : c.successBg;
+  const briefStatusIcon = briefStatusWarning ? "alert-circle" : "check";
+  const briefActionLabel =
+    freshness === "current" && savedBrief
+      ? "Refresh brief"
+      : "Generate date brief";
 
   const clearDate = async () => {
     setClearing(true);
     try {
-      await updateMatch(match.id, { nextDateAt: null, nextDateLocation: null });
+      await updateMatch(match.id, {
+        nextDateAt: null,
+        nextDateLocation: null,
+        nextDateOutfit: null,
+      });
       cancelDateDayReminder(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
@@ -1356,9 +1548,33 @@ function NextDateCard({
           </Text>
         </View>
       )}
+      <View
+        style={{
+          marginTop: 10,
+          alignSelf: "flex-start",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+          paddingHorizontal: 9,
+          paddingVertical: 5,
+          borderRadius: 999,
+          backgroundColor: briefStatusBg,
+        }}
+      >
+        <Feather name={briefStatusIcon} size={12} color={briefStatusColor} />
+        <Text
+          style={{
+            fontSize: 11,
+            fontFamily: "Inter_600SemiBold",
+            color: briefStatusColor,
+          }}
+        >
+          {briefStatusLabel}
+        </Text>
+      </View>
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <Button
-          label={savedBrief ? "Refresh brief" : "AI prep brief"}
+          label={briefActionLabel}
           icon="zap"
           onPress={loadBrief}
           loading={briefLoading}
@@ -1400,7 +1616,7 @@ function NextDateCard({
             >
               Prep brief · {briefAgeLabel}
             </Text>
-            {readStatusWarning ? (
+            {briefStatusWarning ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -1424,7 +1640,7 @@ function NextDateCard({
                     color: c.warning ?? c.primary,
                   }}
                 >
-                  {readStatusLabel}
+                  {briefStatusLabel}
                 </Text>
               </View>
             ) : (
@@ -1494,6 +1710,7 @@ function PostDateDebriefCard({
         dateHistory: [...match.dateHistory, entry],
         nextDateAt: null,
         nextDateLocation: null,
+        nextDateOutfit: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
@@ -1511,7 +1728,11 @@ function PostDateDebriefCard({
   const skip = async () => {
     setSkipping(true);
     try {
-      await updateMatch(match.id, { nextDateAt: null, nextDateLocation: null });
+      await updateMatch(match.id, {
+        nextDateAt: null,
+        nextDateLocation: null,
+        nextDateOutfit: null,
+      });
       cancelDateDayReminder(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
@@ -1599,96 +1820,6 @@ function PostDateDebriefCard({
                 </Body>
               </View>
             ))}
-        </View>
-      )}
-    </Card>
-  );
-}
-
-function RepliesCard({ matchId }: { matchId: number }) {
-  const c = useColors();
-  const [replies, setReplies] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const generate = async () => {
-    setLoading(true);
-    try {
-      const res: ReplyResult = await generateMatchReplies(matchId);
-      setReplies(res.replies);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
-      );
-    } catch (e: any) {
-      Alert.alert("Couldn't generate replies", e?.message ?? "Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copy = async (text: string) => {
-    await Clipboard.setStringAsync(text);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-      () => {},
-    );
-  };
-
-  return (
-    <Card>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 10,
-        }}
-      >
-        <SectionLabel>Reply suggestions</SectionLabel>
-        <IconButton
-          icon={loading ? "loader" : "refresh-cw"}
-          onPress={generate}
-          color={c.mutedForeground}
-          size={16}
-          hint="Generate replies"
-        />
-      </View>
-      {replies.length === 0 ? (
-        <Button
-          label="Generate 3 replies"
-          icon="message-circle"
-          onPress={generate}
-          loading={loading}
-          variant="secondary"
-        />
-      ) : (
-        <View style={{ gap: 8 }}>
-          {replies.map((r, i) => (
-            <Pressable
-              key={i}
-              onLongPress={() => copy(r)}
-              onPress={() => copy(r)}
-              style={({ pressed }) => ({
-                padding: 12,
-                backgroundColor: c.muted,
-                borderRadius: 12,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Body style={{ fontSize: 13 }}>{r}</Body>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  marginTop: 6,
-                }}
-              >
-                <Feather name="copy" size={11} color={c.mutedForeground} />
-                <Text style={{ fontSize: 10, color: c.mutedForeground }}>
-                  Tap to copy
-                </Text>
-              </View>
-            </Pressable>
-          ))}
         </View>
       )}
     </Card>

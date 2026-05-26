@@ -11,6 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { matches } from "./matches";
 
 export type MatchTimelineEventType =
+  | "date_scheduled"
   | "voice_debrief"
   | "date_debrief"
   | "in_person_recording"
@@ -59,5 +60,4 @@ export const insertMatchTimelineEventSchema = createInsertSchema(
 });
 
 export type MatchTimelineEvent = typeof matchTimelineEvents.$inferSelect;
-export type InsertMatchTimelineEvent =
-  typeof matchTimelineEvents.$inferInsert;
+export type InsertMatchTimelineEvent = typeof matchTimelineEvents.$inferInsert;

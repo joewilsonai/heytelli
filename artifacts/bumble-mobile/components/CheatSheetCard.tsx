@@ -6,11 +6,17 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { getCheatSheet, getRedFlagRadar } from "@workspace/api-client-react";
-import type { CheatSheetReply, RedFlagRadarResult } from "@workspace/api-client-react";
+import type {
+  CheatSheetReply,
+  RedFlagRadarResult,
+} from "@workspace/api-client-react";
 
 import { Body, Card, SectionLabel } from "./ui";
 
-const STYLE_META: Record<CheatSheetReply["style"], { label: string; icon: any; tint: string }> = {
+const STYLE_META: Record<
+  CheatSheetReply["style"],
+  { label: string; icon: any; tint: string }
+> = {
   playful: { label: "Playful", icon: "smile", tint: "#A16207" },
   curious: { label: "Curious", icon: "help-circle", tint: "#1D4ED8" },
   direct: { label: "Direct", icon: "arrow-right", tint: "#15803D" },
@@ -30,7 +36,9 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
     try {
       // Safety-first: peek at red flags before suggesting replies.
       const flags = await getRedFlagRadar(matchId);
-      const highCount = flags.redFlags.filter((f) => f.severity === "high").length;
+      const highCount = flags.redFlags.filter(
+        (f) => f.severity === "high",
+      ).length;
       const totalCount = flags.redFlags.length;
       const tooHot = highCount >= 1 || totalCount >= 2;
       setGate({ flags, tooHot });
@@ -62,7 +70,9 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
 
   const copy = async (text: string) => {
     await Clipboard.setStringAsync(text);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
   };
 
   const showCoolingOff = gate?.tooHot && !replies;
@@ -76,7 +86,9 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
           justifyContent: "space-between",
         }}
       >
-        <SectionLabel>{showCoolingOff ? "Sleep on it" : "Suggested replies"}</SectionLabel>
+        <SectionLabel>
+          {showCoolingOff ? "Sleep on it" : "Reply options"}
+        </SectionLabel>
         <Pressable onPress={run} disabled={loading} hitSlop={8}>
           {loading ? (
             <ActivityIndicator size="small" color={c.primary} />
@@ -92,7 +104,8 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
 
       {!gate && !replies && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
-          We'll check for red flags first, then suggest a reply only if it feels right.
+          We'll check for red flags first, then suggest a reply only if it feels
+          right.
         </Body>
       )}
 
@@ -108,7 +121,9 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
               gap: 6,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
               <Feather name="alert-octagon" size={14} color={c.destructive} />
               <Text
                 style={{
@@ -118,7 +133,8 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                   letterSpacing: 0.5,
                 }}
               >
-                {gate.flags.redFlags.length} FLAG{gate.flags.redFlags.length === 1 ? "" : "S"} — TAKE A BEAT
+                {gate.flags.redFlags.length} FLAG
+                {gate.flags.redFlags.length === 1 ? "" : "S"} — TAKE A BEAT
               </Text>
             </View>
             <Text style={{ color: c.foreground, fontSize: 13, lineHeight: 18 }}>
@@ -148,7 +164,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
               })}
             >
               <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
-                Suggest a reply anyway
+                Show replies anyway
               </Text>
             </Pressable>
           </View>
@@ -200,7 +216,9 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                   gap: 6,
                 })}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                >
                   <Feather name={meta.icon} size={12} color={meta.tint} />
                   <Text
                     style={{
@@ -216,7 +234,9 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                   <View style={{ flex: 1 }} />
                   <Feather name="copy" size={12} color={c.mutedForeground} />
                 </View>
-                <Text style={{ color: c.foreground, fontSize: 14 }}>{r.text}</Text>
+                <Text style={{ color: c.foreground, fontSize: 14 }}>
+                  {r.text}
+                </Text>
               </Pressable>
             );
           })}

@@ -325,7 +325,7 @@ export const GetMatchResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -676,7 +676,7 @@ export const AddScreenshotResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -812,7 +812,7 @@ export const RescoreMatchResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1070,7 +1070,7 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1244,7 +1244,7 @@ export const InPersonRecordingResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1356,7 +1356,7 @@ export const InPersonRecordingResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1425,7 +1425,7 @@ export const VoiceDebriefResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1537,7 +1537,7 @@ export const VoiceDebriefResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
