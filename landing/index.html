@@ -18,11 +18,7 @@
     />
     <meta property="og:type" content="website" />
 
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FAF7F3'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' fill='%23D9694C' text-anchor='middle'%3EH%3C/text%3E%3C/svg%3E"
-    />
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
 
     <style>
       :root {
@@ -30,10 +26,10 @@
         --surface: #ffffff;
         --ink: #2e2632;
         --muted: #756e78;
-        --accent: #d9694c;
-        --accent-hover: #c2553e;
+        --accent: #e07a5f;
+        --accent-hover: #cf6549;
         --line: #e7e0d8;
-        --focus: rgba(217, 105, 76, 0.28);
+        --focus: rgba(224, 122, 95, 0.28);
         --ok: #3f7d5b;
         --err: #b4543e;
       }
@@ -74,13 +70,23 @@
         text-align: center;
       }
 
+      .brand {
+        margin: 0 0 48px;
+      }
+      .mark {
+        display: block;
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 14px;
+        border-radius: 14px;
+      }
       .wordmark {
         font-family: ui-serif, Georgia, "Times New Roman", serif;
         font-size: 20px;
         font-weight: 600;
         letter-spacing: 0.2px;
         color: var(--ink);
-        margin: 0 0 48px;
+        margin: 0;
       }
 
       .wordmark .dot {
@@ -260,7 +266,10 @@
   <body>
     <main class="page">
       <div class="card">
-        <p class="wordmark">HeyTelli<span class="dot">.</span></p>
+        <div class="brand">
+          <img class="mark" src="icon.svg" width="56" height="56" alt="HeyTelli logo" />
+          <p class="wordmark">HeyTelli<span class="dot">.</span></p>
+        </div>
 
         <!-- Signup view -->
         <div id="signup-view">
