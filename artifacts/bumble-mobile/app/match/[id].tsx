@@ -2126,7 +2126,7 @@ function DateSafetyPlanCard({
             </View>
           </View>
           <Input
-            placeholder="Circle first name (not a phone number)"
+            placeholder="Circle first names, up to 3 (not phone numbers)"
             value={trustedCircleName}
             onChangeText={(value) => {
               setPlanDirty(true);

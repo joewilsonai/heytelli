@@ -29,6 +29,7 @@ import {
 import { pickTrustedCircleContact } from "@/lib/trusted-circle-contacts";
 import { useUserSettings } from "@/lib/use-user-settings";
 import {
+  MAX_TRUSTED_CIRCLE_PEOPLE,
   buildProfileReview,
   sanitizeCircleContact,
   stripStoredCirclePhoneNumbers,
@@ -115,9 +116,19 @@ export default function SettingsScreen() {
   };
 
   const addPerson = (person: TrustedCirclePerson) => {
+    if (draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE) {
+      Alert.alert(
+        "Circle full",
+        `You can keep up to ${MAX_TRUSTED_CIRCLE_PEOPLE} people in your circle.`,
+      );
+      return;
+    }
     setDraftDirty(true);
     setDraft((current) => {
-      const nextCircle = [...current.trustedCircle, person];
+      const nextCircle = [...current.trustedCircle, person].slice(
+        0,
+        MAX_TRUSTED_CIRCLE_PEOPLE,
+      );
       return {
         ...current,
         trustedCircle: nextCircle,
@@ -394,14 +405,15 @@ export default function SettingsScreen() {
       <Card>
         <SectionLabel>Trusted Circle</SectionLabel>
         <Body muted>
-          HeyTelli stores names locally for Date Cards. Contact access is only
-          used when you tap Add from Contacts.
+          HeyTelli stores up to 3 first names locally for Date Cards. Contact
+          access is only used when you tap Add from Contacts.
         </Body>
         <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
           <Button
             label="Add from Contacts"
             icon="user-plus"
             onPress={addFromContacts}
+            disabled={draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE}
             variant="secondary"
             style={{ flex: 1 }}
           />
@@ -422,9 +434,14 @@ export default function SettingsScreen() {
             icon="plus"
             variant="ghost"
             onPress={addManualPerson}
+            disabled={draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE}
           />
         </View>
         <View style={{ gap: 8, marginTop: 12 }}>
+          <Body muted style={{ fontSize: 12 }}>
+            {draft.trustedCircle.length}/{MAX_TRUSTED_CIRCLE_PEOPLE} circle
+            people
+          </Body>
           {draft.trustedCircle.length === 0 ? (
             <Body muted>No circle people yet.</Body>
           ) : (

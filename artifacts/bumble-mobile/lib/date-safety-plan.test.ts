@@ -205,6 +205,19 @@ test("builds a privacy-first date card message from allowed fields only", () => 
   assert.match(message, /No images included/);
 });
 
+test("date card supports three circle contacts by first name", () => {
+  const message = buildDateCardMessage({
+    ...baseMatch,
+    dateSafetyPlan: {
+      ...baseMatch.dateSafetyPlan!,
+      trustedCircleName: "Claire Wilson, Maya Hart, Riley Stone",
+    },
+  });
+
+  assert.match(message, /Circle contacts: Claire, Maya, Riley/);
+  assert.doesNotMatch(message, /Wilson|Hart|Stone/);
+});
+
 test("builds circle check messages for safe and completed states", () => {
   assert.equal(
     buildCircleCheckMessage(baseMatch, "safe"),

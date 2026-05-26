@@ -15,9 +15,11 @@ test("settings screen exposes profile, circle, and date defaults", () => {
 
   assert.match(screen, /My Dating Profile/);
   assert.match(screen, /Trusted Circle/);
+  assert.match(screen, /circle\s+people/);
+  assert.match(screen, /MAX_TRUSTED_CIRCLE_PEOPLE/);
   assert.match(screen, /Date Safety Defaults/);
   assert.match(screen, /Add from Contacts/);
-  assert.match(screen, /HeyTelli stores names locally/);
+  assert.match(screen, /HeyTelli stores up to 3 first names locally/);
   assert.match(screen, /Profile Review/);
   assert.match(screen, /saveProfileScreenshotUris/);
   assert.match(screen, /MAX_PROFILE_SCREENSHOTS/);

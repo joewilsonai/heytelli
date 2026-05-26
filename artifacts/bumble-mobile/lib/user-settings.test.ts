@@ -3,9 +3,11 @@ import test from "node:test";
 
 import {
   DEFAULT_HEYTELLI_SETTINGS,
+  MAX_TRUSTED_CIRCLE_PEOPLE,
   buildDateSafetyPlanFromSettings,
   buildProfileReview,
   getPrimaryCirclePerson,
+  getTrustedCirclePeople,
   sanitizeCircleContact,
   stripStoredCirclePhoneNumbers,
 } from "./user-settings.ts";
@@ -48,6 +50,22 @@ test("uses selected primary circle person when building a new date card", () => 
         source: "contacts" as const,
         createdAt: "2026-05-26T07:00:00.000Z",
       },
+      {
+        id: "circle_2",
+        name: "Maya",
+        relationship: "roommate",
+        phoneNumber: null,
+        source: "manual" as const,
+        createdAt: "2026-05-26T07:05:00.000Z",
+      },
+      {
+        id: "circle_3",
+        name: "Riley",
+        relationship: "friend",
+        phoneNumber: null,
+        source: "contacts" as const,
+        createdAt: "2026-05-26T07:10:00.000Z",
+      },
     ],
     dateSafetyDefaults: {
       ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
@@ -62,12 +80,17 @@ test("uses selected primary circle person when building a new date card", () => 
   };
 
   assert.equal(getPrimaryCirclePerson(settings)?.name, "Claire");
+  assert.equal(MAX_TRUSTED_CIRCLE_PEOPLE, 3);
+  assert.deepEqual(
+    getTrustedCirclePeople(settings).map((person) => person.name),
+    ["Claire", "Maya", "Riley"],
+  );
 
   const plan = buildDateSafetyPlanFromSettings(settings, {
     nextDateAt: "2026-06-01T00:00:00.000Z",
   });
 
-  assert.equal(plan.trustedCircleName, "Claire");
+  assert.equal(plan.trustedCircleName, "Claire, Maya, Riley");
   assert.equal(plan.transportPlan, "I drive myself and park near the front");
   assert.equal(plan.codeWord, "pineapple");
   assert.equal(plan.circleNote, "Text me if I miss the check-in.");

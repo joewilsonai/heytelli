@@ -50,6 +50,8 @@ export type ProfileReview = {
   clarityWarnings: string[];
 };
 
+export const MAX_TRUSTED_CIRCLE_PEOPLE = 3;
+
 export const DEFAULT_HEYTELLI_SETTINGS: HeyTelliSettings = {
   datingProfile: {
     profileText: "",
@@ -126,15 +128,29 @@ export function getPrimaryCirclePerson(
   );
 }
 
+export function getTrustedCirclePeople(
+  settings: HeyTelliSettings,
+): TrustedCirclePerson[] {
+  const primary = getPrimaryCirclePerson(settings);
+  const people = primary
+    ? [
+        primary,
+        ...settings.trustedCircle.filter((person) => person.id !== primary.id),
+      ]
+    : settings.trustedCircle;
+  return people.slice(0, MAX_TRUSTED_CIRCLE_PEOPLE);
+}
+
 export function buildDateSafetyPlanFromSettings(
   settings: HeyTelliSettings,
   match: { nextDateAt?: string | null },
 ): DateSafetyPlan {
-  const primary = getPrimaryCirclePerson(settings);
+  const circlePeople = getTrustedCirclePeople(settings);
   const defaults = settings.dateSafetyDefaults;
 
   return {
-    trustedCircleName: primary?.name ?? null,
+    trustedCircleName:
+      circlePeople.map((person) => person.name).join(", ") || null,
     transportPlan: nullable(defaults.transportPlan),
     checkInAt: minutesAfter(match.nextDateAt, defaults.checkInOffsetMinutes),
     expectedEndAt: minutesAfter(
@@ -171,7 +187,7 @@ export function mergeSettings(
         : [],
     },
     trustedCircle: Array.isArray(value?.trustedCircle)
-      ? value.trustedCircle
+      ? value.trustedCircle.slice(0, MAX_TRUSTED_CIRCLE_PEOPLE)
       : [],
     dateSafetyDefaults: {
       ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
