@@ -166,7 +166,7 @@ export default function MatchesScreen() {
                 <Feather name="shield" size={20} color={c.foreground} />
               </Pressable>
             </Link>
-            <Link href="/analytics" asChild>
+            <Link href="/settings" asChild>
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
                 style={({ pressed }) => ({
@@ -180,9 +180,9 @@ export default function MatchesScreen() {
                   justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                 })}
-                accessibilityLabel="Analytics"
+                accessibilityLabel="Settings"
               >
-                <Feather name="bar-chart-2" size={20} color={c.foreground} />
+                <Feather name="settings" size={20} color={c.foreground} />
               </Pressable>
             </Link>
             <Link href="/chat" asChild>

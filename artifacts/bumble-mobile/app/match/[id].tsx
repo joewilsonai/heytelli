@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -79,11 +79,14 @@ import {
   getDateSafetyPlanStatus,
   SAFE_DATE_CHECKLIST_ITEMS,
   type CircleCheckStatus,
+  type DateSafetyPlan,
   type SafeDateChecklist,
 } from "@/lib/date-safety-plan";
 import { getMatchDetailHeroModel } from "@/lib/match-detail-hero";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
+import { buildDateSafetyPlanFromSettings } from "@/lib/user-settings";
+import { useUserSettings } from "@/lib/use-user-settings";
 
 export default function MatchDetailScreen() {
   const c = useColors();
@@ -1587,11 +1590,16 @@ function withTimeOnDate(dateValue: string | null, timeValue: Date): Date {
 function defaultPlanTime(
   match: MatchDetail,
   field: "checkInAt" | "expectedEndAt",
+  fallbackValue?: string | null,
 ): Date {
   const existing = match.dateSafetyPlan?.[field];
   if (existing) {
     const date = new Date(existing);
     if (!Number.isNaN(date.getTime())) return date;
+  }
+  if (fallbackValue) {
+    const fallback = new Date(fallbackValue);
+    if (!Number.isNaN(fallback.getTime())) return fallback;
   }
   const start = match.nextDateAt ? new Date(match.nextDateAt) : new Date();
   if (Number.isNaN(start.getTime())) return new Date();
@@ -1601,20 +1609,19 @@ function defaultPlanTime(
   return next;
 }
 
-function initialSafeDateChecklist(match: MatchDetail): SafeDateChecklist {
+function initialSafeDateChecklist(
+  match: MatchDetail,
+  defaultPlan?: DateSafetyPlan,
+): SafeDateChecklist {
+  const source =
+    match.dateSafetyPlan?.safeDateChecklist ?? defaultPlan?.safeDateChecklist;
   return {
-    publicPlace: match.dateSafetyPlan?.safeDateChecklist?.publicPlace ?? false,
-    ownTransport:
-      match.dateSafetyPlan?.safeDateChecklist?.ownTransport ?? false,
-    circleHasPlan:
-      match.dateSafetyPlan?.safeDateChecklist?.circleHasPlan ?? false,
-    profileReviewed:
-      match.dateSafetyPlan?.safeDateChecklist?.profileReviewed ?? false,
-    noPrivateLocationPressure:
-      match.dateSafetyPlan?.safeDateChecklist?.noPrivateLocationPressure ??
-      false,
-    noMoneyOrPhotoPressure:
-      match.dateSafetyPlan?.safeDateChecklist?.noMoneyOrPhotoPressure ?? false,
+    publicPlace: source?.publicPlace ?? false,
+    ownTransport: source?.ownTransport ?? false,
+    circleHasPlan: source?.circleHasPlan ?? false,
+    profileReviewed: source?.profileReviewed ?? false,
+    noPrivateLocationPressure: source?.noPrivateLocationPressure ?? false,
+    noMoneyOrPhotoPressure: source?.noMoneyOrPhotoPressure ?? false,
   };
 }
 
@@ -1626,33 +1633,73 @@ function DateSafetyPlanCard({
   onChange: () => void;
 }) {
   const c = useColors();
+  const { settings } = useUserSettings();
   const plan = match.dateSafetyPlan;
+  const defaultPlan = useMemo(
+    () => buildDateSafetyPlanFromSettings(settings, match),
+    [match.nextDateAt, settings],
+  );
   const status = getDateSafetyPlanStatus(match);
   const [open, setOpen] = useState(status.state !== "ready");
   const [trustedCircleName, setTrustedCircleName] = useState(
-    plan?.trustedCircleName ?? "",
+    plan?.trustedCircleName ?? defaultPlan.trustedCircleName ?? "",
   );
-  const [transportPlan, setTransportPlan] = useState(plan?.transportPlan ?? "");
+  const [transportPlan, setTransportPlan] = useState(
+    plan?.transportPlan ?? defaultPlan.transportPlan ?? "",
+  );
   const [checkInAt, setCheckInAt] = useState(() =>
-    defaultPlanTime(match, "checkInAt"),
+    defaultPlanTime(match, "checkInAt", defaultPlan.checkInAt),
   );
   const [expectedEndAt, setExpectedEndAt] = useState(() =>
-    defaultPlanTime(match, "expectedEndAt"),
+    defaultPlanTime(match, "expectedEndAt", defaultPlan.expectedEndAt),
   );
-  const [codeWord, setCodeWord] = useState(plan?.codeWord ?? "");
-  const [circleNote, setCircleNote] = useState(plan?.circleNote ?? "");
+  const [codeWord, setCodeWord] = useState(
+    plan?.codeWord ?? defaultPlan.codeWord ?? "",
+  );
+  const [circleNote, setCircleNote] = useState(
+    plan?.circleNote ?? defaultPlan.circleNote ?? "",
+  );
   const [shareLiveLocation, setShareLiveLocation] = useState(
-    plan?.shareLiveLocation ?? false,
+    plan?.shareLiveLocation ?? defaultPlan.shareLiveLocation ?? false,
   );
   const [safeDateChecklist, setSafeDateChecklist] = useState<SafeDateChecklist>(
-    () => initialSafeDateChecklist(match),
+    () => initialSafeDateChecklist(match, defaultPlan),
   );
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [circleChecking, setCircleChecking] = useState(false);
+  const [planDirty, setPlanDirty] = useState(false);
+  const [defaultPlanAppliedKey, setDefaultPlanAppliedKey] = useState<
+    string | null
+  >(null);
   const [androidPickerMode, setAndroidPickerMode] = useState<
     "check-in" | "end" | null
   >(null);
+  const defaultPlanKey = JSON.stringify(defaultPlan);
+
+  useEffect(() => {
+    if (plan) return;
+    if (planDirty) return;
+    if (defaultPlanAppliedKey === defaultPlanKey) return;
+    setTrustedCircleName(defaultPlan.trustedCircleName ?? "");
+    setTransportPlan(defaultPlan.transportPlan ?? "");
+    setCheckInAt(defaultPlanTime(match, "checkInAt", defaultPlan.checkInAt));
+    setExpectedEndAt(
+      defaultPlanTime(match, "expectedEndAt", defaultPlan.expectedEndAt),
+    );
+    setCodeWord(defaultPlan.codeWord ?? "");
+    setCircleNote(defaultPlan.circleNote ?? "");
+    setShareLiveLocation(defaultPlan.shareLiveLocation ?? false);
+    setSafeDateChecklist(initialSafeDateChecklist(match, defaultPlan));
+    setDefaultPlanAppliedKey(defaultPlanKey);
+  }, [
+    defaultPlanAppliedKey,
+    defaultPlanKey,
+    match.id,
+    match.nextDateAt,
+    plan,
+    planDirty,
+  ]);
 
   const previewMatch = {
     ...match,
@@ -1729,6 +1776,7 @@ function DateSafetyPlanCard({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
+      setPlanDirty(false);
       setOpen(false);
       onChange();
     } catch (e: any) {
@@ -1742,20 +1790,32 @@ function DateSafetyPlanCard({
     setClearing(true);
     try {
       await updateMatch(match.id, { dateSafetyPlan: null });
-      setTrustedCircleName("");
-      setTransportPlan("");
+      setTrustedCircleName(defaultPlan.trustedCircleName ?? "");
+      setTransportPlan(defaultPlan.transportPlan ?? "");
       setCheckInAt(
-        defaultPlanTime({ ...match, dateSafetyPlan: null }, "checkInAt"),
+        defaultPlanTime(
+          { ...match, dateSafetyPlan: null },
+          "checkInAt",
+          defaultPlan.checkInAt,
+        ),
       );
       setExpectedEndAt(
-        defaultPlanTime({ ...match, dateSafetyPlan: null }, "expectedEndAt"),
+        defaultPlanTime(
+          { ...match, dateSafetyPlan: null },
+          "expectedEndAt",
+          defaultPlan.expectedEndAt,
+        ),
       );
-      setCodeWord("");
-      setCircleNote("");
-      setShareLiveLocation(false);
+      setCodeWord(defaultPlan.codeWord ?? "");
+      setCircleNote(defaultPlan.circleNote ?? "");
+      setShareLiveLocation(defaultPlan.shareLiveLocation ?? false);
       setSafeDateChecklist(
-        initialSafeDateChecklist({ ...match, dateSafetyPlan: null }),
+        initialSafeDateChecklist(
+          { ...match, dateSafetyPlan: null },
+          defaultPlan,
+        ),
       );
+      setPlanDirty(false);
       setOpen(true);
       cancelDateSafetyReminders(match.id).catch(() => {});
       onChange();
@@ -1769,12 +1829,14 @@ function DateSafetyPlanCard({
   const pickTime = (kind: "check-in" | "end", date: Date | undefined) => {
     setAndroidPickerMode(null);
     if (!date) return;
+    setPlanDirty(true);
     const next = withTimeOnDate(match.nextDateAt, date);
     if (kind === "check-in") setCheckInAt(next);
     else setExpectedEndAt(next);
   };
 
   const toggleChecklist = (key: keyof SafeDateChecklist) => {
+    setPlanDirty(true);
     setSafeDateChecklist((current) => ({
       ...current,
       [key]: !current[key],
@@ -1804,6 +1866,7 @@ function DateSafetyPlanCard({
           lastCircleCheckAt: checkedAt,
         },
       });
+      setPlanDirty(false);
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't update circle", e?.message ?? "Try again.");
@@ -1994,12 +2057,18 @@ function DateSafetyPlanCard({
           <Input
             placeholder="Circle first name (not a phone number)"
             value={trustedCircleName}
-            onChangeText={setTrustedCircleName}
+            onChangeText={(value) => {
+              setPlanDirty(true);
+              setTrustedCircleName(value);
+            }}
           />
           <Input
             placeholder="Transport / exit plan"
             value={transportPlan}
-            onChangeText={setTransportPlan}
+            onChangeText={(value) => {
+              setPlanDirty(true);
+              setTransportPlan(value);
+            }}
           />
           {Platform.OS === "ios" ? (
             <>
@@ -2056,12 +2125,18 @@ function DateSafetyPlanCard({
           <Input
             placeholder="Code word (optional)"
             value={codeWord}
-            onChangeText={setCodeWord}
+            onChangeText={(value) => {
+              setPlanDirty(true);
+              setCodeWord(value);
+            }}
           />
           <Input
             placeholder="Note for your circle (optional)"
             value={circleNote}
-            onChangeText={setCircleNote}
+            onChangeText={(value) => {
+              setPlanDirty(true);
+              setCircleNote(value);
+            }}
             multiline
           />
           <View
@@ -2093,7 +2168,10 @@ function DateSafetyPlanCard({
             </View>
             <Switch
               value={shareLiveLocation}
-              onValueChange={setShareLiveLocation}
+              onValueChange={(value) => {
+                setPlanDirty(true);
+                setShareLiveLocation(value);
+              }}
               trackColor={{ true: c.primary, false: c.muted }}
             />
           </View>

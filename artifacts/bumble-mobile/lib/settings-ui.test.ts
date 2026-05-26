@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { fileURLToPath, URL as NodeURL } from "node:url";
+
+function read(relativePath: string): string {
+  return readFileSync(
+    fileURLToPath(new NodeURL(relativePath, import.meta.url)),
+    "utf8",
+  );
+}
+
+test("settings screen exposes profile, circle, and date defaults", () => {
+  const screen = read("../app/settings.tsx");
+
+  assert.match(screen, /My Dating Profile/);
+  assert.match(screen, /Trusted Circle/);
+  assert.match(screen, /Date Safety Defaults/);
+  assert.match(screen, /Add from Contacts/);
+  assert.match(screen, /HeyTelli stores names locally/);
+  assert.match(screen, /Profile Review/);
+  assert.match(screen, /saveProfileScreenshotUris/);
+  assert.match(screen, /stripStoredCirclePhoneNumbers/);
+  assert.match(screen, /draftDirty/);
+});
+
+test("settings route is registered and reachable from home", () => {
+  const layout = read("../app/_layout.tsx");
+  const home = read("../app/index.tsx");
+
+  assert.match(layout, /name="settings"/);
+  assert.match(home, /href="\/settings"/);
+  assert.match(home, /accessibilityLabel="Settings"/);
+});

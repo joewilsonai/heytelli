@@ -21,8 +21,8 @@ const TRUST_ITEMS = [
   },
   {
     icon: "users" as const,
-    title: "We do not store circle phone numbers",
-    body: "The current Circle Check uses the iOS share sheet. HeyTelli stores a first name or label only, not phone numbers or contact records.",
+    title: "Your circle stays local",
+    body: "Trusted Circle entries are saved on this phone for Date Card defaults. Contacts are only read when you tap Add from Contacts, and phone storage stays off unless you explicitly enable it.",
   },
   {
     icon: "trash-2" as const,

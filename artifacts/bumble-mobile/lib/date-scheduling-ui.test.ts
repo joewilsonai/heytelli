@@ -24,6 +24,10 @@ test("match screen walks through safe date planning after a date is entered", ()
   assert.match(matchScreen, /SAFE_DATE_CHECKLIST_ITEMS/);
   assert.match(matchScreen, /item\.label/);
   assert.match(matchScreen, /Circle Check/);
+  assert.match(matchScreen, /useUserSettings/);
+  assert.match(matchScreen, /buildDateSafetyPlanFromSettings/);
+  assert.match(matchScreen, /planDirty/);
+  assert.match(matchScreen, /defaultPlanAppliedKey/);
   assert.match(matchScreen, /I'm safe/);
   assert.match(matchScreen, /Need exit/);
   assert.match(matchScreen, /result\.action === Share\.sharedAction/);

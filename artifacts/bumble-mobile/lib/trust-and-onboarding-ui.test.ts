@@ -27,7 +27,8 @@ test("trust center explains retention, private date cards, and delete controls",
   assert.match(trustScreen, /not a long-term private vault/);
   assert.match(trustScreen, /Date Cards never include screenshots/);
   assert.match(trustScreen, /optional code word/);
-  assert.match(trustScreen, /We do not store circle phone numbers/);
+  assert.match(trustScreen, /Your circle stays local/);
+  assert.match(trustScreen, /phone storage stays off/);
   assert.match(trustScreen, /Delete a match deletes its history/);
   assert.match(trustScreen, /DatingPatternGlossaryCard/);
 });

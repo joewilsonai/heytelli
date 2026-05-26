@@ -6,12 +6,14 @@ import { fileURLToPath, URL as NodeURL } from "node:url";
 const files = [
   "../app/index.tsx",
   "../app/match/[id].tsx",
+  "../app/settings.tsx",
   "../app/trust.tsx",
   "../components/CheatSheetCard.tsx",
   "../components/DatingPatternGlossaryCard.tsx",
   "../components/RedFlagsCard.tsx",
   "../lib/dating-pattern-glossary.ts",
   "../lib/home-match-card.ts",
+  "../lib/user-settings.ts",
 ].map((path) =>
   readFileSync(fileURLToPath(new NodeURL(path, import.meta.url)), "utf8"),
 );

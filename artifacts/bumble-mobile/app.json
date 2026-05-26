@@ -52,6 +52,12 @@
         }
       ],
       [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow HeyTelli to let you choose trusted circle people for Date Cards."
+        }
+      ],
+      [
         "expo-sharing",
         {
           "ios": {
