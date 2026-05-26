@@ -168,7 +168,7 @@ export function RedFlagsCard({
               showAlert ? c.destructive : promoted ? c.primary : c.foreground
             }
           />
-          <SectionLabel>The Read</SectionLabel>
+          <SectionLabel>Pattern radar</SectionLabel>
           {flagCount > 0 && (
             <View
               style={{
@@ -215,7 +215,7 @@ export function RedFlagsCard({
       {!data && !open && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
           {flagCount > 0
-            ? `${flagCount} saved concern${flagCount === 1 ? "" : "s"} on this match.`
+            ? `${flagCount} saved pattern${flagCount === 1 ? "" : "s"} on this match.`
             : promoted
               ? "Scan chat and notes for behavioral patterns before you reply."
               : "Scan chat, dates, and notes for behavioral patterns."}
@@ -244,11 +244,11 @@ export function RedFlagsCard({
           ) : null}
           {currentFlags.length > 0 &&
             renderFlagList(
-              data ? "CURRENT CONCERNS" : "SAVED CONCERNS",
+              data ? "CURRENT PATTERNS" : "SAVED PATTERNS",
               currentFlags,
             )}
           {historicalFlags.length > 0 &&
-            renderFlagList("PREVIOUSLY FLAGGED", historicalFlags, true)}
+            renderFlagList("SEEN BEFORE", historicalFlags, true)}
           {actionChecklist.length > 0 ? (
             <View
               style={{
@@ -268,7 +268,7 @@ export function RedFlagsCard({
                   letterSpacing: 0.5,
                 }}
               >
-                SAFETY ACTIONS
+                OPTIONS TO CONSIDER
               </Text>
               {actionChecklist.map((action) => (
                 <View

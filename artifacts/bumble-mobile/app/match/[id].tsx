@@ -57,6 +57,7 @@ import { VoiceDebriefSheet } from "@/components/VoiceDebriefSheet";
 import { VoiceNoteFeedbackSheet } from "@/components/VoiceNoteFeedbackSheet";
 import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
 import { RedFlagsCard } from "@/components/RedFlagsCard";
+import { DatingPatternGlossaryCard } from "@/components/DatingPatternGlossaryCard";
 import { CheatSheetCard } from "@/components/CheatSheetCard";
 import { TagsRow } from "@/components/TagsRow";
 import { TagHistoryCard } from "@/components/TagHistoryCard";
@@ -80,6 +81,7 @@ import {
   type CircleCheckStatus,
   type SafeDateChecklist,
 } from "@/lib/date-safety-plan";
+import { getMatchDetailHeroModel } from "@/lib/match-detail-hero";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 
@@ -151,6 +153,7 @@ export default function MatchDetailScreen() {
         }
       >
         <HeaderCard match={data} onChange={() => refetch()} />
+        <NextStepCard match={data} />
         <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
         <LatestReadCard match={data} onChange={() => refetch()} />
         <RedFlagsCard
@@ -163,6 +166,7 @@ export default function MatchDetailScreen() {
             historicalRedFlags: data.historicalRedFlags ?? [],
           }}
         />
+        <DatingPatternGlossaryCard compact />
         <ResponseStatsCard matchId={data.id} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />
         <VoiceDebriefCard
@@ -619,7 +623,7 @@ function ChatLinkCard({
             marginTop: 2,
           }}
         >
-          Talk through next moves and her signals
+          Talk through next moves, patterns, and what you want to say
         </Text>
       </View>
       {busy ? (
@@ -693,6 +697,81 @@ function BetaFeedbackCard({
             />
           ))}
         </View>
+      </View>
+    </Card>
+  );
+}
+
+function heroToneColors(
+  tone: "success" | "warning" | "danger" | "muted" | "primary",
+  c: ReturnType<typeof useColors>,
+) {
+  if (tone === "success") return { bg: c.successBg, fg: c.success };
+  if (tone === "warning") return { bg: c.warningBg, fg: c.warning };
+  if (tone === "danger") return { bg: c.destructive + "12", fg: c.destructive };
+  if (tone === "primary") return { bg: c.infoBg, fg: c.info };
+  return { bg: c.muted, fg: c.mutedForeground };
+}
+
+function NextStepCard({ match }: { match: MatchDetail }) {
+  const c = useColors();
+  const model = getMatchDetailHeroModel(match);
+  const tone = heroToneColors(model.tone, c);
+
+  return (
+    <Card style={{ borderColor: tone.fg + "55" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: tone.bg,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Feather name="arrow-right-circle" size={20} color={tone.fg} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <SectionLabel>{model.eyebrow}</SectionLabel>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 18,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            {model.title}
+          </Text>
+        </View>
+      </View>
+      <Body muted style={{ marginTop: 10 }}>
+        {model.body}
+      </Body>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 6,
+          marginTop: 12,
+        }}
+      >
+        {model.chips.map((chip) => (
+          <View
+            key={chip}
+            style={{
+              backgroundColor: c.muted,
+              borderRadius: 999,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+            }}
+          >
+            <Text style={{ color: c.mutedForeground, fontSize: 11 }}>
+              {chip}
+            </Text>
+          </View>
+        ))}
       </View>
     </Card>
   );
@@ -1737,6 +1816,32 @@ function DateSafetyPlanCard({
     displayStatus.state === "ready"
       ? { bg: c.successBg, fg: c.success, icon: "check" as const }
       : { bg: c.warningBg, fg: c.warning, icon: "shield" as const };
+  const circleStatusLabel =
+    plan?.circleCheckStatus === "safe"
+      ? "Checked in safe"
+      : plan?.circleCheckStatus === "needs_help"
+        ? "Exit support requested"
+        : plan?.circleCheckStatus === "completed"
+          ? "Date closed"
+          : "Not shared yet";
+  const summaryItems = [
+    {
+      label: "Circle",
+      value: trustedCircleName.trim() || plan?.trustedCircleName || "Add name",
+    },
+    {
+      label: "Check-in",
+      value: formatDateTime(checkInAt.toISOString()),
+    },
+    {
+      label: "Expected end",
+      value: formatDateTime(expectedEndAt.toISOString()),
+    },
+    {
+      label: "Status",
+      value: circleStatusLabel,
+    },
+  ];
 
   return (
     <Card
@@ -1779,6 +1884,84 @@ function DateSafetyPlanCard({
           </Text>
         </View>
       </View>
+      <View
+        style={{
+          marginTop: 12,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: c.border,
+          backgroundColor: c.background,
+          padding: 12,
+          gap: 10,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 15,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            Date Card readiness
+          </Text>
+          <Text
+            style={{
+              color: checklistProgress.ready ? c.success : c.warning,
+              fontSize: 12,
+              fontFamily: "Inter_700Bold",
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {checklistProgress.completed}/{checklistProgress.total}
+          </Text>
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {summaryItems.map((item) => (
+            <View
+              key={item.label}
+              style={{
+                flexGrow: 1,
+                flexBasis: "46%",
+                borderRadius: 10,
+                backgroundColor: c.card,
+                borderWidth: 1,
+                borderColor: c.border,
+                padding: 9,
+                gap: 3,
+              }}
+            >
+              <Text
+                style={{
+                  color: c.mutedForeground,
+                  fontSize: 10,
+                  fontFamily: "Inter_600SemiBold",
+                  textTransform: "uppercase",
+                }}
+              >
+                {item.label}
+              </Text>
+              <Text
+                style={{
+                  color: c.foreground,
+                  fontSize: 12,
+                  fontFamily: "Inter_600SemiBold",
+                }}
+                numberOfLines={1}
+              >
+                {item.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
       <Body muted style={{ fontSize: 12, marginTop: 2 }}>
         Share the plan with your circle. It can include first name, date time,
         location, transport, check-in, expected end, code word, and your note.
@@ -1791,14 +1974,14 @@ function DateSafetyPlanCard({
       )}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <Button
-          label={open ? "Hide" : plan ? "Edit plan" : "Make plan"}
+          label={open ? "Hide editor" : plan ? "Edit plan" : "Make plan"}
           icon={open ? "chevron-up" : "shield"}
           onPress={() => setOpen((v) => !v)}
           variant="secondary"
           style={{ flex: 1 }}
         />
         <Button
-          label="Share"
+          label="Share Date Card"
           icon="share"
           onPress={() => shareMessage(buildDateCardMessage(shareTarget))}
           disabled={shareStatus.state !== "ready"}
@@ -2044,6 +2227,21 @@ function DateSafetyPlanCard({
           marginVertical: 12,
         }}
       />
+      <View style={{ gap: 4, marginBottom: 10 }}>
+        <Text
+          style={{
+            color: c.foreground,
+            fontSize: 14,
+            fontFamily: "Inter_700Bold",
+          }}
+        >
+          Circle Check
+        </Text>
+        <Body muted style={{ fontSize: 12, lineHeight: 17 }}>
+          These send only when you choose to share. Use "Need exit" for backup,
+          not emergency response.
+        </Body>
+      </View>
       <View style={{ gap: 8 }}>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Button
@@ -2070,6 +2268,7 @@ function DateSafetyPlanCard({
                 buildSoftExitMessage(shareTarget, "call"),
               )
             }
+            disabled={shareStatus.state !== "ready"}
             variant="ghost"
             style={{ flex: 1 }}
             small
@@ -2085,6 +2284,7 @@ function DateSafetyPlanCard({
                 buildSoftExitMessage(shareTarget, "pickup"),
               )
             }
+            disabled={shareStatus.state !== "ready"}
             variant="ghost"
             style={{ flex: 1 }}
             small
@@ -2098,6 +2298,7 @@ function DateSafetyPlanCard({
                 buildSoftExitMessage(shareTarget, "text"),
               )
             }
+            disabled={shareStatus.state !== "ready"}
             variant="ghost"
             style={{ flex: 1 }}
             small

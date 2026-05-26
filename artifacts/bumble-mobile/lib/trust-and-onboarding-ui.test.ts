@@ -14,10 +14,12 @@ const trustScreen = readFileSync(
 );
 
 test("home screen includes share-sheet onboarding and trust center entry", () => {
-  assert.match(homeScreen, /Send screenshots to HeyTelli/);
+  assert.match(homeScreen, /Add screenshots/);
+  assert.match(homeScreen, /Import screenshots/);
   assert.match(homeScreen, /Open Photos/);
   assert.match(homeScreen, /Choose HeyTelli/);
   assert.match(homeScreen, /href="\/trust"/);
+  assert.match(homeScreen, /DashboardOverview/);
 });
 
 test("trust center explains retention, private date cards, and delete controls", () => {
@@ -27,4 +29,5 @@ test("trust center explains retention, private date cards, and delete controls",
   assert.match(trustScreen, /optional code word/);
   assert.match(trustScreen, /We do not store circle phone numbers/);
   assert.match(trustScreen, /Delete a match deletes its history/);
+  assert.match(trustScreen, /DatingPatternGlossaryCard/);
 });

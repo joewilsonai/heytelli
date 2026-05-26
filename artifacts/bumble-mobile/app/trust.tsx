@@ -5,6 +5,7 @@ import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body, Card, SectionLabel } from "@/components/ui";
+import { DatingPatternGlossaryCard } from "@/components/DatingPatternGlossaryCard";
 import { useColors } from "@/hooks/useColors";
 
 const TRUST_ITEMS = [
@@ -97,6 +98,7 @@ export default function TrustScreen() {
             </View>
           </Card>
         ))}
+        <DatingPatternGlossaryCard />
       </ScrollView>
     </>
   );

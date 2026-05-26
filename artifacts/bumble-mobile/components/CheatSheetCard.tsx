@@ -34,7 +34,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
   const run = async () => {
     setLoading(true);
     try {
-      // Safety-first: peek at red flags before suggesting replies.
+      // Safety-first: peek at saved patterns before suggesting replies.
       const flags = await getRedFlagRadar(matchId);
       const highCount = flags.redFlags.filter(
         (f) => f.severity === "high",
@@ -104,7 +104,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
 
       {!gate && !replies && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
-          We'll check for red flags first, then suggest a reply only if it feels
+          We'll check for patterns first, then suggest a reply only if it feels
           right.
         </Body>
       )}
@@ -133,7 +133,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                   letterSpacing: 0.5,
                 }}
               >
-                {gate.flags.redFlags.length} FLAG
+                {gate.flags.redFlags.length} PATTERN
                 {gate.flags.redFlags.length === 1 ? "" : "S"} — TAKE A BEAT
               </Text>
             </View>
@@ -196,7 +196,8 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
             >
               <Feather name="alert-triangle" size={12} color={c.warning} />
               <Text style={{ color: c.warning, fontSize: 11, flex: 1 }}>
-                Heads up — flags above. Don't feel obligated to send anything.
+                Heads up — patterns above. Don't feel obligated to send
+                anything.
               </Text>
             </View>
           )}

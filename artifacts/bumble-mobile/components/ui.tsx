@@ -103,6 +103,9 @@ export function Button({
 
   return (
     <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled }}
       onPress={() => {
         if (isDisabled) return;
         Haptics.selectionAsync().catch(() => {});
@@ -160,12 +163,13 @@ export function IconButton({
   const c = useColors();
   return (
     <Pressable
+      accessibilityLabel={hint ?? icon}
+      accessibilityRole="button"
       onPress={() => {
         Haptics.selectionAsync().catch(() => {});
         onPress();
       }}
       hitSlop={10}
-      accessibilityLabel={hint}
       style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
     >
       <Feather name={icon} size={size} color={color ?? c.foreground} />
@@ -175,14 +179,35 @@ export function IconButton({
 
 const STATUS_STYLES: Record<
   MatchStatus,
-  { bg: ColorToken; fg: ColorToken; label: string; icon: keyof typeof Feather.glyphMap }
+  {
+    bg: ColorToken;
+    fg: ColorToken;
+    label: string;
+    icon: keyof typeof Feather.glyphMap;
+  }
 > = {
   active: { bg: "successBg", fg: "success", label: "Active", icon: "circle" },
-  archived: { bg: "muted", fg: "mutedForeground", label: "Archived", icon: "archive" },
-  ghosted: { bg: "accent", fg: "accentForeground", label: "Ghosted", icon: "moon" },
+  archived: {
+    bg: "muted",
+    fg: "mutedForeground",
+    label: "Archived",
+    icon: "archive",
+  },
+  ghosted: {
+    bg: "accent",
+    fg: "accentForeground",
+    label: "Ghosted",
+    icon: "moon",
+  },
 };
 
-export function StatusPill({ status, small }: { status: MatchStatus; small?: boolean }) {
+export function StatusPill({
+  status,
+  small,
+}: {
+  status: MatchStatus;
+  small?: boolean;
+}) {
   const c = useColors();
   const s = STATUS_STYLES[status];
   return (
@@ -225,6 +250,9 @@ export function Chip({
   const c = useColors();
   return (
     <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ selected: Boolean(active) }}
       onPress={() => {
         Haptics.selectionAsync().catch(() => {});
         onPress();
@@ -435,12 +463,20 @@ export function EmptyState({
           {hint}
         </Text>
       ) : null}
-      {action ? <Button label={action.label} onPress={action.onPress} small /> : null}
+      {action ? (
+        <Button label={action.label} onPress={action.onPress} small />
+      ) : null}
     </View>
   );
 }
 
-export function H1({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
+export function H1({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: TextStyle;
+}) {
   const c = useColors();
   return (
     <Text
@@ -454,7 +490,13 @@ export function H1({ children, style }: { children: React.ReactNode; style?: Tex
   );
 }
 
-export function H2({ children, style }: { children: React.ReactNode; style?: TextStyle }) {
+export function H2({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: TextStyle;
+}) {
   const c = useColors();
   return (
     <Text

@@ -22,6 +22,8 @@ const colors = {
     successBg: "#DCFCE7",
     warning: "#B45309",
     warningBg: "#FEF3C7",
+    info: "#2563EB",
+    infoBg: "#DBEAFE",
   },
   dark: {
     text: "#F5F2ED",
@@ -46,6 +48,8 @@ const colors = {
     successBg: "#14361F",
     warning: "#F59E0B",
     warningBg: "#3A2A0A",
+    info: "#60A5FA",
+    infoBg: "#172554",
   },
   radius: 16,
 };

@@ -18,15 +18,28 @@ test("date scheduling uses native date time picker and explicit brief state", ()
 });
 
 test("match screen walks through safe date planning after a date is entered", () => {
+  assert.match(matchScreen, /NextStepCard/);
+  assert.match(matchScreen, /Date Card readiness/);
   assert.match(matchScreen, /Safe date walkthrough/);
   assert.match(matchScreen, /SAFE_DATE_CHECKLIST_ITEMS/);
   assert.match(matchScreen, /item\.label/);
+  assert.match(matchScreen, /Circle Check/);
   assert.match(matchScreen, /I'm safe/);
   assert.match(matchScreen, /Need exit/);
   assert.match(matchScreen, /result\.action === Share\.sharedAction/);
   assert.match(matchScreen, /buildSoftExitMessage\(shareTarget, "pickup"\)/);
   assert.match(matchScreen, /buildSoftExitMessage\(shareTarget, "text"\)/);
+  assert.equal(
+    [...matchScreen.matchAll(/disabled=\{shareStatus\.state !== "ready"\}/g)]
+      .length >= 4,
+    true,
+  );
   assert.match(matchScreen, /scheduleDateSafetyReminders/);
+});
+
+test("match screen includes the dating pattern glossary near the radar", () => {
+  assert.match(matchScreen, /DatingPatternGlossaryCard/);
+  assert.match(matchScreen, /compact/);
 });
 
 test("post-date debrief asks for safety and chemistry signals", () => {

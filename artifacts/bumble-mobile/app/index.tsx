@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -32,9 +31,9 @@ import { AutoArchiveBanner } from "@/components/AutoArchiveBanner";
 import { formatTimeAgo } from "@/lib/format";
 import {
   getHomeMatchCardModel,
+  type HomeDashboardSection,
   type HomeSignalTone,
 } from "@/lib/home-match-card";
-import { objectPathToUrl } from "@/lib/image";
 
 type StatusFilter = "active" | "archived" | "ghosted";
 type SortKey = "recent" | "attention" | "name" | "connection" | "momentum";
@@ -109,6 +108,21 @@ export default function MatchesScreen() {
     });
     return list;
   }, [matchData, filter, sort, tagFilter]);
+
+  const dashboard = useMemo(() => {
+    const sections: Record<HomeDashboardSection, number> = {
+      date: 0,
+      "needs-review": 0,
+      current: 0,
+      quiet: 0,
+    };
+    matchData
+      .filter((m) => m.status === "active")
+      .forEach((m) => {
+        sections[getHomeMatchCardModel(m).section.key] += 1;
+      });
+    return sections;
+  }, [matchData]);
 
   const renderRow = ({ item }: { item: Match }) => (
     <MatchRow match={item} onPress={() => router.push(`/match/${item.id}`)} />
@@ -403,6 +417,7 @@ export default function MatchesScreen() {
           ListHeaderComponent={
             filter === "active" ? (
               <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
+                <DashboardOverview sections={dashboard} />
                 <ShareSheetOnboardingCard />
                 <AutoArchiveBanner onChange={() => refetch()} />
                 <StaleNudgesSection />
@@ -440,6 +455,97 @@ export default function MatchesScreen() {
   );
 }
 
+function DashboardOverview({
+  sections,
+}: {
+  sections: Record<HomeDashboardSection, number>;
+}) {
+  const c = useColors();
+  const items = [
+    {
+      label: "Dates",
+      value: sections.date,
+      icon: "calendar" as const,
+      bg: c.infoBg,
+      fg: c.info,
+    },
+    {
+      label: "Review",
+      value: sections["needs-review"],
+      icon: "eye" as const,
+      bg: c.warningBg,
+      fg: c.warning,
+    },
+    {
+      label: "Current",
+      value: sections.current,
+      icon: "check-circle" as const,
+      bg: c.successBg,
+      fg: c.success,
+    },
+  ];
+
+  return (
+    <View
+      style={{
+        marginHorizontal: 20,
+        marginBottom: 12,
+        flexDirection: "row",
+        gap: 8,
+      }}
+    >
+      {items.map((item) => (
+        <View
+          key={item.label}
+          style={{
+            flex: 1,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: c.border,
+            backgroundColor: c.card,
+            padding: 10,
+            gap: 7,
+            minHeight: 78,
+          }}
+        >
+          <View
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              backgroundColor: item.bg,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name={item.icon} size={13} color={item.fg} />
+          </View>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 20,
+              fontFamily: "Inter_700Bold",
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {item.value}
+          </Text>
+          <Text
+            style={{
+              color: c.mutedForeground,
+              fontSize: 11,
+              fontFamily: "Inter_600SemiBold",
+            }}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function ShareSheetOnboardingCard() {
   const c = useColors();
   const steps = ["Open Photos", "Tap Share", "Choose HeyTelli"];
@@ -449,25 +555,49 @@ function ShareSheetOnboardingCard() {
       style={{
         marginHorizontal: 20,
         marginBottom: 12,
-        backgroundColor: c.card,
+        backgroundColor: c.foreground,
         borderWidth: 1,
-        borderColor: c.border,
+        borderColor: c.foreground,
         borderRadius: c.radius,
-        padding: 14,
-        gap: 10,
+        padding: 16,
+        gap: 13,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Feather name="share-2" size={16} color={c.primary} />
-        <Text
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View
           style={{
-            color: c.foreground,
-            fontSize: 14,
-            fontFamily: "Inter_600SemiBold",
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: "rgba(255,255,255,0.14)",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          Send screenshots to HeyTelli
-        </Text>
+          <Feather name="upload-cloud" size={20} color={c.background} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text
+            style={{
+              color: c.background,
+              fontSize: 18,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            Add screenshots
+          </Text>
+          <Text
+            style={{
+              color: c.background,
+              opacity: 0.78,
+              fontSize: 12,
+              lineHeight: 17,
+            }}
+          >
+            Import a profile or chat and turn it into a private read, patterns,
+            and a plan.
+          </Text>
+        </View>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
         {steps.map((step, index) => (
@@ -480,53 +610,92 @@ function ShareSheetOnboardingCard() {
               paddingHorizontal: 9,
               paddingVertical: 5,
               borderRadius: 999,
-              backgroundColor: c.muted,
+              backgroundColor: "rgba(255,255,255,0.12)",
             }}
           >
             <Text
               style={{
-                color: c.mutedForeground,
+                color: c.background,
+                opacity: 0.72,
                 fontSize: 11,
                 fontFamily: "Inter_700Bold",
               }}
             >
               {index + 1}
             </Text>
-            <Text style={{ color: c.foreground, fontSize: 12 }}>{step}</Text>
+            <Text style={{ color: c.background, fontSize: 12 }}>{step}</Text>
           </View>
         ))}
       </View>
-      <Link href="/trust" asChild>
-        <Pressable
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Feather name="lock" size={13} color={c.mutedForeground} />
-          <Text
-            style={{
-              color: c.mutedForeground,
-              fontSize: 12,
-              fontFamily: "Inter_500Medium",
-            }}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Link href="/add" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Import screenshots"
+            style={({ pressed }) => ({
+              flex: 1,
+              minHeight: 42,
+              borderRadius: 12,
+              backgroundColor: c.background,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: 6,
+              opacity: pressed ? 0.78 : 1,
+            })}
           >
-            See what HeyTelli stores
-          </Text>
-        </Pressable>
-      </Link>
+            <Feather name="plus" size={16} color={c.foreground} />
+            <Text
+              style={{
+                color: c.foreground,
+                fontSize: 13,
+                fontFamily: "Inter_700Bold",
+              }}
+            >
+              Import
+            </Text>
+          </Pressable>
+        </Link>
+        <Link href="/trust" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open Trust Center"
+            style={({ pressed }) => ({
+              minHeight: 42,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.22)",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: 6,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Feather name="lock" size={14} color={c.background} />
+            <Text
+              style={{
+                color: c.background,
+                fontSize: 12,
+                fontFamily: "Inter_600SemiBold",
+              }}
+            >
+              Privacy
+            </Text>
+          </Pressable>
+        </Link>
+      </View>
     </View>
   );
 }
 
 function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
   const c = useColors();
-  const photo = objectPathToUrl(match.photoObjectPath);
   const model = getHomeMatchCardModel(match);
   const isStale =
     model.signal.label === "Stale" || model.status.label === "Needs reply";
+  const actionColors = toneColors(model.primaryAction.tone, c);
   const profileLine = [
     match.extractedProfile.job,
     match.extractedProfile.location,
@@ -536,6 +705,8 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
 
   return (
     <Pressable
+      accessibilityLabel={`${model.name}: ${model.primaryAction.label}`}
+      accessibilityRole="button"
       onPress={() => {
         Haptics.selectionAsync().catch(() => {});
         onPress();
@@ -543,7 +714,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
       style={({ pressed }) => ({
         backgroundColor: c.card,
         borderWidth: 1,
-        borderColor: isStale ? c.warning : c.border,
+        borderColor: isStale ? c.warning : actionColors.border,
         borderRadius: c.radius,
         padding: 14,
         flexDirection: "row",
@@ -552,32 +723,28 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
       })}
     >
       <View>
-        {photo ? (
-          <Image
-            source={photo}
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: actionColors.bg,
+            borderWidth: 1,
+            borderColor: actionColors.border,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: c.muted,
-            }}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <View
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: c.muted,
-              alignItems: "center",
-              justifyContent: "center",
+              color: actionColors.fg,
+              fontSize: 18,
+              fontFamily: "Inter_700Bold",
             }}
           >
-            <Feather name="user" size={22} color={c.mutedForeground} />
-          </View>
-        )}
+            {model.name.slice(0, 1).toUpperCase()}
+          </Text>
+        </View>
         {isStale && (
           <View
             style={{
@@ -665,18 +832,29 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
           }}
         >
           <DashboardPill label={model.signal.label} tone={model.signal.tone} />
-          <Text
+          <View
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: 12,
-              color: c.foreground,
-              fontFamily: "Inter_500Medium",
+              borderRadius: 999,
+              backgroundColor: actionColors.bg,
+              borderWidth: 1,
+              borderColor: actionColors.border,
+              paddingHorizontal: 9,
+              paddingVertical: 4,
             }}
-            numberOfLines={1}
           >
-            {model.nextAction}
-          </Text>
+            <Text
+              style={{
+                fontSize: 12,
+                color: actionColors.fg,
+                fontFamily: "Inter_600SemiBold",
+              }}
+              numberOfLines={1}
+            >
+              {model.primaryAction.label}
+            </Text>
+          </View>
         </View>
         <View
           style={{

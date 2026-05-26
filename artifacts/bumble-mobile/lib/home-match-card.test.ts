@@ -52,6 +52,8 @@ test("asks for more context when analysis has not happened", () => {
   assert.equal(model.name, "Maya");
   assert.equal(model.signal.label, "Needs more context");
   assert.equal(model.nextAction, "Upload latest chat");
+  assert.equal(model.primaryAction.kind, "add_screenshots");
+  assert.equal(model.section.key, "needs-review");
 });
 
 test("marks stale active matches when she was the last speaker over 48 hours ago", () => {
@@ -66,28 +68,45 @@ test("marks stale active matches when she was the last speaker over 48 hours ago
 
   assert.equal(model.signal.label, "Stale");
   assert.equal(model.nextAction, "Follow up or let it fade");
+  assert.equal(model.primaryAction.kind, "decide_next_move");
 });
 
 test("surfaces date safety when a future date is planned", () => {
   const model = getHomeMatchCardModel(
     {
       ...baseMatch,
-      nextDateAt: "2026-05-24T00:00:00.000Z",
+      nextDateAt: "2026-05-24T20:00:00.000Z",
     },
-    new Date("2026-05-23T01:00:00.000Z"),
+    new Date("2026-05-23T13:00:00.000Z"),
   );
 
   assert.equal(model.status.label, "Date planned");
   assert.equal(model.signal.label, "Needs Date Card");
   assert.equal(model.nextAction, "Make Date Card");
+  assert.equal(model.primaryAction.kind, "make_date_card");
+  assert.equal(model.section.key, "date");
+  assert.equal(model.section.label, "Upcoming date");
   assert.ok(model.contextChips.includes("Date set"));
+});
+
+test("labels same-day future dates as tonight", () => {
+  const model = getHomeMatchCardModel(
+    {
+      ...baseMatch,
+      nextDateAt: "2026-05-23T20:00:00.000Z",
+    },
+    new Date("2026-05-23T13:00:00.000Z"),
+  );
+
+  assert.equal(model.section.key, "date");
+  assert.equal(model.section.label, "Tonight");
 });
 
 test("surfaces circle-ready date cards on the dashboard", () => {
   const model = getHomeMatchCardModel(
     {
       ...baseMatch,
-      nextDateAt: "2026-05-24T00:00:00.000Z",
+      nextDateAt: "2026-05-24T20:00:00.000Z",
       nextDateLocation: "Paper Plane",
       dateSafetyPlanStatus: {
         hasPlan: true,
@@ -104,11 +123,12 @@ test("surfaces circle-ready date cards on the dashboard", () => {
         updatedAt: "2026-05-23T12:00:00.000Z",
       },
     },
-    new Date("2026-05-23T01:00:00.000Z"),
+    new Date("2026-05-23T13:00:00.000Z"),
   );
 
   assert.equal(model.signal.label, "Circle ready");
   assert.equal(model.nextAction, "Share Date Card");
+  assert.equal(model.primaryAction.kind, "share_date_card");
   assert.ok(model.contextChips.includes("Circle ready"));
 });
 
@@ -150,6 +170,7 @@ test("keeps the last read visible when newer screenshots are waiting", () => {
   assert.match(model.read.body, /warm but still light/);
   assert.equal(model.read.freshnessLabel, "2 screenshots waiting");
   assert.equal(model.signal.label, "Needs more context");
+  assert.equal(model.primaryAction.kind, "review_screenshots");
 });
 
 test("shows persisted reads as up to date when API freshness is current", () => {
@@ -182,8 +203,9 @@ test("surfaces saved red flag history on the dashboard", () => {
     },
   });
 
-  assert.equal(model.signal.label, "Saved concern");
+  assert.equal(model.signal.label, "Saved pattern");
   assert.equal(model.signal.tone, "danger");
-  assert.equal(model.nextAction, "Review saved concern");
-  assert.ok(model.contextChips.includes("1 concern"));
+  assert.equal(model.nextAction, "Review saved pattern");
+  assert.equal(model.primaryAction.kind, "review_pattern");
+  assert.ok(model.contextChips.includes("1 pattern"));
 });
