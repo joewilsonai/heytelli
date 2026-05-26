@@ -48,6 +48,9 @@ test("match screen exposes per-date date mode and clock cover controls", () => {
   assert.match(matchScreen, /Date Mode/);
   assert.match(matchScreen, /Cover Mode/);
   assert.match(matchScreen, /Clock screen/);
+  assert.match(matchScreen, /CoverQuickActions/);
+  assert.match(matchScreen, /coverActionsVisible/);
+  assert.match(matchScreen, /onCoverAction/);
   assert.match(matchScreen, /activeDateMode/);
   assert.match(matchScreen, /!isPast\(data\.nextDateAt\) \|\| activeDateMode/);
   assert.match(matchScreen, /coverModeEnabled/);

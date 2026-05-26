@@ -88,6 +88,11 @@ import {
   type SafeDateChecklist,
 } from "@/lib/date-safety-plan";
 import {
+  COVER_QUICK_ACTIONS,
+  getCoverQuickAction,
+  type CoverQuickActionId,
+} from "@/lib/date-mode-cover-actions";
+import {
   DATE_PLAN_TEMPLATES,
   buildDatePlanFromTemplate,
   type DatePlanTemplate,
@@ -105,6 +110,8 @@ export default function MatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Number(id);
   const [dateCoverRevealed, setDateCoverRevealed] = useState(false);
+  const [coverActionBusy, setCoverActionBusy] =
+    useState<CoverQuickActionId | null>(null);
   const { data, isLoading, refetch, isRefetching, error } =
     useGetMatch(matchId);
   const activeDateMode = Boolean(
@@ -119,6 +126,63 @@ export default function MatchDetailScreen() {
   useEffect(() => {
     if (!dateCoverActive) setDateCoverRevealed(false);
   }, [dateCoverActive]);
+
+  const onCoverAction = async (actionId: CoverQuickActionId) => {
+    const action = getCoverQuickAction(actionId);
+    const plan = data?.dateSafetyPlan;
+    if (!data || !action || !plan) return;
+
+    setCoverActionBusy(actionId);
+    try {
+      let message: string;
+      if (
+        action.messageIntent === "safe" ||
+        action.messageIntent === "completed"
+      ) {
+        message = buildCircleCheckMessage(data, action.messageIntent);
+      } else {
+        message = buildSoftExitMessage(data, action.messageIntent);
+      }
+
+      const result = await Share.share({ message });
+      if (result.action !== Share.sharedAction) return;
+
+      const checkedAt = new Date().toISOString();
+      const nextDateModeStatus =
+        dateModeStatusForCircle(action.circleStatus) ?? plan.dateModeStatus;
+      const nextDateModeClosedAt =
+        action.circleStatus === "completed" ? checkedAt : plan.dateModeClosedAt;
+
+      await updateMatch(data.id, {
+        dateSafetyPlan: {
+          trustedCircleName: plan.trustedCircleName,
+          transportPlan: plan.transportPlan,
+          checkInAt: plan.checkInAt,
+          expectedEndAt: plan.expectedEndAt,
+          codeWord: plan.codeWord,
+          circleNote: plan.circleNote,
+          shareLiveLocation: plan.shareLiveLocation,
+          safeDateChecklist: plan.safeDateChecklist,
+          circleCheckStatus: action.circleStatus,
+          lastCircleCheckAt: checkedAt,
+          coverModeEnabled: plan.coverModeEnabled,
+          coverModeTheme: plan.coverModeTheme,
+          dateModeStatus: nextDateModeStatus,
+          dateModeStartedAt: plan.dateModeStartedAt,
+          dateModeClosedAt: nextDateModeClosedAt,
+        },
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      await refetch();
+    } catch (e: any) {
+      Alert.alert("Couldn't update circle", e?.message ?? "Try again.");
+    } finally {
+      setCoverActionBusy(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -162,7 +226,9 @@ export default function MatchDetailScreen() {
     return (
       <DateModeCoverScreen
         match={data}
-        onReveal={() => setDateCoverRevealed(true)}
+        busyAction={coverActionBusy}
+        onCoverAction={onCoverAction}
+        onOpenPlan={() => setDateCoverRevealed(true)}
       />
     );
   }
@@ -1961,19 +2027,38 @@ function dateModeStatusForCircle(
 
 function DateModeCoverScreen({
   match,
-  onReveal,
+  busyAction,
+  onCoverAction,
+  onOpenPlan,
 }: {
   match: MatchDetail;
-  onReveal: () => void;
+  busyAction: CoverQuickActionId | null;
+  onCoverAction: (action: CoverQuickActionId) => void;
+  onOpenPlan: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const [now, setNow] = useState(() => new Date());
+  const [coverActionsVisible, setCoverActionsVisible] = useState(false);
   const theme = match.dateSafetyPlan?.coverModeTheme ?? "clock";
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(timer);
   }, []);
+
+  const revealCoverActions = () => {
+    setCoverActionsVisible(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  };
+  const actions = coverActionsVisible ? (
+    <CoverQuickActions
+      theme={theme}
+      busyAction={busyAction}
+      onAction={onCoverAction}
+      onDismiss={() => setCoverActionsVisible(false)}
+      onOpenPlan={onOpenPlan}
+    />
+  ) : null;
 
   const time = now.toLocaleTimeString(undefined, {
     hour: "numeric",
@@ -1998,7 +2083,7 @@ function DateModeCoverScreen({
         }}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <Pressable onLongPress={onReveal} delayLongPress={550}>
+        <Pressable onLongPress={revealCoverActions} delayLongPress={550}>
           <Text
             style={{
               color: "#1f2933",
@@ -2021,6 +2106,7 @@ function DateModeCoverScreen({
             />
           ))}
         </View>
+        <View style={{ marginTop: "auto", width: "100%" }}>{actions}</View>
       </View>
     );
   }
@@ -2041,7 +2127,7 @@ function DateModeCoverScreen({
       >
         <Stack.Screen options={{ headerShown: false }} />
         <Pressable
-          onLongPress={onReveal}
+          onLongPress={revealCoverActions}
           delayLongPress={550}
           style={{
             width: 180,
@@ -2063,6 +2149,7 @@ function DateModeCoverScreen({
             Breathe
           </Text>
         </Pressable>
+        {actions}
       </View>
     );
   }
@@ -2080,7 +2167,7 @@ function DateModeCoverScreen({
     >
       <Stack.Screen options={{ headerShown: false }} />
       <Pressable
-        onLongPress={onReveal}
+        onLongPress={revealCoverActions}
         delayLongPress={550}
         style={{
           marginTop: 72,
@@ -2109,15 +2196,163 @@ function DateModeCoverScreen({
           {date}
         </Text>
       </Pressable>
+      <View style={{ marginTop: "auto", width: "100%" }}>
+        {actions ?? (
+          <View
+            style={{
+              alignSelf: "center",
+              width: 76,
+              height: 5,
+              borderRadius: 99,
+              backgroundColor: "rgba(255,255,255,0.32)",
+            }}
+          />
+        )}
+      </View>
+    </View>
+  );
+}
+
+function CoverQuickActions({
+  theme,
+  busyAction,
+  onAction,
+  onDismiss,
+  onOpenPlan,
+}: {
+  theme: CoverModeTheme;
+  busyAction: CoverQuickActionId | null;
+  onAction: (action: CoverQuickActionId) => void;
+  onDismiss: () => void;
+  onOpenPlan: () => void;
+}) {
+  const light = theme === "notes";
+  const foreground = light ? "#1f2933" : "#f7fafc";
+  const muted = light ? "#667085" : "rgba(255,255,255,0.66)";
+  const panelBackground = light ? "#fffdf8" : "rgba(255,255,255,0.11)";
+  const actionBackground = light ? "#f5f0e6" : "rgba(255,255,255,0.14)";
+  const borderColor = light ? "#e4dbc9" : "rgba(255,255,255,0.18)";
+  const disabled = busyAction !== null;
+
+  return (
+    <View
+      style={{
+        width: "100%",
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor,
+        backgroundColor: panelBackground,
+        padding: 14,
+        gap: 12,
+      }}
+    >
       <View
         style={{
-          marginTop: "auto",
-          width: 76,
-          height: 5,
-          borderRadius: 99,
-          backgroundColor: "rgba(255,255,255,0.32)",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
         }}
-      />
+      >
+        <Text
+          style={{
+            color: foreground,
+            fontSize: 16,
+            fontFamily: "Inter_700Bold",
+          }}
+        >
+          Timer controls
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Pressable
+            onPress={onOpenPlan}
+            style={({ pressed }) => ({
+              borderWidth: 1,
+              borderColor,
+              borderRadius: 99,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              opacity: pressed ? 0.72 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: foreground,
+                fontSize: 12,
+                fontFamily: "Inter_700Bold",
+              }}
+            >
+              Edit
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onDismiss}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.72 : 1,
+            })}
+          >
+            <Feather name="x" size={18} color={muted} />
+          </Pressable>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        {COVER_QUICK_ACTIONS.map((action) => {
+          const busy = busyAction === action.id;
+          return (
+            <Pressable
+              key={action.id}
+              disabled={disabled}
+              onPress={() => onAction(action.id)}
+              style={({ pressed }) => ({
+                flexGrow: 1,
+                flexBasis: action.id === "home" ? "100%" : "47%",
+                minHeight: 78,
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor,
+                backgroundColor: actionBackground,
+                padding: 13,
+                gap: 7,
+                opacity: disabled ? (busy ? 1 : 0.42) : pressed ? 0.72 : 1,
+              })}
+            >
+              {busy ? (
+                <ActivityIndicator color={foreground} />
+              ) : (
+                <Feather
+                  name={action.icon as keyof typeof Feather.glyphMap}
+                  size={22}
+                  color={foreground}
+                />
+              )}
+              <Text
+                style={{
+                  color: foreground,
+                  fontSize: 18,
+                  fontFamily: "Inter_700Bold",
+                }}
+              >
+                {action.label}
+              </Text>
+              <Text
+                style={{
+                  color: muted,
+                  fontSize: 12,
+                  fontFamily: "Inter_500Medium",
+                }}
+              >
+                {action.detail}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
