@@ -55,7 +55,14 @@ function RootLayoutNav() {
       <Stack.Screen
         name="add"
         options={{
-          title: "Add match",
+          title: "Add connection",
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
+        name="add/shared"
+        options={{
+          title: "Import screenshots",
           presentation: "modal",
         }}
       />

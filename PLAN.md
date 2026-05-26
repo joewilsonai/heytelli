@@ -70,6 +70,7 @@
 ## Task 1: Commit The Product Truth
 
 **Files:**
+
 - Create: `docs/heytelli-prd.md`
 - Modify: `README.md`
 - Modify: `replit.md`
@@ -88,7 +89,7 @@ Expected: `docs/heytelli-prd.md` exists and starts with `# HeyTelli — Product 
 
 Replace `README.md` with:
 
-```markdown
+````markdown
 # HeyTelli
 
 HeyTelli is a private AI-assisted dating clarity app for women navigating modern online dating. It helps users import screenshots, reconstruct conversation timelines, record reflections, prepare for dates, and share optional Vibe Check image cards through the native share sheet.
@@ -125,6 +126,7 @@ lib/
 docs/
   heytelli-prd.md      Product source of truth
 ```
+````
 
 ## Local Commands
 
@@ -144,7 +146,8 @@ Secrets live outside the repo. Load API keys from:
 ```bash
 source ~/.luna/secrets/keys.env
 ```
-```
+
+````
 
 - [ ] **Step 3: Update `replit.md` with project-specific guidance**
 
@@ -177,7 +180,7 @@ HeyTelli is an iOS-first private dating clarity and safety memory layer for wome
 ## Implementation Priority
 
 First prove inbound iOS share-sheet screenshot intake. If Expo/EAS cannot support a reliable "Share to HeyTelli" flow, implement a native iOS share extension before the broader product conversion.
-```
+````
 
 - [ ] **Step 4: Verify docs**
 
@@ -205,8 +208,11 @@ Expected: commit succeeds with only docs staged.
 ## Task 2: Prove "Share To HeyTelli" Inbound Screenshot Intake
 
 **Files:**
+
 - Modify: `artifacts/bumble-mobile/package.json`
 - Modify: `artifacts/bumble-mobile/app.json`
+- Modify: `artifacts/bumble-mobile/app/_layout.tsx`
+- Modify: `artifacts/bumble-mobile/app/add.tsx`
 - Create: `artifacts/bumble-mobile/app/+native-intent.ts`
 - Create: `artifacts/bumble-mobile/app/add/shared.tsx`
 - Create: `artifacts/bumble-mobile/lib/share-intake.ts`
@@ -221,6 +227,12 @@ pnpm --filter @workspace/bumble-mobile exec expo install expo-sharing
 
 Expected: `artifacts/bumble-mobile/package.json` includes `expo-sharing`.
 
+Important compatibility note discovered during the spike:
+
+- Expo SDK 54 bundles `expo-sharing ~14.0.8`, which only supports sharing out from the app.
+- Latest Expo docs show inbound share-target support in `expo-sharing ~56.0.13`.
+- If `expo install --check` reports `expo-sharing@56.0.13 - expected version: ~14.0.8`, treat the implementation as a spike override only. Do not ship broadly until either the mobile app is upgraded to the Expo SDK line that bundles `expo-sharing 56`, or a native iOS share extension is implemented.
+
 - [ ] **Step 2: Configure Expo inbound sharing**
 
 Modify `artifacts/bumble-mobile/app.json` so the app is named HeyTelli and includes the `expo-sharing` config plugin:
@@ -231,12 +243,20 @@ Modify `artifacts/bumble-mobile/app.json` so the app is named HeyTelli and inclu
     "name": "HeyTelli",
     "slug": "heytelli",
     "scheme": "heytelli",
+    "ios": {
+      "bundleIdentifier": "ai.joewilson.heytelli"
+    },
+    "android": {
+      "package": "ai.joewilson.heytelli"
+    },
     "plugins": [
       [
         "expo-sharing",
         {
           "ios": {
             "enabled": true,
+            "extensionBundleIdentifier": "ai.joewilson.heytelli.ShareExtension",
+            "appGroupId": "group.ai.joewilson.heytelli",
             "activationRule": {
               "supportsImageWithMaxCount": 5
             }
@@ -255,12 +275,22 @@ Modify `artifacts/bumble-mobile/app.json` so the app is named HeyTelli and inclu
 
 Preserve the existing plugin entries for `expo-router`, `expo-font`, `expo-web-browser`, `expo-av`, `expo-calendar`, and `expo-notifications`.
 
+The bundle identifiers are required because the iOS share extension target and app group cannot be validated without stable native identifiers.
+
 - [ ] **Step 3: Add native intent routing**
 
 Create `artifacts/bumble-mobile/app/+native-intent.ts`:
 
 ```ts
 import { getSharedPayloads } from "expo-sharing";
+
+function parseIncomingPath(path: string) {
+  try {
+    return new URL(path);
+  } catch {
+    return new URL(path, "heytelli://app");
+  }
+}
 
 export async function redirectSystemPath({
   path,
@@ -269,17 +299,30 @@ export async function redirectSystemPath({
   initial: boolean;
 }) {
   try {
-    const url = new URL(path);
-    if (url.hostname === "expo-sharing") {
-      const payloads = getSharedPayloads();
-      const hasImage = payloads.some(
-        (payload) =>
-          payload.shareType === "image" ||
-          payload.mimeType?.toLowerCase().startsWith("image/"),
-      );
-      return hasImage ? "/add/shared" : "/add";
+    const url = parseIncomingPath(path);
+    const isSharingIntent =
+      url.hostname === "expo-sharing" ||
+      url.pathname.includes("expo-sharing") ||
+      path.includes("expo-sharing");
+
+    if (!isSharingIntent) {
+      return path;
     }
-    return path;
+
+    let payloads: ReturnType<typeof getSharedPayloads> = [];
+    try {
+      payloads = getSharedPayloads();
+    } catch {
+      return "/add/shared";
+    }
+
+    const hasImage = payloads.some(
+      (payload) =>
+        payload.shareType === "image" ||
+        payload.mimeType?.toLowerCase().startsWith("image/"),
+    );
+
+    return hasImage || payloads.length === 0 ? "/add/shared" : "/add";
   } catch {
     return "/";
   }
@@ -300,9 +343,29 @@ export type SharedImage = {
   size: number | null;
 };
 
-export function getSharedImages(payloads: ResolvedSharePayload[]): SharedImage[] {
+export const MAX_SHARED_SCREENSHOTS = 5;
+
+type ResolvedImagePayload = ResolvedSharePayload & {
+  contentType: "image";
+  contentUri: string;
+};
+
+function isResolvedImagePayload(
+  payload: ResolvedSharePayload,
+): payload is ResolvedImagePayload {
+  return (
+    payload.contentType === "image" &&
+    typeof payload.contentUri === "string" &&
+    payload.contentUri.length > 0
+  );
+}
+
+export function getSharedImages(
+  payloads: ResolvedSharePayload[],
+): SharedImage[] {
   return payloads
-    .filter((payload) => payload.contentType === "image" && payload.contentUri)
+    .filter(isResolvedImagePayload)
+    .slice(0, MAX_SHARED_SCREENSHOTS)
     .map((payload, index) => ({
       uri: payload.contentUri,
       name: payload.originalName ?? `shared-screenshot-${index + 1}.jpg`,
@@ -318,8 +381,8 @@ Create `artifacts/bumble-mobile/app/add/shared.tsx`:
 
 ```tsx
 import { Image } from "expo-image";
-import { clearSharedPayloads, useIncomingShare } from "expo-sharing";
 import { useRouter } from "expo-router";
+import { useIncomingShare } from "expo-sharing";
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
@@ -339,7 +402,8 @@ export default function SharedImportScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { resolvedSharedPayloads, isResolving, error } = useIncomingShare();
+  const { resolvedSharedPayloads, isResolving, error, clearSharedPayloads } =
+    useIncomingShare();
   const images = useMemo(
     () => getSharedImages(resolvedSharedPayloads),
     [resolvedSharedPayloads],
@@ -352,15 +416,16 @@ export default function SharedImportScreen() {
 
   const continueImport = () => {
     if (images.length === 0) {
-      Alert.alert("No screenshots found", "Share one or more images to import.");
+      Alert.alert(
+        "No screenshots found",
+        "Share one or more images to import.",
+      );
       return;
     }
-    router.replace({
-      pathname: "/add",
-      params: {
-        sharedImageUris: JSON.stringify(images.map((image) => image.uri)),
-      },
-    });
+    const encodedUris = encodeURIComponent(
+      JSON.stringify(images.map((image) => image.uri)),
+    );
+    router.replace(`/add?sharedImageUris=${encodedUris}`);
   };
 
   return (
@@ -398,7 +463,9 @@ export default function SharedImportScreen() {
         </Card>
       ) : (
         <Card>
-          <SectionLabel>{images.length} Screenshot{images.length === 1 ? "" : "s"}</SectionLabel>
+          <SectionLabel>
+            {images.length} Screenshot{images.length === 1 ? "" : "s"}
+          </SectionLabel>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {images.map((image) => (
               <Image
@@ -419,7 +486,9 @@ export default function SharedImportScreen() {
 
       <Button label="Continue" icon="arrow-right" onPress={continueImport} />
       <Pressable onPress={cancel} style={{ alignItems: "center", padding: 12 }}>
-        <Text style={{ color: c.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+        <Text
+          style={{ color: c.mutedForeground, fontFamily: "Inter_600SemiBold" }}
+        >
           Cancel
         </Text>
       </Pressable>
@@ -435,7 +504,9 @@ Modify `artifacts/bumble-mobile/app/add.tsx` to read `sharedImageUris` from `use
 Implementation detail:
 
 ```ts
-const { sharedImageUris } = useLocalSearchParams<{ sharedImageUris?: string }>();
+const { sharedImageUris } = useLocalSearchParams<{
+  sharedImageUris?: string;
+}>();
 
 useEffect(() => {
   if (!sharedImageUris || autoLaunched.current) return;
@@ -449,15 +520,21 @@ useEffect(() => {
 
 The existing auto-launch of the image picker should only run when `sharedImageUris` is absent.
 
-- [ ] **Step 7: Typecheck mobile**
+- [ ] **Step 7: Run compatibility and type checks**
 
 Run:
 
 ```bash
+pnpm --filter @workspace/bumble-mobile exec expo install --check
 pnpm --filter @workspace/bumble-mobile run typecheck
+pnpm --filter @workspace/bumble-mobile exec expo config --type prebuild --json
 ```
 
-Expected: TypeScript passes or fails only on missing generated API names that are addressed in later tasks. If it fails for `expo-sharing` types, adjust imports to match installed SDK types before continuing.
+Expected:
+
+- `expo config --type prebuild --json` exits 0 and includes the `expo-sharing` app extension metadata.
+- TypeScript passes or fails only on pre-existing generated-client/app typing debt unrelated to the new share-intake files.
+- `expo install --check` may fail while the app remains on SDK 54. If it does, record the spike as not production-ready and make the SDK upgrade/native-extension decision before TestFlight.
 
 - [ ] **Step 8: Build a dev client for iOS**
 
@@ -488,12 +565,14 @@ Expected: both 1-image and 5-image imports land on the confirmation screen with 
 
 If Step 9 passes on a physical iPhone, keep Expo/EAS for Phase 1. If Step 9 fails because HeyTelli does not appear, payloads are missing, previews cannot access files, or App Store review risk is unacceptable, stop broad conversion and implement a native iOS share extension path before continuing.
 
+If Step 9 cannot be attempted because the dependency check still requires an unsupported Expo package override, do not treat the spike as proven. Choose between upgrading the app to the latest Expo SDK line or implementing the native extension directly.
+
 - [ ] **Step 11: Commit**
 
 Run:
 
 ```bash
-git add artifacts/bumble-mobile/package.json artifacts/bumble-mobile/app.json artifacts/bumble-mobile/app/+native-intent.ts artifacts/bumble-mobile/app/add/shared.tsx artifacts/bumble-mobile/lib/share-intake.ts artifacts/bumble-mobile/app/add.tsx
+git add artifacts/bumble-mobile/package.json artifacts/bumble-mobile/app.json artifacts/bumble-mobile/app/_layout.tsx artifacts/bumble-mobile/app/+native-intent.ts artifacts/bumble-mobile/app/add/shared.tsx artifacts/bumble-mobile/lib/share-intake.ts artifacts/bumble-mobile/app/add.tsx
 git commit -m "feat: spike inbound screenshot sharing"
 ```
 
@@ -504,6 +583,7 @@ Expected: commit succeeds and records the technical spike.
 ## Task 3: Rename The Mobile Shell To HeyTelli
 
 **Files:**
+
 - Modify: `artifacts/bumble-mobile/app.json`
 - Modify: `artifacts/bumble-mobile/app/_layout.tsx`
 - Modify: `artifacts/bumble-mobile/app/index.tsx`
@@ -617,6 +697,7 @@ Expected: commit contains only mobile shell copy and token changes.
 ## Task 4: Replace Ratings Schema With HeyTelli Data Model
 
 **Files:**
+
 - Create: `lib/db/src/schema/connections.ts`
 - Create: `lib/db/src/schema/connectionScreenshots.ts`
 - Create: `lib/db/src/schema/connectionEvents.ts`
@@ -643,7 +724,9 @@ export const connections = pgTable("connections", {
   sourceApp: text("source_app"),
   status: text("status").$type<ConnectionStatus>().notNull().default("active"),
   avatarPath: text("avatar_path"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull()
@@ -665,13 +748,24 @@ export type InsertConnection = z.infer<typeof insertConnectionSchema>;
 Create `lib/db/src/schema/connectionScreenshots.ts`:
 
 ```ts
-import { integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 import { connections } from "./connections";
 
-export type ExtractionStatus = "pending" | "processing" | "completed" | "failed";
+export type ExtractionStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export type StructuredScreenshotData = {
   transcriptTurns: Array<{ speaker: "user" | "other"; text: string }>;
@@ -699,7 +793,9 @@ export const connectionScreenshots = pgTable("connection_screenshots", {
   extractedText: text("extracted_text"),
   structuredData: jsonb("structured_data").$type<StructuredScreenshotData>(),
   rawImagePurgedAt: timestamp("raw_image_purged_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const insertConnectionScreenshotSchema = createInsertSchema(
@@ -710,7 +806,9 @@ export const insertConnectionScreenshotSchema = createInsertSchema(
 });
 
 export type ConnectionScreenshot = typeof connectionScreenshots.$inferSelect;
-export type InsertConnectionScreenshot = z.infer<typeof insertConnectionScreenshotSchema>;
+export type InsertConnectionScreenshot = z.infer<
+  typeof insertConnectionScreenshotSchema
+>;
 ```
 
 - [ ] **Step 3: Add events schema**
@@ -718,7 +816,14 @@ export type InsertConnectionScreenshot = z.infer<typeof insertConnectionScreensh
 Create `lib/db/src/schema/connectionEvents.ts`:
 
 ```ts
-import { integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -738,13 +843,22 @@ export const connectionEvents = pgTable("connection_events", {
     .notNull()
     .references(() => connections.id, { onDelete: "cascade" }),
   eventType: text("event_type").$type<ConnectionEventType>().notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   summary: text("summary").notNull(),
-  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  metadata: jsonb("metadata")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
-export const insertConnectionEventSchema = createInsertSchema(connectionEvents).omit({
+export const insertConnectionEventSchema = createInsertSchema(
+  connectionEvents,
+).omit({
   id: true,
   createdAt: true,
 });
@@ -789,8 +903,12 @@ export const reflections = pgTable("reflections", {
   feltSentiment: text("felt_sentiment").$type<FeltSentiment>(),
   reflectionText: text("reflection_text").notNull(),
   circleAttribution: text("circle_attribution"),
-  observedAt: timestamp("observed_at", { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  observedAt: timestamp("observed_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const insertReflectionSchema = createInsertSchema(reflections).omit({
@@ -828,11 +946,15 @@ export const dateBriefs = pgTable("date_briefs", {
     .references(() => connections.id, { onDelete: "cascade" }),
   locationText: text("location_text").notNull(),
   dateTime: timestamp("date_time", { withTimezone: true }).notNull(),
-  checkInWindowMinutes: integer("check_in_window_minutes").notNull().default(180),
+  checkInWindowMinutes: integer("check_in_window_minutes")
+    .notNull()
+    .default(180),
   trustedFriendName: text("trusted_friend_name"),
   checkInMessage: text("check_in_message"),
   status: text("status").$type<DateBriefStatus>().notNull().default("planned"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull()
@@ -889,6 +1011,7 @@ Expected: commit succeeds.
 ## Task 5: Replace OpenAPI Contract With Connection-Centered API
 
 **Files:**
+
 - Modify: `lib/api-spec/openapi.yaml`
 - Regenerate: `lib/api-client-react/src/generated/*`
 - Regenerate: `lib/api-zod/src/generated/*`
@@ -1041,6 +1164,7 @@ Expected: commit succeeds.
 ## Task 6: Implement Connection API Routes
 
 **Files:**
+
 - Create: `artifacts/api-server/src/routes/connections.ts`
 - Modify: `artifacts/api-server/src/routes/index.ts`
 - Create: `artifacts/api-server/src/lib/connectionDetail.ts`
@@ -1182,6 +1306,7 @@ Expected: commit succeeds.
 ## Task 7: Replace AI Extraction With Neutral Timeline Extraction
 
 **Files:**
+
 - Create: `artifacts/api-server/src/lib/connectionExtraction.ts`
 - Modify: `artifacts/api-server/src/routes/connections.ts`
 - Modify: `artifacts/api-server/src/lib/objectStorage.ts`
@@ -1246,7 +1371,12 @@ async function compressForVision(dataUrl: string): Promise<string> {
   const buf = Buffer.from(match[2], "base64");
   const out = await sharp(buf)
     .rotate()
-    .resize({ width: 1280, height: 1280, fit: "inside", withoutEnlargement: true })
+    .resize({
+      width: 1280,
+      height: 1280,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .jpeg({ quality: 75 })
     .toBuffer();
   return `data:image/jpeg;base64,${out.toString("base64")}`;
@@ -1283,9 +1413,11 @@ export async function extractConnectionFromScreenshots(
   const raw = completion.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw) as Partial<NeutralExtraction>;
   return {
-    detectedName: typeof parsed.detectedName === "string" ? parsed.detectedName : null,
+    detectedName:
+      typeof parsed.detectedName === "string" ? parsed.detectedName : null,
     sourceApp: typeof parsed.sourceApp === "string" ? parsed.sourceApp : null,
-    extractedText: typeof parsed.extractedText === "string" ? parsed.extractedText : "",
+    extractedText:
+      typeof parsed.extractedText === "string" ? parsed.extractedText : "",
     transcriptTurns: Array.isArray(parsed.transcriptTurns)
       ? parsed.transcriptTurns.filter(
           (turn) =>
@@ -1295,9 +1427,13 @@ export async function extractConnectionFromScreenshots(
             turn.text.trim().length > 0,
         )
       : [],
-    neutralEvents: Array.isArray(parsed.neutralEvents) ? parsed.neutralEvents.slice(0, 20) : [],
+    neutralEvents: Array.isArray(parsed.neutralEvents)
+      ? parsed.neutralEvents.slice(0, 20)
+      : [],
     reflectionPrompts: Array.isArray(parsed.reflectionPrompts)
-      ? parsed.reflectionPrompts.filter((prompt) => typeof prompt === "string").slice(0, 5)
+      ? parsed.reflectionPrompts
+          .filter((prompt) => typeof prompt === "string")
+          .slice(0, 5)
       : [],
   };
 }
@@ -1366,6 +1502,7 @@ Expected: commit succeeds.
 ## Task 8: Build Grounding Pulses
 
 **Files:**
+
 - Create: `artifacts/api-server/src/lib/groundingPulses.ts`
 - Modify: `artifacts/api-server/src/routes/connections.ts`
 - Create: `artifacts/bumble-mobile/components/GroundingPulseCard.tsx`
@@ -1382,11 +1519,22 @@ export type GroundingPulse = {
   connectionId: number;
   title: string;
   body: string;
-  actions: Array<"pause_connection" | "boundary_language" | "create_vibe_check" | "add_reflection">;
+  actions: Array<
+    | "pause_connection"
+    | "boundary_language"
+    | "create_vibe_check"
+    | "add_reflection"
+  >;
   createdFrom: "reflections" | "cadence";
 };
 
-const DRAINED_WORDS = ["drained", "anxious", "uncertain", "confused", "overwhelmed"];
+const DRAINED_WORDS = [
+  "drained",
+  "anxious",
+  "uncertain",
+  "confused",
+  "overwhelmed",
+];
 
 export function generateGroundingPulses(args: {
   connectionId: number;
@@ -1395,7 +1543,8 @@ export function generateGroundingPulses(args: {
 }): GroundingPulse[] {
   const recent = args.reflections.slice(0, 5);
   const drainedCount = recent.filter((reflection) => {
-    const text = `${reflection.feltSentiment ?? ""} ${reflection.reflectionText}`.toLowerCase();
+    const text =
+      `${reflection.feltSentiment ?? ""} ${reflection.reflectionText}`.toLowerCase();
     return DRAINED_WORDS.some((word) => text.includes(word));
   }).length;
 
@@ -1406,9 +1555,13 @@ export function generateGroundingPulses(args: {
       id: `pulse-${args.connectionId}-drained`,
       connectionId: args.connectionId,
       title: "A pattern worth noticing",
-      body:
-        "Your recent reflections about this connection repeatedly mention feeling uncertain or emotionally drained afterward. Sometimes clarity comes from slowing the timeline down, not speeding it up.",
-      actions: ["pause_connection", "boundary_language", "create_vibe_check", "add_reflection"],
+      body: "Your recent reflections about this connection repeatedly mention feeling uncertain or emotionally drained afterward. Sometimes clarity comes from slowing the timeline down, not speeding it up.",
+      actions: [
+        "pause_connection",
+        "boundary_language",
+        "create_vibe_check",
+        "add_reflection",
+      ],
       createdFrom: "reflections",
     });
   }
@@ -1444,18 +1597,39 @@ export function GroundingPulseCard({
 }) {
   const c = useColors();
   return (
-    <Card style={{ backgroundColor: c.accent, borderColor: c.accentForeground }}>
+    <Card
+      style={{ backgroundColor: c.accent, borderColor: c.accentForeground }}
+    >
       <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
         <Feather name="anchor" size={16} color={c.accentForeground} />
-        <Text style={{ color: c.accentForeground, fontFamily: "Inter_700Bold", fontSize: 14 }}>
+        <Text
+          style={{
+            color: c.accentForeground,
+            fontFamily: "Inter_700Bold",
+            fontSize: 14,
+          }}
+        >
           {title}
         </Text>
       </View>
-      <Text style={{ color: c.foreground, fontSize: 14, lineHeight: 20, marginTop: 10 }}>
+      <Text
+        style={{
+          color: c.foreground,
+          fontSize: 14,
+          lineHeight: 20,
+          marginTop: 10,
+        }}
+      >
         {body}
       </Text>
       <Pressable onPress={onAddReflection} style={{ marginTop: 12 }}>
-        <Text style={{ color: c.primary, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+        <Text
+          style={{
+            color: c.primary,
+            fontFamily: "Inter_600SemiBold",
+            fontSize: 13,
+          }}
+        >
           Add another reflection
         </Text>
       </Pressable>
@@ -1491,6 +1665,7 @@ Expected: commit succeeds.
 ## Task 9: Convert Mobile Screens To Connections And Timeline
 
 **Files:**
+
 - Modify: `artifacts/bumble-mobile/app/index.tsx`
 - Modify: `artifacts/bumble-mobile/app/add.tsx`
 - Create: `artifacts/bumble-mobile/app/connection/[id].tsx`
@@ -1546,7 +1721,12 @@ Create `app/connection/[id]/timeline.tsx` showing merged events and reflections 
 ```ts
 type TimelineItem =
   | { kind: "event"; occurredAt: string; summary: string }
-  | { kind: "reflection"; observedAt: string; reflectionText: string; lens: string };
+  | {
+      kind: "reflection";
+      observedAt: string;
+      reflectionText: string;
+      lens: string;
+    };
 ```
 
 Use neutral labels: `Imported messages`, `Date logged`, `Voice reflection`, `Reflection`.
@@ -1606,6 +1786,7 @@ Expected: commit succeeds.
 ## Task 10: Build Date Brief And Local Check-In Reminder
 
 **Files:**
+
 - Create: `artifacts/bumble-mobile/app/connection/[id]/date-brief.tsx`
 - Modify: `artifacts/bumble-mobile/lib/notifications.ts`
 - Modify: `artifacts/bumble-mobile/lib/calendar.ts`
@@ -1640,7 +1821,9 @@ export async function scheduleCheckInReminder(args: {
 }
 
 export async function cancelCheckInReminder(dateBriefId: number) {
-  await Notifications.cancelScheduledNotificationAsync(`date-brief-${dateBriefId}`);
+  await Notifications.cancelScheduledNotificationAsync(
+    `date-brief-${dateBriefId}`,
+  );
 }
 ```
 
@@ -1690,6 +1873,7 @@ Expected: commit succeeds.
 ## Task 11: Build Vibe Check Image Cards
 
 **Files:**
+
 - Add dependency: `react-native-view-shot`
 - Create: `artifacts/bumble-mobile/components/VibeCheckCard.tsx`
 - Create: `artifacts/bumble-mobile/lib/vibe-card.ts`
@@ -1771,6 +1955,7 @@ Expected: commit succeeds.
 ## Task 12: Convert Voice Debriefs To First-Person Reflections
 
 **Files:**
+
 - Modify: `artifacts/api-server/src/lib/voiceDebrief.ts`
 - Modify: `artifacts/api-server/src/routes/connections.ts`
 - Modify: `artifacts/bumble-mobile/components/VoiceDebriefSheet.tsx`
@@ -1783,8 +1968,21 @@ Modify `voiceDebrief.ts` to return:
 export type VoiceReflectionAnalysis = {
   transcript: string;
   suggestedReflection: {
-    lens: "how_i_felt" | "my_energy_after" | "communication_rhythm" | "what_i_want_to_remember" | "open_questions";
-    feltSentiment: "grounded" | "clear" | "curious" | "uncertain" | "anxious" | "drained" | "mixed" | null;
+    lens:
+      | "how_i_felt"
+      | "my_energy_after"
+      | "communication_rhythm"
+      | "what_i_want_to_remember"
+      | "open_questions";
+    feltSentiment:
+      | "grounded"
+      | "clear"
+      | "curious"
+      | "uncertain"
+      | "anxious"
+      | "drained"
+      | "mixed"
+      | null;
     reflectionText: string;
   };
   neutralEvents: Array<{
@@ -1844,6 +2042,7 @@ Expected: commit succeeds.
 ## Task 13: Convert Reflection Assistant And Remove Wingman Prompting
 
 **Files:**
+
 - Modify: `grok_prompt.md`
 - Create: `artifacts/api-server/src/lib/reflectionAssistant.ts`
 - Modify: `artifacts/api-server/src/routes/openrouter.ts`
@@ -1866,6 +2065,7 @@ You are HeyTelli's Reflection Assistant for a private dating clarity app used by
 Your role is to help the user remember clearly, reflect in first person, prepare for dates, phrase boundaries, and notice patterns in her own reflections and neutral timeline events.
 
 Hard rules:
+
 - Never diagnose, label, or classify another person.
 - Never say someone is safe, unsafe, dangerous, toxic, manipulative, narcissistic, or high-risk.
 - Never produce ratings, scores, rankings, or verdicts.
@@ -1875,6 +2075,7 @@ Hard rules:
 - Center the user's agency, feelings, memory, boundaries, and choices.
 
 Allowed outputs:
+
 - summaries of neutral events
 - first-person reflection prompts
 - date-prep questions
@@ -1955,6 +2156,7 @@ Expected: commit succeeds.
 ## Task 14: Convert Web Companion To Internal/Admin Console
 
 **Files:**
+
 - Modify: `artifacts/bumble-reply/package.json`
 - Modify: `artifacts/bumble-reply/src/App.tsx`
 - Replace: `artifacts/bumble-reply/src/pages/*`
@@ -2015,6 +2217,7 @@ Expected: commit succeeds.
 ## Task 15: Privacy, Deletion, And Raw Screenshot Minimization
 
 **Files:**
+
 - Modify: `artifacts/api-server/src/routes/storage.ts`
 - Modify: `artifacts/api-server/src/lib/objectStorage.ts`
 - Create: `artifacts/api-server/src/routes/privacy.ts`
@@ -2100,6 +2303,7 @@ Expected: commit succeeds.
 ## Task 16: Remove Old Match/Ratings Surfaces
 
 **Files:**
+
 - Delete or stop registering: `artifacts/api-server/src/routes/matches.ts`
 - Delete or archive: old match-specific mobile components that are no longer imported
 - Modify: `lib/db/src/schema/index.ts`
@@ -2166,6 +2370,7 @@ Expected: commit succeeds.
 ## Task 17: End-To-End Verification
 
 **Files:**
+
 - No required file changes unless verification exposes defects.
 
 - [ ] **Step 1: Full workspace typecheck**

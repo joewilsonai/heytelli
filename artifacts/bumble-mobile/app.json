@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Haystack",
-    "slug": "bumble-mobile",
+    "name": "HeyTelli",
+    "slug": "heytelli",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "haystack",
+    "scheme": "heytelli",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,12 @@
       "backgroundColor": "#FAF7F3"
     },
     "ios": {
+      "bundleIdentifier": "ai.joewilson.heytelli",
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "ai.joewilson.heytelli"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -32,13 +35,13 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow Haystack to record voice debriefs after dates."
+          "microphonePermission": "Allow HeyTelli to record voice reflections after dates."
         }
       ],
       [
         "expo-calendar",
         {
-          "calendarPermission": "Allow Haystack to add upcoming dates to your calendar."
+          "calendarPermission": "Allow HeyTelli to add upcoming dates to your calendar."
         }
       ],
       [
@@ -46,6 +49,24 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#ffffff"
+        }
+      ],
+      [
+        "expo-sharing",
+        {
+          "ios": {
+            "enabled": true,
+            "extensionBundleIdentifier": "ai.joewilson.heytelli.ShareExtension",
+            "appGroupId": "group.ai.joewilson.heytelli",
+            "activationRule": {
+              "supportsImageWithMaxCount": 5
+            }
+          },
+          "android": {
+            "enabled": true,
+            "singleShareMimeTypes": ["image/*"],
+            "multipleShareMimeTypes": ["image/*"]
+          }
         }
       ]
     ],
