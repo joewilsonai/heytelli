@@ -22,13 +22,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import {
   addScreenshot,
-  createOpenrouterConversation,
+  createChatConversation,
   deleteMatch,
   generateDateBrief,
   generateMatchReplies,
   getGetMatchQueryKey,
   getListMatchesQueryKey,
-  getListOpenrouterConversationsQueryKey,
+  getListChatConversationsQueryKey,
   rescoreMatch,
   updateMatch,
   useGetMatch,
@@ -37,6 +37,7 @@ import type {
   DateBriefResult,
   DateHistoryEntry,
   MatchDetail,
+  MatchTimelineEvent,
   MatchStatus,
   ReplyResult,
   TranscriptTurn,
@@ -159,6 +160,7 @@ export default function MatchDetailScreen() {
           matchName={data.name}
           onApplied={() => refetch()}
         />
+        <TimelineCard events={data.timelineEvents ?? []} />
         <ToolsRow
           matchId={data.id}
           matchName={data.name}
@@ -279,7 +281,7 @@ function VoiceDebriefCard({
           <Text
             style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}
           >
-            Talk it out — Grok transcribes, flags, and updates scores
+            Talk it out — saves transcript, tags, read, and signals
           </Text>
         </View>
         <Feather name="chevron-right" size={18} color={c.mutedForeground} />
@@ -410,6 +412,120 @@ function ToolsRow({
   );
 }
 
+function TimelineCard({ events }: { events: MatchTimelineEvent[] }) {
+  const c = useColors();
+  const primaryEvents = events
+    .filter((event) =>
+      [
+        "voice_debrief",
+        "date_debrief",
+        "in_person_recording",
+        "manual_note",
+        "chat_insight",
+      ].includes(event.type),
+    )
+    .slice(0, 5);
+
+  if (primaryEvents.length === 0) return null;
+
+  return (
+    <Card>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 4,
+        }}
+      >
+        <SectionLabel>Timeline</SectionLabel>
+        <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+          {events.length} saved
+        </Text>
+      </View>
+      <View style={{ gap: 12 }}>
+        {primaryEvents.map((event) => (
+          <View key={event.id} style={{ flexDirection: "row", gap: 10 }}>
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: timelineColor(event.type, c),
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather
+                name={timelineIcon(event.type)}
+                size={14}
+                color="#fff"
+              />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    flex: 1,
+                    color: c.foreground,
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 13,
+                  }}
+                  numberOfLines={1}
+                >
+                  {event.title}
+                </Text>
+                <Text
+                  style={{ color: c.mutedForeground, fontSize: 11 }}
+                  numberOfLines={1}
+                >
+                  {formatTimeAgo(event.occurredAt)}
+                </Text>
+              </View>
+              {event.summary && (
+                <Text
+                  style={{
+                    color: c.mutedForeground,
+                    fontSize: 12,
+                    lineHeight: 17,
+                  }}
+                  numberOfLines={3}
+                >
+                  {event.summary}
+                </Text>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+function timelineIcon(
+  type: MatchTimelineEvent["type"],
+): keyof typeof Feather.glyphMap {
+  if (type === "date_debrief") return "calendar";
+  if (type === "in_person_recording") return "radio";
+  if (type === "chat_insight") return "message-circle";
+  if (type === "manual_note") return "edit-3";
+  return "mic";
+}
+
+function timelineColor(type: MatchTimelineEvent["type"], c: ReturnType<typeof useColors>) {
+  if (type === "date_debrief") return c.accentForeground;
+  if (type === "in_person_recording") return c.foreground;
+  if (type === "chat_insight") return c.primary;
+  if (type === "manual_note") return c.warning;
+  return c.success;
+}
+
 function ChatLinkCard({
   matchId,
   matchName,
@@ -425,12 +541,12 @@ function ChatLinkCard({
   const openChat = async () => {
     setBusy(true);
     try {
-      const created = await createOpenrouterConversation({
+      const created = await createChatConversation({
         title: `Chat about ${matchName}`,
         matchId,
       });
       qc.invalidateQueries({
-        queryKey: getListOpenrouterConversationsQueryKey(),
+        queryKey: getListChatConversationsQueryKey(),
       });
       router.push(`/chat/${created.id}`);
     } catch (e: any) {
@@ -474,7 +590,7 @@ function ChatLinkCard({
             color: c.accentForeground,
           }}
         >
-          Chat with Grok about {matchName}
+          Chat with HeyTelli about {matchName}
         </Text>
         <Text
           style={{
@@ -484,7 +600,7 @@ function ChatLinkCard({
             marginTop: 2,
           }}
         >
-          Brainstorm next moves, decode her vibe
+          Talk through next moves and her signals
         </Text>
       </View>
       {busy ? (
@@ -1917,7 +2033,7 @@ function StatusActionsCard({
               await Promise.all([
                 qc.invalidateQueries({ queryKey: getListMatchesQueryKey() }),
                 qc.invalidateQueries({
-                  queryKey: getListOpenrouterConversationsQueryKey(),
+                  queryKey: getListChatConversationsQueryKey(),
                 }),
               ]);
               Haptics.notificationAsync(

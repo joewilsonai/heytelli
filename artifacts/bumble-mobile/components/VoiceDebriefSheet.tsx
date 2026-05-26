@@ -26,6 +26,7 @@ import {
   stopRecording,
   uploadAudio,
 } from "@/lib/recorder";
+import { formatDateTime } from "@/lib/format";
 
 type Phase = "idle" | "recording" | "processing" | "result";
 
@@ -161,8 +162,8 @@ export function VoiceDebriefSheet({
             <>
               <Body muted>
                 Hit record and talk freely about what happened — the date,
-                what she said, how it felt. Grok will transcribe, summarize,
-                flag what to watch for, and update her scores.
+                what she said, how it felt. HeyTelli will save the transcript,
+                update the read, flag concerns, and add useful tags.
               </Body>
               <RecordButton onPress={begin} />
               <DateHistoryToggle
@@ -287,19 +288,45 @@ export function VoiceDebriefSheet({
                   <Body>{analysis.nextMoveSuggestion}</Body>
                 </Section>
               )}
-              <Section title="Score updates">
-                <ScoreRow
-                  label="Sex potential"
-                  score={analysis.scoreSuggestions.sexPotential}
-                />
-                <ScoreRow
-                  label="Conversion"
-                  score={analysis.scoreSuggestions.conversionAbility}
-                />
-                <ScoreRow
-                  label="Chemistry"
-                  score={analysis.scoreSuggestions.chemistry}
-                />
+              {analysis.tagsToAdd.length > 0 && (
+                <Section title="Tags saved">
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    {analysis.tagsToAdd.map((t) => (
+                      <VibeTag key={t.tag} label={t.tag} />
+                    ))}
+                  </View>
+                </Section>
+              )}
+              {analysis.date.isDate && (
+                <Section title="Date timeline">
+                  <Body>
+                    {analysis.date.recap ??
+                      "This debrief was saved as a date entry."}
+                  </Body>
+                  {(analysis.date.when || analysis.date.location) && (
+                    <Body muted>
+                      {[
+                        analysis.date.when
+                          ? formatDateTime(analysis.date.when)
+                          : null,
+                        analysis.date.location,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Body>
+                  )}
+                </Section>
+              )}
+              {analysis.readUpdate && (
+                <Section title="Latest read">
+                  <Body>{analysis.readUpdate}</Body>
+                </Section>
+              )}
+              <Section title="Saved">
+                <Body muted>
+                  Transcript, signals, tags, and read updates are now on this
+                  match timeline.
+                </Body>
               </Section>
               <Section title="Transcript">
                 <Body muted>{transcript}</Body>
@@ -439,45 +466,6 @@ function BulletRow({
       <Text style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}>
         {text}
       </Text>
-    </View>
-  );
-}
-
-function ScoreRow({
-  label,
-  score,
-}: {
-  label: string;
-  score: { value: number | null; rationale: string | null };
-}) {
-  const c = useColors();
-  const colorFor = (v: number | null) =>
-    v == null
-      ? c.mutedForeground
-      : v >= 8
-        ? c.success
-        : v >= 5
-          ? c.warning
-          : c.destructive;
-  return (
-    <View style={{ gap: 2 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={{ color: c.foreground, fontSize: 13 }}>{label}</Text>
-        <Text
-          style={{
-            fontFamily: "Inter_700Bold",
-            color: colorFor(score.value),
-            fontSize: 14,
-          }}
-        >
-          {score.value ?? "—"}
-        </Text>
-      </View>
-      {score.rationale && (
-        <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
-          {score.rationale}
-        </Text>
-      )}
     </View>
   );
 }

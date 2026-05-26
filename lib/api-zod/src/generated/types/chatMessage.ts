@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface OpenrouterMessageInput {
-  /** @minLength 1 */
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  role: string;
   content: string;
+  createdAt: Date;
 }

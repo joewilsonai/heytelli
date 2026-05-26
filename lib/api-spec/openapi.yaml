@@ -14,8 +14,8 @@ tags:
     description: Bumble CRM matches
   - name: storage
     description: Object storage upload and serving endpoints
-  - name: openrouter
-    description: OpenRouter AI chat operations (Grok-powered match chatbot)
+  - name: chat
+    description: HeyTelli private chat operations
 paths:
   /healthz:
     get:
@@ -254,7 +254,7 @@ paths:
     post:
       operationId: generateDateBrief
       tags: [matches]
-      summary: Generate a pre-date prep brief from Grok using full match context
+      summary: Generate a pre-date prep brief using full match context
       parameters:
         - name: id
           in: path
@@ -611,10 +611,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
-  /openrouter/conversations:
+  /chat/conversations:
     get:
-      operationId: listOpenrouterConversations
-      tags: [openrouter]
+      operationId: listChatConversations
+      tags: [chat]
       summary: List all chat conversations
       responses:
         "200":
@@ -624,28 +624,28 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/OpenrouterConversation"
+                  $ref: "#/components/schemas/ChatConversation"
     post:
-      operationId: createOpenrouterConversation
-      tags: [openrouter]
+      operationId: createChatConversation
+      tags: [chat]
       summary: Create a new chat conversation
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/OpenrouterConversationInput"
+              $ref: "#/components/schemas/ChatConversationInput"
       responses:
         "201":
           description: Created conversation
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OpenrouterConversation"
-  /openrouter/conversations/{id}:
+                $ref: "#/components/schemas/ChatConversation"
+  /chat/conversations/{id}:
     get:
-      operationId: getOpenrouterConversation
-      tags: [openrouter]
+      operationId: getChatConversation
+      tags: [chat]
       summary: Get conversation with messages
       parameters:
         - name: id
@@ -658,7 +658,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OpenrouterConversationWithMessages"
+                $ref: "#/components/schemas/ChatConversationWithMessages"
         "404":
           description: Not found
           content:
@@ -666,8 +666,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
     delete:
-      operationId: deleteOpenrouterConversation
-      tags: [openrouter]
+      operationId: deleteChatConversation
+      tags: [chat]
       summary: Delete a conversation
       parameters:
         - name: id
@@ -683,10 +683,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
-  /openrouter/conversations/{id}/messages:
+  /chat/conversations/{id}/messages:
     get:
-      operationId: listOpenrouterMessages
-      tags: [openrouter]
+      operationId: listChatMessages
+      tags: [chat]
       summary: List messages in a conversation
       parameters:
         - name: id
@@ -701,10 +701,10 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/OpenrouterMessage"
+                  $ref: "#/components/schemas/ChatMessage"
     post:
-      operationId: sendOpenrouterMessage
-      tags: [openrouter]
+      operationId: sendChatMessage
+      tags: [chat]
       summary: Send a message and stream the AI response (SSE)
       parameters:
         - name: id
@@ -716,7 +716,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/OpenrouterMessageInput"
+              $ref: "#/components/schemas/ChatMessageInput"
       responses:
         "200":
           description: SSE stream of assistant response chunks
@@ -986,6 +986,7 @@ components:
         - createdAt
         - updatedAt
         - screenshots
+        - timelineEvents
         - pendingScreenshotCount
         - failedScreenshotCount
         - analysisFreshness
@@ -1052,6 +1053,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Screenshot"
+        timelineEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchTimelineEvent"
         pendingScreenshotCount:
           type: integer
           description: Screenshots awaiting analysis
@@ -1130,7 +1135,10 @@ components:
         - greenFlags
         - redFlags
         - nextMoveSuggestion
-        - scoreSuggestions
+        - tagsToAdd
+        - date
+        - readUpdate
+        - timelineTitle
       properties:
         summary: { type: string }
         vibe: { type: ["string", "null"] }
@@ -1141,8 +1149,24 @@ components:
           type: array
           items: { type: string }
         nextMoveSuggestion: { type: ["string", "null"] }
-        scoreSuggestions:
-          $ref: "#/components/schemas/MatchScores"
+        tagsToAdd:
+          type: array
+          items:
+            type: object
+            required: [tag, reason]
+            properties:
+              tag: { type: string }
+              reason: { type: ["string", "null"] }
+        date:
+          type: object
+          required: [isDate, when, location, recap]
+          properties:
+            isDate: { type: boolean }
+            when: { type: ["string", "null"], format: date-time }
+            location: { type: ["string", "null"] }
+            recap: { type: ["string", "null"] }
+        readUpdate: { type: ["string", "null"] }
+        timelineTitle: { type: ["string", "null"] }
     StaleNudge:
       type: object
       required: [matchId, name, photoObjectPath, hoursSinceLastReply, openers]
@@ -1189,11 +1213,15 @@ components:
         addToDateHistory: { type: boolean }
     VoiceDebriefResult:
       type: object
-      required: [transcript, analysis, match]
+      required: [transcript, analysis, timelineEvents, match]
       properties:
         transcript: { type: string }
         analysis:
           $ref: "#/components/schemas/VoiceDebriefAnalysis"
+        timelineEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchTimelineEvent"
         match:
           $ref: "#/components/schemas/MatchDetail"
     ReplyResult:
@@ -1286,6 +1314,48 @@ components:
         historicalCount: { type: integer }
         highSeverityCount: { type: integer }
         lastAnalyzedAt: { type: ["string", "null"], format: date-time }
+    MatchTimelineEvent:
+      type: object
+      required:
+        - id
+        - matchId
+        - type
+        - source
+        - title
+        - summary
+        - body
+        - metadata
+        - occurredAt
+        - createdAt
+      properties:
+        id: { type: integer }
+        matchId: { type: integer }
+        type:
+          type: string
+          enum:
+            [
+              voice_debrief,
+              date_debrief,
+              in_person_recording,
+              manual_note,
+              screenshot_import,
+              chat_insight,
+              red_flag_seen,
+              green_flag_seen,
+              tag_added,
+              tag_removed,
+            ]
+        source:
+          type: string
+          enum: [user, ai, voice-debrief, in-person-recording, chat]
+        title: { type: string }
+        summary: { type: ["string", "null"] }
+        body: { type: ["string", "null"] }
+        metadata:
+          type: object
+          additionalProperties: true
+        occurredAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
     CheatSheetReply:
       type: object
       required: [style, text]
@@ -1446,7 +1516,7 @@ components:
         objectPath: { type: string }
         metadata:
           $ref: "#/components/schemas/UploadUrlRequest"
-    OpenrouterConversation:
+    ChatConversation:
       type: object
       required: [id, title, matchId, createdAt]
       properties:
@@ -1454,7 +1524,7 @@ components:
         title: { type: string }
         matchId: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
-    OpenrouterMessage:
+    ChatMessage:
       type: object
       required: [id, conversationId, role, content, createdAt]
       properties:
@@ -1463,18 +1533,18 @@ components:
         role: { type: string }
         content: { type: string }
         createdAt: { type: string, format: date-time }
-    OpenrouterConversationInput:
+    ChatConversationInput:
       type: object
       required: [title]
       properties:
         title: { type: string, minLength: 1 }
         matchId: { type: ["integer", "null"] }
-    OpenrouterMessageInput:
+    ChatMessageInput:
       type: object
       required: [content]
       properties:
         content: { type: string, minLength: 1 }
-    OpenrouterConversationWithMessages:
+    ChatConversationWithMessages:
       type: object
       required: [id, title, matchId, createdAt, messages]
       properties:
@@ -1485,4 +1555,4 @@ components:
         messages:
           type: array
           items:
-            $ref: "#/components/schemas/OpenrouterMessage"
+            $ref: "#/components/schemas/ChatMessage"

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface OpenrouterConversation {
+export interface ChatConversation {
   id: number;
   title: string;
   /** @nullable */

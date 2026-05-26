@@ -322,6 +322,18 @@ export const GetMatchResponse = zod.object({
   "extractionError": zod.string().nullable(),
   "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -661,6 +673,18 @@ export const AddScreenshotResponse = zod.object({
   "extractionError": zod.string().nullable(),
   "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -785,6 +809,18 @@ export const RescoreMatchResponse = zod.object({
   "extractionError": zod.string().nullable(),
   "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -792,7 +828,7 @@ export const RescoreMatchResponse = zod.object({
 
 
 /**
- * @summary Generate a pre-date prep brief from Grok using full match context
+ * @summary Generate a pre-date prep brief using full match context
  */
 export const GenerateDateBriefParams = zod.object({
   "id": zod.coerce.number()
@@ -1031,6 +1067,18 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "extractionError": zod.string().nullable(),
   "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -1161,15 +1209,6 @@ export const InPersonRecordingBody = zod.object({
   "addToDateHistory": zod.boolean().optional()
 })
 
-export const inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMin = 0;
-export const inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMax = 10;
-
-export const inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMin = 0;
-export const inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMax = 10;
-
-export const inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMin = 0;
-export const inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMax = 10;
-
 export const inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMin = 0;
 export const inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMax = 10;
 
@@ -1189,21 +1228,31 @@ export const InPersonRecordingResponse = zod.object({
   "greenFlags": zod.array(zod.string()),
   "redFlags": zod.array(zod.string()),
   "nextMoveSuggestion": zod.string().nullable(),
-  "scoreSuggestions": zod.object({
-  "sexPotential": zod.object({
-  "value": zod.union([zod.number().min(inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMin).max(inPersonRecordingResponseAnalysisScoreSuggestionsSexPotentialValueOneMax),zod.null()]),
-  "rationale": zod.string().nullable()
+  "tagsToAdd": zod.array(zod.object({
+  "tag": zod.string(),
+  "reason": zod.string().nullable()
+})),
+  "date": zod.object({
+  "isDate": zod.boolean(),
+  "when": zod.coerce.date().nullable(),
+  "location": zod.string().nullable(),
+  "recap": zod.string().nullable()
 }),
-  "conversionAbility": zod.object({
-  "value": zod.union([zod.number().min(inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMin).max(inPersonRecordingResponseAnalysisScoreSuggestionsConversionAbilityValueOneMax),zod.null()]),
-  "rationale": zod.string().nullable()
+  "readUpdate": zod.string().nullable(),
+  "timelineTitle": zod.string().nullable()
 }),
-  "chemistry": zod.object({
-  "value": zod.union([zod.number().min(inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMin).max(inPersonRecordingResponseAnalysisScoreSuggestionsChemistryValueOneMax),zod.null()]),
-  "rationale": zod.string().nullable()
-})
-})
-}),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "match": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -1304,6 +1353,18 @@ export const InPersonRecordingResponse = zod.object({
   "extractionError": zod.string().nullable(),
   "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -1329,15 +1390,6 @@ export const VoiceDebriefBody = zod.object({
   "addToDateHistory": zod.boolean().optional().describe('If true, append a new date history entry summarizing this debrief.')
 })
 
-export const voiceDebriefResponseAnalysisScoreSuggestionsSexPotentialValueOneMin = 0;
-export const voiceDebriefResponseAnalysisScoreSuggestionsSexPotentialValueOneMax = 10;
-
-export const voiceDebriefResponseAnalysisScoreSuggestionsConversionAbilityValueOneMin = 0;
-export const voiceDebriefResponseAnalysisScoreSuggestionsConversionAbilityValueOneMax = 10;
-
-export const voiceDebriefResponseAnalysisScoreSuggestionsChemistryValueOneMin = 0;
-export const voiceDebriefResponseAnalysisScoreSuggestionsChemistryValueOneMax = 10;
-
 export const voiceDebriefResponseMatchExtractedProfileScoresSexPotentialValueOneMin = 0;
 export const voiceDebriefResponseMatchExtractedProfileScoresSexPotentialValueOneMax = 10;
 
@@ -1357,21 +1409,31 @@ export const VoiceDebriefResponse = zod.object({
   "greenFlags": zod.array(zod.string()),
   "redFlags": zod.array(zod.string()),
   "nextMoveSuggestion": zod.string().nullable(),
-  "scoreSuggestions": zod.object({
-  "sexPotential": zod.object({
-  "value": zod.union([zod.number().min(voiceDebriefResponseAnalysisScoreSuggestionsSexPotentialValueOneMin).max(voiceDebriefResponseAnalysisScoreSuggestionsSexPotentialValueOneMax),zod.null()]),
-  "rationale": zod.string().nullable()
+  "tagsToAdd": zod.array(zod.object({
+  "tag": zod.string(),
+  "reason": zod.string().nullable()
+})),
+  "date": zod.object({
+  "isDate": zod.boolean(),
+  "when": zod.coerce.date().nullable(),
+  "location": zod.string().nullable(),
+  "recap": zod.string().nullable()
 }),
-  "conversionAbility": zod.object({
-  "value": zod.union([zod.number().min(voiceDebriefResponseAnalysisScoreSuggestionsConversionAbilityValueOneMin).max(voiceDebriefResponseAnalysisScoreSuggestionsConversionAbilityValueOneMax),zod.null()]),
-  "rationale": zod.string().nullable()
+  "readUpdate": zod.string().nullable(),
+  "timelineTitle": zod.string().nullable()
 }),
-  "chemistry": zod.object({
-  "value": zod.union([zod.number().min(voiceDebriefResponseAnalysisScoreSuggestionsChemistryValueOneMin).max(voiceDebriefResponseAnalysisScoreSuggestionsChemistryValueOneMax),zod.null()]),
-  "rationale": zod.string().nullable()
-})
-})
-}),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "match": zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -1472,6 +1534,18 @@ export const VoiceDebriefResponse = zod.object({
   "extractionError": zod.string().nullable(),
   "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -1494,13 +1568,13 @@ export const GenerateMatchRepliesResponse = zod.object({
 /**
  * @summary List all chat conversations
  */
-export const ListOpenrouterConversationsResponseItem = zod.object({
+export const ListChatConversationsResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "matchId": zod.number().nullable(),
   "createdAt": zod.coerce.date()
 })
-export const ListOpenrouterConversationsResponse = zod.array(ListOpenrouterConversationsResponseItem)
+export const ListChatConversationsResponse = zod.array(ListChatConversationsResponseItem)
 
 
 /**
@@ -1509,7 +1583,7 @@ export const ListOpenrouterConversationsResponse = zod.array(ListOpenrouterConve
 
 
 
-export const CreateOpenrouterConversationBody = zod.object({
+export const CreateChatConversationBody = zod.object({
   "title": zod.string().min(1),
   "matchId": zod.number().nullish()
 })
@@ -1518,11 +1592,11 @@ export const CreateOpenrouterConversationBody = zod.object({
 /**
  * @summary Get conversation with messages
  */
-export const GetOpenrouterConversationParams = zod.object({
+export const GetChatConversationParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const GetOpenrouterConversationResponse = zod.object({
+export const GetChatConversationResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "matchId": zod.number().nullable(),
@@ -1540,7 +1614,7 @@ export const GetOpenrouterConversationResponse = zod.object({
 /**
  * @summary Delete a conversation
  */
-export const DeleteOpenrouterConversationParams = zod.object({
+export const DeleteChatConversationParams = zod.object({
   "id": zod.coerce.number()
 })
 
@@ -1548,31 +1622,31 @@ export const DeleteOpenrouterConversationParams = zod.object({
 /**
  * @summary List messages in a conversation
  */
-export const ListOpenrouterMessagesParams = zod.object({
+export const ListChatMessagesParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const ListOpenrouterMessagesResponseItem = zod.object({
+export const ListChatMessagesResponseItem = zod.object({
   "id": zod.number(),
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
   "createdAt": zod.coerce.date()
 })
-export const ListOpenrouterMessagesResponse = zod.array(ListOpenrouterMessagesResponseItem)
+export const ListChatMessagesResponse = zod.array(ListChatMessagesResponseItem)
 
 
 /**
  * @summary Send a message and stream the AI response (SSE)
  */
-export const SendOpenrouterMessageParams = zod.object({
+export const SendChatMessageParams = zod.object({
   "id": zod.coerce.number()
 })
 
 
 
 
-export const SendOpenrouterMessageBody = zod.object({
+export const SendChatMessageBody = zod.object({
   "content": zod.string().min(1)
 })
 

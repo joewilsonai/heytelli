@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MatchDetail } from './matchDetail';
+import type { MatchTimelineEvent } from './matchTimelineEvent';
 import type { VoiceDebriefAnalysis } from './voiceDebriefAnalysis';
 
 export interface VoiceDebriefResult {
   transcript: string;
   analysis: VoiceDebriefAnalysis;
+  timelineEvents: MatchTimelineEvent[];
   match: MatchDetail;
 }

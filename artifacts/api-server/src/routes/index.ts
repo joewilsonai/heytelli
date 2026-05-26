@@ -2,13 +2,13 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import matchesRouter from "./matches";
 import storageRouter from "./storage";
-import openrouterRouter from "./openrouter";
+import chatRouter from "./chat";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(matchesRouter);
 router.use(storageRouter);
-router.use(openrouterRouter);
+router.use(chatRouter);
 
 export default router;

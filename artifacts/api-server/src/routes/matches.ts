@@ -8,6 +8,7 @@ import {
   matchScoreHistory,
   matchRedFlagEvents,
   matchTagEvents,
+  matchTimelineEvents,
   screenshots,
   emptyExtractedProfile,
   normalizeExtractedProfile,
@@ -37,6 +38,10 @@ import {
 } from "@workspace/api-zod";
 import { transcribeAudioObject } from "../lib/audio";
 import { analyzeVoiceDebrief } from "../lib/voiceDebrief";
+import {
+  buildDebriefPersistencePlan,
+  type DebriefSource,
+} from "../lib/debriefRouting";
 import { analyzeVoiceNote } from "../lib/voiceFeedback";
 import { generateStaleNudgeOpeners } from "../lib/nudges";
 import { analyzeRedFlags } from "../lib/redFlagRadar";
@@ -424,6 +429,15 @@ async function recordRedFlagMentions(input: {
   source: RedFlagEventSource;
   labels: string[];
 }) {
+  const rows = buildRedFlagMentionRows(input);
+  if (rows.length > 0) await db.insert(matchRedFlagEvents).values(rows);
+}
+
+function buildRedFlagMentionRows(input: {
+  matchId: number;
+  source: RedFlagEventSource;
+  labels: string[];
+}) {
   const redFlags = input.labels
     .map((label) => label.trim())
     .filter(Boolean)
@@ -434,9 +448,9 @@ async function recordRedFlagMentions(input: {
         evidence: `Mentioned during ${input.source.replace(/-/g, " ")}.`,
       }),
     );
-  if (redFlags.length === 0) return;
+  if (redFlags.length === 0) return [];
   const observedAt = new Date();
-  const rows = buildRedFlagEventRows({
+  return buildRedFlagEventRows({
     matchId: input.matchId,
     source: input.source,
     runId: randomUUID(),
@@ -448,7 +462,71 @@ async function recordRedFlagMentions(input: {
     observedAt,
     redFlags,
   });
-  if (rows.length > 0) await db.insert(matchRedFlagEvents).values(rows);
+}
+
+async function persistDebriefAnalysis(input: {
+  detail: NonNullable<Awaited<ReturnType<typeof loadMatchDetail>>>;
+  source: DebriefSource;
+  transcript: string;
+  analysis: Awaited<ReturnType<typeof analyzeVoiceDebrief>>;
+  addToDateHistory: boolean;
+}) {
+  return db.transaction(async (tx) => {
+    const [lockedMatch] = await tx
+      .select()
+      .from(matches)
+      .where(eq(matches.id, input.detail.id))
+      .for("update");
+    if (!lockedMatch) throw new Error("Match not found");
+    const lockedShots = await tx
+      .select({ extractionStatus: screenshots.extractionStatus })
+      .from(screenshots)
+      .where(eq(screenshots.matchId, lockedMatch.id));
+    const doneScreenshotCount = lockedShots.filter(
+      (shot) => shot.extractionStatus === "done",
+    ).length;
+    const plan = buildDebriefPersistencePlan({
+      matchId: lockedMatch.id,
+      matchName: lockedMatch.name,
+      source: input.source,
+      transcript: input.transcript,
+      analysis: input.analysis,
+      addToDateHistory: input.addToDateHistory,
+      existingTags: lockedMatch.tags ?? [],
+      existingNotes: lockedMatch.notes ?? "",
+      existingDateHistory: normalizeDateHistory(lockedMatch.dateHistory),
+      nextDateAt: lockedMatch.nextDateAt,
+      nextDateLocation: lockedMatch.nextDateLocation,
+      doneScreenshotCount,
+    });
+
+    if (Object.keys(plan.matchUpdates).length > 0) {
+      await tx
+        .update(matches)
+        .set(plan.matchUpdates)
+        .where(eq(matches.id, lockedMatch.id));
+    }
+    let timelineEvents: Array<typeof matchTimelineEvents.$inferSelect> = [];
+    if (plan.timelineEvents.length > 0) {
+      timelineEvents = await tx
+        .insert(matchTimelineEvents)
+        .values(plan.timelineEvents)
+        .returning();
+    }
+    if (plan.tagEvents.length > 0) {
+      await tx.insert(matchTagEvents).values(plan.tagEvents);
+    }
+    const redFlagRows = buildRedFlagMentionRows({
+      matchId: lockedMatch.id,
+      source: input.source,
+      labels: plan.redFlagLabels,
+    });
+    if (redFlagRows.length > 0) {
+      await tx.insert(matchRedFlagEvents).values(redFlagRows);
+    }
+
+    return { ...plan, timelineEvents };
+  });
 }
 
 async function loadMatchDetail(matchId: number) {
@@ -464,6 +542,11 @@ async function loadMatchDetail(matchId: number) {
     .orderBy(asc(screenshots.uploadedAt));
   const transcript = normalizeTranscript(match.transcript);
   const redFlagEvents = await loadRedFlagEvents(matchId);
+  const timelineEvents = await db
+    .select()
+    .from(matchTimelineEvents)
+    .where(eq(matchTimelineEvents.matchId, matchId))
+    .orderBy(desc(matchTimelineEvents.occurredAt), desc(matchTimelineEvents.id));
   const lastDateBrief = normalizeDateBriefSnapshot(match.lastDateBrief);
   const lastRead = normalizeMatchReadSnapshot(match.lastRead);
   const doneShots = shots.filter((s) => s.extractionStatus === "done").length;
@@ -479,6 +562,7 @@ async function loadMatchDetail(matchId: number) {
     ...withNormalizedProfile(match),
     transcript,
     screenshots: shots,
+    timelineEvents,
     ...freshnessCounts,
     lastDateBrief,
     dateBriefFreshness: computeDateBriefFreshness(
@@ -1594,84 +1678,21 @@ router.post(
       const analysis = await analyzeVoiceDebrief(transcript, {
         name: detail.name,
         priorVibe: detail.vibeTags.join(", ") || null,
-        priorScores: detail.extractedProfile.scores,
+        currentTags: detail.tags ?? [],
+        dateHistory: detail.dateHistory,
+        priorRead: detail.lastRead?.body ?? null,
       });
 
-      const mergedScores = { ...detail.extractedProfile.scores };
-      for (const key of [
-        "sexPotential",
-        "conversionAbility",
-        "chemistry",
-      ] as const) {
-        const s = analysis.scoreSuggestions[key];
-        if (s.value != null) mergedScores[key] = s;
-      }
-      const mergedProfile = {
-        ...detail.extractedProfile,
-        scores: mergedScores,
-      };
-
-      const noteHeader = `\n\n— In-person recording (${new Date().toLocaleDateString()}) [consent confirmed] —\n`;
-      const noteBody = [
-        `Summary: ${analysis.summary}`,
-        analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-        analysis.greenFlags.length
-          ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}`
-          : null,
-        analysis.redFlags.length
-          ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}`
-          : null,
-        analysis.nextMoveSuggestion
-          ? `Next move: ${analysis.nextMoveSuggestion}`
-          : null,
-        `\nTranscript:\n"${transcript}"`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const updatedNotes = (detail.notes || "").trim() + noteHeader + noteBody;
-
-      const updates: Record<string, unknown> = {
-        extractedProfile: mergedProfile,
-        notes: updatedNotes,
-      };
-
-      if (body.data.addToDateHistory) {
-        const nowIso = new Date().toISOString();
-        const recap = [
-          analysis.summary,
-          analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-          analysis.nextMoveSuggestion
-            ? `Next: ${analysis.nextMoveSuggestion}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" — ");
-        const newEntry = {
-          id: `inp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          when: detail.nextDateAt
-            ? new Date(detail.nextDateAt).toISOString()
-            : nowIso,
-          location: detail.nextDateLocation ?? "",
-          recap,
-          createdAt: nowIso,
-        };
-        updates.dateHistory = [...detail.dateHistory, newEntry];
-        if (detail.nextDateAt) {
-          updates.nextDateAt = null;
-          updates.nextDateLocation = null;
-        }
-      }
-
-      await db.update(matches).set(updates).where(eq(matches.id, detail.id));
-      await recordScoreHistory(detail.id, mergedScores);
-      await recordRedFlagMentions({
-        matchId: detail.id,
+      const plan = await persistDebriefAnalysis({
+        detail,
         source: "in-person-recording",
-        labels: analysis.redFlags,
+        transcript,
+        analysis,
+        addToDateHistory: body.data.addToDateHistory === true,
       });
 
       const refreshed = await loadMatchDetail(detail.id);
-      res.json({ transcript, analysis, match: refreshed });
+      res.json({ transcript, analysis, timelineEvents: plan.timelineEvents, match: refreshed });
     } catch (err) {
       req.log.error({ err }, "In-person recording analysis failed");
       res.status(500).json({ error: "Recording analysis failed" });
@@ -1707,88 +1728,21 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     const analysis = await analyzeVoiceDebrief(transcript, {
       name: detail.name,
       priorVibe: detail.vibeTags.join(", ") || null,
-      priorScores: detail.extractedProfile.scores,
+      currentTags: detail.tags ?? [],
+      dateHistory: detail.dateHistory,
+      priorRead: detail.lastRead?.body ?? null,
     });
 
-    // Persist: update scores (only fields where suggestion has a value),
-    // append the debrief to notes, optionally add a date history entry.
-    const mergedScores = { ...detail.extractedProfile.scores };
-    for (const key of [
-      "sexPotential",
-      "conversionAbility",
-      "chemistry",
-    ] as const) {
-      const s = analysis.scoreSuggestions[key];
-      if (s.value != null) mergedScores[key] = s;
-    }
-    const mergedProfile = {
-      ...detail.extractedProfile,
-      scores: mergedScores,
-    };
-
-    const noteHeader = `\n\n— Voice debrief (${new Date().toLocaleDateString()}) —\n`;
-    const noteBody = [
-      `Summary: ${analysis.summary}`,
-      analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-      analysis.greenFlags.length
-        ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}`
-        : null,
-      analysis.redFlags.length
-        ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}`
-        : null,
-      analysis.nextMoveSuggestion
-        ? `Next move: ${analysis.nextMoveSuggestion}`
-        : null,
-      `\nTranscript:\n"${transcript}"`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const updatedNotes = (detail.notes || "").trim() + noteHeader + noteBody;
-
-    const updates: Record<string, unknown> = {
-      extractedProfile: mergedProfile,
-      notes: updatedNotes,
-    };
-
-    if (body.data.addToDateHistory) {
-      const nowIso = new Date().toISOString();
-      const recap = [
-        analysis.summary,
-        analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-        analysis.nextMoveSuggestion
-          ? `Next: ${analysis.nextMoveSuggestion}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" — ");
-      const newEntry = {
-        id: `vd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        when: detail.nextDateAt
-          ? new Date(detail.nextDateAt).toISOString()
-          : nowIso,
-        location: detail.nextDateLocation ?? "",
-        recap,
-        createdAt: nowIso,
-      };
-      const history = [...detail.dateHistory, newEntry];
-      updates.dateHistory = history;
-      // If this was the upcoming date, clear it.
-      if (detail.nextDateAt) {
-        updates.nextDateAt = null;
-        updates.nextDateLocation = null;
-      }
-    }
-
-    await db.update(matches).set(updates).where(eq(matches.id, detail.id));
-    await recordScoreHistory(detail.id, mergedScores);
-    await recordRedFlagMentions({
-      matchId: detail.id,
+    const plan = await persistDebriefAnalysis({
+      detail,
       source: "voice-debrief",
-      labels: analysis.redFlags,
+      transcript,
+      analysis,
+      addToDateHistory: body.data.addToDateHistory === true,
     });
 
     const refreshed = await loadMatchDetail(detail.id);
-    res.json({ transcript, analysis, match: refreshed });
+    res.json({ transcript, analysis, timelineEvents: plan.timelineEvents, match: refreshed });
   } catch (err) {
     req.log.error({ err }, "Voice debrief failed");
     res.status(500).json({ error: "Voice debrief failed" });

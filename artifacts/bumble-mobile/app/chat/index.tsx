@@ -18,14 +18,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import {
-  createOpenrouterConversation,
-  getListOpenrouterConversationsQueryKey,
+  createChatConversation,
+  getListChatConversationsQueryKey,
   useListMatches,
-  useListOpenrouterConversations,
+  useListChatConversations,
 } from "@workspace/api-client-react";
 import type {
   Match,
-  OpenrouterConversation,
+  ChatConversation,
 } from "@workspace/api-client-react";
 
 import {
@@ -44,11 +44,11 @@ export default function ChatListScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { data, isLoading, refetch, isRefetching } =
-    useListOpenrouterConversations();
+    useListChatConversations();
   const { data: matches = [] } = useListMatches();
   const [composerOpen, setComposerOpen] = useState(false);
 
-  const convs = (data ?? []) as OpenrouterConversation[];
+  const convs = (data ?? []) as ChatConversation[];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -69,9 +69,9 @@ export default function ChatListScreen() {
             hint="Back"
           />
           <View>
-            <H1>Wingman</H1>
+            <H1>HeyTelli chat</H1>
             <Body muted style={{ marginTop: 2, fontSize: 12 }}>
-              Talk to Grok about any match
+              Talk through any match privately
             </Body>
           </View>
         </View>
@@ -127,7 +127,7 @@ export default function ChatListScreen() {
             <EmptyState
               icon="message-circle"
               title="No chats yet"
-              hint="Tap the pencil to start a conversation with Grok about a match."
+              hint="Tap the pencil to start a conversation about a match."
               action={{
                 label: "Start a chat",
                 onPress: () => setComposerOpen(true),
@@ -144,7 +144,7 @@ export default function ChatListScreen() {
         onCreated={(id) => {
           setComposerOpen(false);
           qc.invalidateQueries({
-            queryKey: getListOpenrouterConversationsQueryKey(),
+            queryKey: getListChatConversationsQueryKey(),
           });
           router.push(`/chat/${id}`);
         }}
@@ -158,7 +158,7 @@ function ConversationRow({
   matchName,
   onPress,
 }: {
-  conv: OpenrouterConversation;
+  conv: ChatConversation;
   matchName: string | null;
   onPress: () => void;
 }) {
@@ -238,7 +238,7 @@ function NewChatModal({
         : `Chat about ${matches.find((m) => m.id === matchId)?.name ?? "match"}`);
     setBusy(true);
     try {
-      const created = await createOpenrouterConversation({
+      const created = await createChatConversation({
         title: finalTitle,
         matchId,
       });

@@ -543,8 +543,8 @@ function PreDateBriefCard({ match }: { match: MatchDetailType }) {
       )}
       {!brief && !mutation.isPending && !mutation.isError && (
         <p className="text-xs text-muted-foreground mt-2">
-          Grok will read her full profile, scores, transcript, and date history
-          to build a tactical prep brief.
+          HeyTelli will read her profile, transcript, tags, and date history
+          to build a grounded prep brief.
         </p>
       )}
     </Card>
@@ -1253,7 +1253,7 @@ function DateHistoryCard({ match }: { match: MatchDetailType }) {
 
       {sorted.length === 0 && !adding ? (
         <p className="text-muted-foreground italic text-sm">
-          No dates logged yet. After each date, add what happened so Grok and the scores stay current.
+          No dates logged yet. After each date, add what happened so HeyTelli stays current.
         </p>
       ) : (
         <div className="flex flex-col gap-3">

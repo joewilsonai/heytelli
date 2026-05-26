@@ -23,6 +23,7 @@ import {
   stopRecording,
   uploadAudio,
 } from "@/lib/recorder";
+import { formatDateTime } from "@/lib/format";
 
 type Phase = "consent" | "ready" | "recording" | "processing" | "result";
 
@@ -48,7 +49,7 @@ export function InPersonRecordingSheet({
   const [elapsed, setElapsed] = useState(0);
   const [analysis, setAnalysis] = useState<VoiceDebriefAnalysis | null>(null);
   const [transcript, setTranscript] = useState("");
-  const [addToHistory, setAddToHistory] = useState(true);
+  const [addToHistory, setAddToHistory] = useState(false);
   const startRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -63,7 +64,7 @@ export function InPersonRecordingSheet({
       setElapsed(0);
       setAnalysis(null);
       setTranscript("");
-      setAddToHistory(true);
+      setAddToHistory(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -336,6 +337,46 @@ export function InPersonRecordingSheet({
                   <Body>{analysis.nextMoveSuggestion}</Body>
                 </Section>
               )}
+              {analysis.tagsToAdd.length > 0 && (
+                <Section title="Tags saved">
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    {analysis.tagsToAdd.map((t) => (
+                      <VibeTag key={t.tag} label={t.tag} />
+                    ))}
+                  </View>
+                </Section>
+              )}
+              {analysis.date.isDate && (
+                <Section title="Date timeline">
+                  <Body>
+                    {analysis.date.recap ??
+                      "This recording was saved as a date entry."}
+                  </Body>
+                  {(analysis.date.when || analysis.date.location) && (
+                    <Body muted>
+                      {[
+                        analysis.date.when
+                          ? formatDateTime(analysis.date.when)
+                          : null,
+                        analysis.date.location,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Body>
+                  )}
+                </Section>
+              )}
+              {analysis.readUpdate && (
+                <Section title="Latest read">
+                  <Body>{analysis.readUpdate}</Body>
+                </Section>
+              )}
+              <Section title="Saved">
+                <Body muted>
+                  Transcript, signals, tags, and read updates are now on this
+                  match timeline.
+                </Body>
+              </Section>
               <Section title="Transcript">
                 <Body muted>{transcript}</Body>
               </Section>

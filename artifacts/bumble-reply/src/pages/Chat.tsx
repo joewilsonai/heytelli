@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
-  useListOpenrouterConversations,
-  useCreateOpenrouterConversation,
-  useGetOpenrouterConversation,
-  useDeleteOpenrouterConversation,
+  useListChatConversations,
+  useCreateChatConversation,
+  useGetChatConversation,
+  useDeleteChatConversation,
   useListMatches,
-  getGetOpenrouterConversationQueryKey,
-  getListOpenrouterConversationsQueryKey,
+  getGetChatConversationQueryKey,
+  getListChatConversationsQueryKey,
 } from "@workspace/api-client-react";
 import type {
-  OpenrouterConversation,
-  OpenrouterMessage,
+  ChatConversation,
+  ChatMessage,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -65,7 +65,7 @@ function NewChatComposer({
   const { data: matches = [] } = useListMatches();
   const [title, setTitle] = useState("");
   const [matchId, setMatchId] = useState<string>("all");
-  const create = useCreateOpenrouterConversation();
+  const create = useCreateChatConversation();
   const qc = useQueryClient();
 
   async function submit() {
@@ -78,13 +78,13 @@ function NewChatComposer({
     const created = await create.mutateAsync({
       data: { title: finalTitle, matchId: finalMatchId },
     });
-    await qc.invalidateQueries({ queryKey: getListOpenrouterConversationsQueryKey() });
+    await qc.invalidateQueries({ queryKey: getListChatConversationsQueryKey() });
     onCreated(created.id);
   }
 
   return (
     <Card className="p-5 rounded-2xl">
-      <h3 className="font-semibold text-base mb-3">Start a new chat with Grok</h3>
+      <h3 className="font-semibold text-base mb-3">Start a new HeyTelli chat</h3>
       <div className="space-y-3">
         <Select value={matchId} onValueChange={setMatchId}>
           <SelectTrigger data-testid="select-chat-match">
@@ -121,17 +121,17 @@ function NewChatComposer({
 }
 
 function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
-  const { data: conv, refetch } = useGetOpenrouterConversation(id);
+  const { data: conv, refetch } = useGetChatConversation(id);
   const qc = useQueryClient();
   const [, navigate] = useLocation();
-  const del = useDeleteOpenrouterConversation();
+  const del = useDeleteChatConversation();
   const [input, setInput] = useState("");
   const [streamingText, setStreamingText] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticUser, setOptimisticUser] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const messages: OpenrouterMessage[] = conv?.messages ?? [];
+  const messages: ChatMessage[] = conv?.messages ?? [];
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -147,7 +147,7 @@ function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
     setIsStreaming(true);
 
     try {
-      const res = await fetch(`/api/openrouter/conversations/${id}/messages`, {
+      const res = await fetch(`/api/chat/conversations/${id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text }),
@@ -190,14 +190,14 @@ function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
       setOptimisticUser(null);
       setStreamingText("");
       await refetch();
-      await qc.invalidateQueries({ queryKey: getGetOpenrouterConversationQueryKey(id) });
+      await qc.invalidateQueries({ queryKey: getGetChatConversationQueryKey(id) });
     }
   }
 
   async function handleDelete() {
     if (!confirm("Delete this conversation?")) return;
     await del.mutateAsync({ id });
-    await qc.invalidateQueries({ queryKey: getListOpenrouterConversationsQueryKey() });
+    await qc.invalidateQueries({ queryKey: getListChatConversationsQueryKey() });
     navigate("/chat");
   }
 
@@ -221,7 +221,7 @@ function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
           </h2>
           <p className="text-xs text-muted-foreground">
             {conv?.matchId == null ? "All matches" : `Match #${conv?.matchId}`} ·
-            Powered by Grok
+            Private HeyTelli chat
           </p>
           </div>
         </div>
@@ -263,7 +263,7 @@ function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
                 send();
               }
             }}
-            placeholder="Ask Grok about her, the conversation, her pics…"
+            placeholder="Ask HeyTelli about the conversation or next move..."
             rows={2}
             className="resize-none rounded-2xl"
             disabled={isStreaming}
@@ -285,18 +285,18 @@ function ConversationView({ id, onBack }: { id: number; onBack: () => void }) {
 }
 
 export default function ChatPage() {
-  const { data: convs = [] } = useListOpenrouterConversations();
+  const { data: convs = [] } = useListChatConversations();
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = useMemo(() => new URLSearchParams(search), [search]);
   const selectedId = params.get("id") ? Number(params.get("id")) : null;
   const newMatchId = params.get("match") ? Number(params.get("match")) : null;
 
-  const list = convs as OpenrouterConversation[];
+  const list = convs as ChatConversation[];
 
   // Auto-create a conversation when ?match=N is provided and we don't already
   // have an open one for that match.
-  const create = useCreateOpenrouterConversation();
+  const create = useCreateChatConversation();
   const { data: matches = [] } = useListMatches();
   const qc = useQueryClient();
   const autoCreatedRef = useRef(false);
@@ -309,7 +309,7 @@ export default function ChatPage() {
       const created = await create.mutateAsync({
         data: { title, matchId: newMatchId },
       });
-      await qc.invalidateQueries({ queryKey: getListOpenrouterConversationsQueryKey() });
+      await qc.invalidateQueries({ queryKey: getListChatConversationsQueryKey() });
       navigate(`/chat?id=${created.id}`, { replace: true });
     })();
   }, [newMatchId, matches, create, qc, navigate]);
@@ -332,10 +332,10 @@ export default function ChatPage() {
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight">
-                Wingman Chat
+                HeyTelli Chat
               </h1>
               <p className="text-muted-foreground text-xs">
-                Talk to Grok about any of your matches
+                Talk through any of your matches
               </p>
             </div>
           </div>

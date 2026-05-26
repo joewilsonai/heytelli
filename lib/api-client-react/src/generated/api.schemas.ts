@@ -275,6 +275,50 @@ export const MatchDetailAnalysisFreshness = {
   'never-analyzed': 'never-analyzed',
 } as const;
 
+export type MatchTimelineEventType = typeof MatchTimelineEventType[keyof typeof MatchTimelineEventType];
+
+
+export const MatchTimelineEventType = {
+  voice_debrief: 'voice_debrief',
+  date_debrief: 'date_debrief',
+  in_person_recording: 'in_person_recording',
+  manual_note: 'manual_note',
+  screenshot_import: 'screenshot_import',
+  chat_insight: 'chat_insight',
+  red_flag_seen: 'red_flag_seen',
+  green_flag_seen: 'green_flag_seen',
+  tag_added: 'tag_added',
+  tag_removed: 'tag_removed',
+} as const;
+
+export type MatchTimelineEventSource = typeof MatchTimelineEventSource[keyof typeof MatchTimelineEventSource];
+
+
+export const MatchTimelineEventSource = {
+  user: 'user',
+  ai: 'ai',
+  'voice-debrief': 'voice-debrief',
+  'in-person-recording': 'in-person-recording',
+  chat: 'chat',
+} as const;
+
+export type MatchTimelineEventMetadata = { [key: string]: unknown };
+
+export interface MatchTimelineEvent {
+  id: number;
+  matchId: number;
+  type: MatchTimelineEventType;
+  source: MatchTimelineEventSource;
+  title: string;
+  /** @nullable */
+  summary: string | null;
+  /** @nullable */
+  body: string | null;
+  metadata: MatchTimelineEventMetadata;
+  occurredAt: string;
+  createdAt: string;
+}
+
 export interface MatchDetail {
   id: number;
   name: string;
@@ -304,6 +348,7 @@ export interface MatchDetail {
   createdAt: string;
   updatedAt: string;
   screenshots: Screenshot[];
+  timelineEvents: MatchTimelineEvent[];
   /** Screenshots awaiting analysis */
   pendingScreenshotCount: number;
   /** Screenshots whose analysis failed */
@@ -356,6 +401,22 @@ export interface VoiceDebriefInput {
   addToDateHistory?: boolean;
 }
 
+export type VoiceDebriefAnalysisTagsToAddItem = {
+  tag: string;
+  /** @nullable */
+  reason: string | null;
+};
+
+export type VoiceDebriefAnalysisDate = {
+  isDate: boolean;
+  /** @nullable */
+  when: string | null;
+  /** @nullable */
+  location: string | null;
+  /** @nullable */
+  recap: string | null;
+};
+
 export interface VoiceDebriefAnalysis {
   summary: string;
   /** @nullable */
@@ -364,7 +425,12 @@ export interface VoiceDebriefAnalysis {
   redFlags: string[];
   /** @nullable */
   nextMoveSuggestion: string | null;
-  scoreSuggestions: MatchScores;
+  tagsToAdd: VoiceDebriefAnalysisTagsToAddItem[];
+  date: VoiceDebriefAnalysisDate;
+  /** @nullable */
+  readUpdate: string | null;
+  /** @nullable */
+  timelineTitle: string | null;
 }
 
 export interface StaleNudge {
@@ -408,6 +474,7 @@ export interface InPersonRecordingInput {
 export interface VoiceDebriefResult {
   transcript: string;
   analysis: VoiceDebriefAnalysis;
+  timelineEvents: MatchTimelineEvent[];
   match: MatchDetail;
 }
 
@@ -599,7 +666,7 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
-export interface OpenrouterConversation {
+export interface ChatConversation {
   id: number;
   title: string;
   /** @nullable */
@@ -607,7 +674,7 @@ export interface OpenrouterConversation {
   createdAt: string;
 }
 
-export interface OpenrouterMessage {
+export interface ChatMessage {
   id: number;
   conversationId: number;
   role: string;
@@ -615,24 +682,24 @@ export interface OpenrouterMessage {
   createdAt: string;
 }
 
-export interface OpenrouterConversationInput {
+export interface ChatConversationInput {
   /** @minLength 1 */
   title: string;
   /** @nullable */
   matchId?: number | null;
 }
 
-export interface OpenrouterMessageInput {
+export interface ChatMessageInput {
   /** @minLength 1 */
   content: string;
 }
 
-export interface OpenrouterConversationWithMessages {
+export interface ChatConversationWithMessages {
   id: number;
   title: string;
   /** @nullable */
   matchId: number | null;
   createdAt: string;
-  messages: OpenrouterMessage[];
+  messages: ChatMessage[];
 }
 

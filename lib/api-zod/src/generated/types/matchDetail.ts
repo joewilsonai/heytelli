@@ -13,6 +13,7 @@ import type { MatchDetailAnalysisFreshness } from './matchDetailAnalysisFreshnes
 import type { MatchReadFreshness } from './matchReadFreshness';
 import type { MatchReadSnapshot } from './matchReadSnapshot';
 import type { MatchStatus } from './matchStatus';
+import type { MatchTimelineEvent } from './matchTimelineEvent';
 import type { RedFlag } from './redFlag';
 import type { RedFlagSummary } from './redFlagSummary';
 import type { Screenshot } from './screenshot';
@@ -47,6 +48,7 @@ export interface MatchDetail {
   createdAt: Date;
   updatedAt: Date;
   screenshots: Screenshot[];
+  timelineEvents: MatchTimelineEvent[];
   /** Screenshots awaiting analysis */
   pendingScreenshotCount: number;
   /** Screenshots whose analysis failed */

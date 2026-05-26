@@ -1,56 +1,35 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
-import type { MatchScore } from "@workspace/db";
+import type { DateHistoryEntry } from "@workspace/db";
+import type {
+  DebriefRoutingAnalysis,
+  DebriefTagSuggestion,
+} from "./debriefRouting";
 
 const DEBRIEF_MODEL = "gpt-5.4";
 
-export type DebriefAnalysis = {
-  summary: string;
-  vibe: string | null;
-  greenFlags: string[];
-  redFlags: string[];
-  nextMoveSuggestion: string | null;
-  scoreSuggestions: {
-    sexPotential: MatchScore;
-    conversionAbility: MatchScore;
-    chemistry: MatchScore;
-  };
-};
+export type DebriefAnalysis = DebriefRoutingAnalysis;
 
-const SYSTEM = `You are a sharp, candid dating coach. The user just got back from a date or interaction with a match and is voice-debriefing what happened. Analyze the transcript and return structured insights.
+export const DEBRIEF_SYSTEM_PROMPT = `You are HeyTelli, a private women-first dating safety and clarity assistant. The user is voice-debriefing what happened with a match. Extract durable, structured information that can be saved to her match timeline, tags, date history, red flags, and latest read.
 
-Be honest, not sycophantic. Pick up on subtext.
+Be grounded and specific. Do not diagnose people, moralize, or hype the user into overconfidence. Separate "what is going well" from "what to watch." Prefer concrete behavioral signals over vibes.
 
 Respond with ONLY a JSON object (no markdown) with this shape:
 {
   "summary": string,                       // 1-2 sentences capturing what actually happened
-  "vibe": string | null,                   // 3-6 word vibe descriptor (e.g. "warm but cagey")
-  "greenFlags": string[],                  // 0-4 short bullet observations - things going well
-  "redFlags": string[],                    // 0-4 short bullet observations - concerns or warning signs
-  "nextMoveSuggestion": string | null,     // 1-2 sentences: what to do next (text, escalate, wait, etc.)
-  "scoreSuggestions": {                    // Updated scores 0-10, null if not enough info to revise
-    "sexPotential":      { "value": number | null, "rationale": string | null },
-    "conversionAbility": { "value": number | null, "rationale": string | null },
-    "chemistry":         { "value": number | null, "rationale": string | null }
-  }
+  "vibe": string | null,                   // 3-6 word descriptor (e.g. "warm but guarded")
+  "greenFlags": string[],                  // 0-5 concrete signs things are going well
+  "redFlags": string[],                    // 0-5 concrete concerns or safety/watch items
+  "nextMoveSuggestion": string | null,     // 1-2 sentences: what to do next, if useful
+  "tagsToAdd": [{ "tag": string, "reason": string | null }], // 0-5 short operational tags
+  "date": {
+    "isDate": boolean,                     // true only if the transcript describes an actual date/meetup
+    "when": string | null,                 // ISO datetime if stated or strongly inferable
+    "location": string | null,
+    "recap": string | null
+  },
+  "readUpdate": string | null,             // durable latest read for the match after this debrief
+  "timelineTitle": string | null           // short title for this saved debrief
 }`;
-
-function emptyScore(): MatchScore {
-  return { value: null, rationale: null };
-}
-
-function toScore(v: unknown): MatchScore {
-  if (!v || typeof v !== "object") return emptyScore();
-  const obj = v as Record<string, unknown>;
-  let value: number | null = null;
-  if (typeof obj.value === "number" && Number.isFinite(obj.value)) {
-    value = Math.max(0, Math.min(10, Math.round(obj.value)));
-  }
-  const rationale =
-    typeof obj.rationale === "string" && obj.rationale.trim() !== ""
-      ? obj.rationale.trim()
-      : null;
-  return { value, rationale };
-}
 
 function toStringArray(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
@@ -60,21 +39,88 @@ function toStringArray(v: unknown): string[] {
     .slice(0, 6);
 }
 
+function cleanText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeDateCandidate(value: unknown): DebriefRoutingAnalysis["date"] {
+  const obj = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const when = cleanText(obj.when);
+  return {
+    isDate: obj.isDate === true,
+    when:
+      when && !Number.isNaN(new Date(when).getTime())
+        ? new Date(when).toISOString()
+        : null,
+    location: cleanText(obj.location),
+    recap: cleanText(obj.recap),
+  };
+}
+
+function toTagSuggestions(value: unknown): DebriefTagSuggestion[] {
+  if (!Array.isArray(value)) return [];
+  const out: DebriefTagSuggestion[] = [];
+  const seen = new Set<string>();
+  for (const raw of value) {
+    const obj: Record<string, unknown> =
+      raw && typeof raw === "object"
+        ? (raw as Record<string, unknown>)
+        : { tag: raw };
+    const tag = cleanText(obj.tag);
+    if (!tag || seen.has(tag.toLowerCase())) continue;
+    seen.add(tag.toLowerCase());
+    out.push({
+      tag,
+      reason: cleanText(obj.reason),
+    });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+export function normalizeDebriefAnalysis(
+  parsed: unknown,
+  fallbackTranscript: string,
+): DebriefAnalysis {
+  const obj =
+    parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  return {
+    summary:
+      cleanText(obj.summary) ??
+      fallbackTranscript.trim().slice(0, 200) ??
+      "Debrief saved.",
+    vibe: cleanText(obj.vibe),
+    greenFlags: toStringArray(obj.greenFlags),
+    redFlags: toStringArray(obj.redFlags),
+    nextMoveSuggestion: cleanText(obj.nextMoveSuggestion),
+    tagsToAdd: toTagSuggestions(obj.tagsToAdd),
+    date: normalizeDateCandidate(obj.date),
+    readUpdate: cleanText(obj.readUpdate),
+    timelineTitle: cleanText(obj.timelineTitle),
+  };
+}
+
 export async function analyzeVoiceDebrief(
   transcript: string,
   context: {
     name: string;
     priorVibe: string | null;
-    priorScores: {
-      sexPotential: MatchScore;
-      conversionAbility: MatchScore;
-      chemistry: MatchScore;
-    };
+    currentTags: string[];
+    dateHistory: DateHistoryEntry[];
+    priorRead: string | null;
   },
 ): Promise<DebriefAnalysis> {
   const user = `Match: ${context.name}
 Prior vibe: ${context.priorVibe ?? "(none)"}
-Prior scores — sex: ${context.priorScores.sexPotential.value ?? "?"}, conversion: ${context.priorScores.conversionAbility.value ?? "?"}, chemistry: ${context.priorScores.chemistry.value ?? "?"}
+Current tags: ${context.currentTags.length ? context.currentTags.join(", ") : "(none)"}
+Prior dates: ${
+    context.dateHistory.length
+      ? context.dateHistory
+          .map((d) => `${d.when}${d.location ? ` at ${d.location}` : ""}: ${d.recap}`)
+          .join("\n")
+      : "(none)"
+  }
+Current saved read: ${context.priorRead ?? "(none)"}
 
 User's voice debrief (transcribed):
 """
@@ -86,7 +132,7 @@ Analyze and return the JSON object.`;
   const completion = await openai.chat.completions.create({
     model: DEBRIEF_MODEL,
     messages: [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: DEBRIEF_SYSTEM_PROMPT },
       { role: "user", content: user },
     ],
     response_format: { type: "json_object" },
@@ -100,21 +146,5 @@ Analyze and return the JSON object.`;
     parsed = {};
   }
 
-  const scoreSugg = (parsed.scoreSuggestions as Record<string, unknown>) ?? {};
-  return {
-    summary:
-      typeof parsed.summary === "string" ? parsed.summary.trim() : transcript.slice(0, 200),
-    vibe: typeof parsed.vibe === "string" && parsed.vibe.trim() ? parsed.vibe.trim() : null,
-    greenFlags: toStringArray(parsed.greenFlags),
-    redFlags: toStringArray(parsed.redFlags),
-    nextMoveSuggestion:
-      typeof parsed.nextMoveSuggestion === "string" && parsed.nextMoveSuggestion.trim()
-        ? parsed.nextMoveSuggestion.trim()
-        : null,
-    scoreSuggestions: {
-      sexPotential: toScore(scoreSugg.sexPotential),
-      conversionAbility: toScore(scoreSugg.conversionAbility),
-      chemistry: toScore(scoreSugg.chemistry),
-    },
-  };
+  return normalizeDebriefAnalysis(parsed, transcript);
 }

@@ -166,7 +166,7 @@ export default function MatchesScreen() {
                   justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                 })}
-                accessibilityLabel="Wingman chat"
+                accessibilityLabel="HeyTelli chat"
               >
                 <Feather name="message-circle" size={20} color={c.foreground} />
               </Pressable>

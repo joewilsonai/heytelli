@@ -5,13 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { OpenrouterMessage } from './openrouterMessage';
+import type { ChatMessage } from './chatMessage';
 
-export interface OpenrouterConversationWithMessages {
+export interface ChatConversationWithMessages {
   id: number;
   title: string;
   /** @nullable */
   matchId: number | null;
   createdAt: Date;
-  messages: OpenrouterMessage[];
+  messages: ChatMessage[];
 }

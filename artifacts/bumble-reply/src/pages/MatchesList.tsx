@@ -558,7 +558,7 @@ export default function MatchesList() {
             </div>
             <h3 className="text-2xl font-bold mb-2">No matches yet</h3>
             <p className="text-muted-foreground mb-6 max-w-md">
-              Add your first match by uploading a screenshot. Your wingman will
+              Add your first match by uploading a screenshot. HeyTelli will
               build a profile and help you craft the perfect replies.
             </p>
             <Link href="/new">

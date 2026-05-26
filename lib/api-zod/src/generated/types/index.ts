@@ -7,6 +7,11 @@
  */
 
 export * from './autoArchiveCandidate';
+export * from './chatConversation';
+export * from './chatConversationInput';
+export * from './chatConversationWithMessages';
+export * from './chatMessage';
+export * from './chatMessageInput';
 export * from './cheatSheetReply';
 export * from './cheatSheetReplyStyle';
 export * from './cheatSheetResult';
@@ -34,12 +39,11 @@ export * from './matchReadSnapshot';
 export * from './matchScore';
 export * from './matchScores';
 export * from './matchStatus';
+export * from './matchTimelineEvent';
+export * from './matchTimelineEventMetadata';
+export * from './matchTimelineEventSource';
+export * from './matchTimelineEventType';
 export * from './matchUpdate';
-export * from './openrouterConversation';
-export * from './openrouterConversationInput';
-export * from './openrouterConversationWithMessages';
-export * from './openrouterMessage';
-export * from './openrouterMessageInput';
 export * from './redFlag';
 export * from './redFlagRadarResult';
 export * from './redFlagSeverity';
@@ -66,6 +70,8 @@ export * from './transcriptTurnSpeaker';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
 export * from './voiceDebriefAnalysis';
+export * from './voiceDebriefAnalysisDate';
+export * from './voiceDebriefAnalysisTagsToAddItem';
 export * from './voiceDebriefInput';
 export * from './voiceDebriefResult';
 export * from './voiceNoteFeedbackResult';

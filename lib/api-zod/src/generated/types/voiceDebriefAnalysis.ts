@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { MatchScores } from './matchScores';
+import type { VoiceDebriefAnalysisDate } from './voiceDebriefAnalysisDate';
+import type { VoiceDebriefAnalysisTagsToAddItem } from './voiceDebriefAnalysisTagsToAddItem';
 
 export interface VoiceDebriefAnalysis {
   summary: string;
@@ -15,5 +16,10 @@ export interface VoiceDebriefAnalysis {
   redFlags: string[];
   /** @nullable */
   nextMoveSuggestion: string | null;
-  scoreSuggestions: MatchScores;
+  tagsToAdd: VoiceDebriefAnalysisTagsToAddItem[];
+  date: VoiceDebriefAnalysisDate;
+  /** @nullable */
+  readUpdate: string | null;
+  /** @nullable */
+  timelineTitle: string | null;
 }

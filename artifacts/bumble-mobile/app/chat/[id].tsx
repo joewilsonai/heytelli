@@ -19,12 +19,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import {
-  deleteOpenrouterConversation,
-  getGetOpenrouterConversationQueryKey,
-  getListOpenrouterConversationsQueryKey,
-  useGetOpenrouterConversation,
+  deleteChatConversation,
+  getGetChatConversationQueryKey,
+  getListChatConversationsQueryKey,
+  useGetChatConversation,
 } from "@workspace/api-client-react";
-import type { OpenrouterMessage } from "@workspace/api-client-react";
+import type { ChatMessage } from "@workspace/api-client-react";
 
 import { Body, EmptyState, IconButton } from "@/components/ui";
 
@@ -44,7 +44,7 @@ export default function ChatScreen() {
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const convId = Number(id);
-  const { data, refetch, isLoading } = useGetOpenrouterConversation(convId);
+  const { data, refetch, isLoading } = useGetChatConversation(convId);
 
   const [input, setInput] = useState("");
   const [optimistic, setOptimistic] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function ChatScreen() {
 
     try {
       const res = await expoFetch(
-        `https://${DOMAIN}/api/openrouter/conversations/${convId}/messages`,
+        `https://${DOMAIN}/api/chat/conversations/${convId}/messages`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
@@ -118,7 +118,7 @@ export default function ChatScreen() {
       abortRef.current = null;
       await refetch();
       qc.invalidateQueries({
-        queryKey: getGetOpenrouterConversationQueryKey(convId),
+        queryKey: getGetChatConversationQueryKey(convId),
       });
     }
   }, [convId, input, isStreaming, qc, refetch]);
@@ -137,9 +137,9 @@ export default function ChatScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteOpenrouterConversation(convId);
+            await deleteChatConversation(convId);
             qc.invalidateQueries({
-              queryKey: getListOpenrouterConversationsQueryKey(),
+              queryKey: getListChatConversationsQueryKey(),
             });
             router.back();
           } catch (e: any) {
@@ -151,7 +151,7 @@ export default function ChatScreen() {
   };
 
   const bubbles = useMemo<Bubble[]>(() => {
-    const msgs = (data?.messages ?? []) as OpenrouterMessage[];
+    const msgs = (data?.messages ?? []) as ChatMessage[];
     const out: Bubble[] = msgs.map((m) => ({
       key: `m-${m.id}`,
       role: m.role as Bubble["role"],
@@ -236,7 +236,7 @@ export default function ChatScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Ask Grok..."
+          placeholder="Ask HeyTelli..."
           placeholderTextColor={c.mutedForeground}
           multiline
           editable={!isStreaming}
