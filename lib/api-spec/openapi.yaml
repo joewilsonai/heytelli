@@ -865,6 +865,9 @@ components:
         - dateBriefFreshness
         - lastRead
         - readFreshness
+        - redFlags
+        - currentRedFlags
+        - historicalRedFlags
         - redFlagSummary
       properties:
         id: { type: integer }
@@ -902,6 +905,15 @@ components:
             - type: "null"
         readFreshness:
           $ref: "#/components/schemas/MatchReadFreshness"
+        redFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        currentRedFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        historicalRedFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
         redFlagSummary:
           $ref: "#/components/schemas/RedFlagSummary"
         scoreHistory:
@@ -981,6 +993,9 @@ components:
         - dateBriefFreshness
         - lastRead
         - readFreshness
+        - redFlags
+        - currentRedFlags
+        - historicalRedFlags
         - redFlagSummary
       properties:
         id: { type: integer }
@@ -1016,6 +1031,15 @@ components:
             - type: "null"
         readFreshness:
           $ref: "#/components/schemas/MatchReadFreshness"
+        redFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        currentRedFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        historicalRedFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
         redFlagSummary:
           $ref: "#/components/schemas/RedFlagSummary"
         transcript:

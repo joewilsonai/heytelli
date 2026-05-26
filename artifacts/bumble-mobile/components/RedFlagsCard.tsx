@@ -16,15 +16,23 @@ export function RedFlagsCard({
   matchId,
   promoted = false,
   initialSummary,
+  initialRedFlags,
 }: {
   matchId: number;
   promoted?: boolean;
   initialSummary?: RedFlagSummary;
+  initialRedFlags?: {
+    redFlags: RedFlag[];
+    currentRedFlags: RedFlag[];
+    historicalRedFlags: RedFlag[];
+  };
 }) {
   const c = useColors();
   const [data, setData] = useState<RedFlagRadarResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(
+    () => (initialRedFlags?.redFlags.length ?? 0) > 0,
+  );
 
   const run = async () => {
     setLoading(true);
@@ -50,14 +58,30 @@ export function RedFlagsCard({
   const hasHighFlag = (summary?.highSeverityCount ?? 0) > 0;
   const flagCount =
     data?.redFlags.length ??
+    initialRedFlags?.redFlags?.length ??
     (summary?.currentCount ?? 0) + (summary?.historicalCount ?? 0);
   const showAlert = promoted && hasHighFlag;
   const currentFlags = data?.currentRedFlags.length
     ? data.currentRedFlags
-    : (data?.redFlags.filter((f) => f.status !== "previously-seen") ?? []);
+    : initialRedFlags?.currentRedFlags?.length
+      ? initialRedFlags.currentRedFlags
+      : (data?.redFlags.filter((f) => f.status !== "previously-seen") ??
+        initialRedFlags?.redFlags.filter(
+          (f) => f.status !== "previously-seen",
+        ) ??
+        []);
   const historicalFlags = data?.historicalRedFlags.length
     ? data.historicalRedFlags
-    : (data?.redFlags.filter((f) => f.status === "previously-seen") ?? []);
+    : initialRedFlags?.historicalRedFlags?.length
+      ? initialRedFlags.historicalRedFlags
+      : (data?.redFlags.filter((f) => f.status === "previously-seen") ??
+        initialRedFlags?.redFlags.filter(
+          (f) => f.status === "previously-seen",
+        ) ??
+        []);
+  const hasSavedDetails = currentFlags.length > 0 || historicalFlags.length > 0;
+  const greenFlags = data?.greenFlags ?? [];
+  const overallRead = data?.overallRead ?? "";
 
   const renderFlagList = (title: string, flags: RedFlag[], muted = false) => (
     <View style={{ gap: 6 }}>
@@ -153,7 +177,7 @@ export function RedFlagsCard({
           )}
         </View>
         <Pressable
-          onPress={data ? () => setOpen((v) => !v) : run}
+          onPress={data || hasSavedDetails ? () => setOpen((v) => !v) : run}
           disabled={loading}
           hitSlop={8}
         >
@@ -161,14 +185,20 @@ export function RedFlagsCard({
             <ActivityIndicator size="small" color={c.primary} />
           ) : (
             <Feather
-              name={data ? (open ? "chevron-up" : "chevron-down") : "zap"}
+              name={
+                data || hasSavedDetails
+                  ? open
+                    ? "chevron-up"
+                    : "chevron-down"
+                  : "zap"
+              }
               size={18}
               color={c.primary}
             />
           )}
         </Pressable>
       </View>
-      {!data && (
+      {!data && !open && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
           {flagCount > 0
             ? `${flagCount} saved concern${flagCount === 1 ? "" : "s"} on this match.`
@@ -177,9 +207,9 @@ export function RedFlagsCard({
               : "Scan chat, dates, and notes for behavioral patterns."}
         </Body>
       )}
-      {data && open && (
+      {(data || hasSavedDetails) && open && (
         <View style={{ marginTop: 10, gap: 12 }}>
-          {data.overallRead ? (
+          {overallRead ? (
             <View
               style={{
                 padding: 10,
@@ -194,15 +224,18 @@ export function RedFlagsCard({
                   fontStyle: "italic",
                 }}
               >
-                "{data.overallRead}"
+                "{overallRead}"
               </Text>
             </View>
           ) : null}
           {currentFlags.length > 0 &&
-            renderFlagList("CURRENT CONCERNS", currentFlags)}
+            renderFlagList(
+              data ? "CURRENT CONCERNS" : "SAVED CONCERNS",
+              currentFlags,
+            )}
           {historicalFlags.length > 0 &&
             renderFlagList("PREVIOUSLY FLAGGED", historicalFlags, true)}
-          {data.greenFlags.length > 0 && (
+          {greenFlags.length > 0 ? (
             <View style={{ gap: 6 }}>
               <Text
                 style={{
@@ -214,7 +247,7 @@ export function RedFlagsCard({
               >
                 💚 GREEN FLAGS
               </Text>
-              {data.greenFlags.map((f, i) => (
+              {greenFlags.map((f, i) => (
                 <View key={i} style={{ gap: 2 }}>
                   <Text
                     style={{
@@ -231,7 +264,7 @@ export function RedFlagsCard({
                 </View>
               ))}
             </View>
-          )}
+          ) : null}
           <Pressable onPress={run} disabled={loading} hitSlop={8}>
             <Text
               style={{

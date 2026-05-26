@@ -60,10 +60,40 @@ function normalizeSeverity(severity: unknown): RedFlagSeverity {
     : "medium";
 }
 
+function redactSensitiveEvidence(value: string): string {
+  return value
+    .replace(
+      /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/g,
+      "[phone number]",
+    )
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]");
+}
+
 function normalizeEvidence(evidence: unknown): string {
-  return typeof evidence === "string" && evidence.trim()
-    ? evidence.trim()
-    : "Saved concern from analysis.";
+  const text =
+    typeof evidence === "string" && evidence.trim()
+      ? evidence.trim()
+      : "Saved concern from analysis.";
+  return redactSensitiveEvidence(text);
+}
+
+function isLikelySameConcern(a: RedFlagWithHistory, b: RedFlagWithHistory) {
+  const tokenize = (value: string) =>
+    new Set(
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]+/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length > 3),
+    );
+  const aTokens = tokenize(`${a.label} ${a.evidence}`);
+  const bTokens = tokenize(`${b.label} ${b.evidence}`);
+  if (aTokens.size === 0 || bTokens.size === 0) return false;
+  let shared = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) shared += 1;
+  }
+  return shared / Math.min(aTokens.size, bTokens.size) >= 0.45;
 }
 
 export function normalizeRedFlag(flag: RedFlag): RedFlag | null {
@@ -161,7 +191,7 @@ export function summarizeRedFlagHistory(input: {
       groups.set(event.fingerprint, {
         severity: event.severity,
         label: event.label,
-        evidence: event.evidence,
+        evidence: normalizeEvidence(event.evidence),
         firstSeenAt: observedAt,
         lastSeenAt: observedAt,
         occurrenceCount: 1,
@@ -171,7 +201,7 @@ export function summarizeRedFlagHistory(input: {
     previous.severity = strongerSeverity(previous.severity, event.severity);
     if (observedAt >= previous.lastSeenAt) {
       previous.label = event.label;
-      previous.evidence = event.evidence;
+      previous.evidence = normalizeEvidence(event.evidence);
       previous.lastSeenAt = observedAt;
     }
     if (observedAt < previous.firstSeenAt) previous.firstSeenAt = observedAt;
@@ -226,7 +256,11 @@ export function summarizeRedFlagHistory(input: {
     b.lastSeenAt.localeCompare(a.lastSeenAt);
   currentRows.sort(bySeverityThenRecency);
   historicalRows.sort(bySeverityThenRecency);
-  const redFlags = [...currentRows, ...historicalRows];
+  const uniqueHistoricalRows = historicalRows.filter(
+    (historical) =>
+      !currentRows.some((current) => isLikelySameConcern(current, historical)),
+  );
+  const redFlags = [...currentRows, ...uniqueHistoricalRows];
   const latestSeenAt =
     currentRows.length > 0
       ? generatedAt
@@ -240,10 +274,10 @@ export function summarizeRedFlagHistory(input: {
 
   return {
     currentRedFlags: currentRows,
-    historicalRedFlags: historicalRows,
+    historicalRedFlags: uniqueHistoricalRows,
     redFlags,
     currentCount: currentRows.length,
-    historicalCount: historicalRows.length,
+    historicalCount: uniqueHistoricalRows.length,
     highSeverityCount: redFlags.filter((flag) => flag.severity === "high")
       .length,
     lastAnalyzedAt: latestSeenAt,

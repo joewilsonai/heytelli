@@ -94,6 +94,33 @@ export const ListMatchesResponseItem = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -247,6 +274,33 @@ export const GetMatchResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -411,6 +465,33 @@ export const UpdateMatchResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -532,6 +613,33 @@ export const AddScreenshotResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -629,6 +737,33 @@ export const RescoreMatchResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -848,6 +983,33 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -1094,6 +1256,33 @@ export const InPersonRecordingResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -1235,6 +1424,33 @@ export const VoiceDebriefResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),

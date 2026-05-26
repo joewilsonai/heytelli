@@ -146,6 +146,11 @@ export default function MatchDetailScreen() {
           matchId={data.id}
           promoted
           initialSummary={data.redFlagSummary}
+          initialRedFlags={{
+            redFlags: data.redFlags ?? [],
+            currentRedFlags: data.currentRedFlags ?? [],
+            historicalRedFlags: data.historicalRedFlags ?? [],
+          }}
         />
         <ResponseStatsCard matchId={data.id} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />

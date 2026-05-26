@@ -14,6 +14,7 @@ import type { MatchLastSpeaker } from './matchLastSpeaker';
 import type { MatchReadFreshness } from './matchReadFreshness';
 import type { MatchReadSnapshot } from './matchReadSnapshot';
 import type { MatchStatus } from './matchStatus';
+import type { RedFlag } from './redFlag';
 import type { RedFlagSummary } from './redFlagSummary';
 import type { ScoreHistoryPoint } from './scoreHistoryPoint';
 
@@ -40,6 +41,9 @@ export interface Match {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlags: RedFlag[];
+  currentRedFlags: RedFlag[];
+  historicalRedFlags: RedFlag[];
   redFlagSummary: RedFlagSummary;
   scoreHistory?: ScoreHistoryPoint[];
   /**

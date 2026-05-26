@@ -313,7 +313,7 @@ function redFlagContextHash(input: {
   return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }
 
-function redFlagSummaryFromRows(
+function redFlagHistoryFromRows(
   events: Array<{
     severity: "low" | "medium" | "high";
     label: string;
@@ -325,11 +325,11 @@ function redFlagSummaryFromRows(
     redFlags?: RedFlag[];
     generatedAt?: string;
   } | null,
-): RedFlagSummary {
+) {
   const generatedAt = lastRedFlagRadar?.generatedAt
     ? new Date(lastRedFlagRadar.generatedAt)
     : undefined;
-  const summary = summarizeRedFlagHistory({
+  const result = summarizeRedFlagHistory({
     events,
     currentRedFlags: Array.isArray(lastRedFlagRadar?.redFlags)
       ? lastRedFlagRadar.redFlags
@@ -340,10 +340,10 @@ function redFlagSummaryFromRows(
         : undefined,
   });
   return {
-    currentCount: summary.currentCount,
-    historicalCount: summary.historicalCount,
-    highSeverityCount: summary.highSeverityCount,
-    lastAnalyzedAt: summary.lastAnalyzedAt,
+    redFlags: result.redFlags,
+    currentRedFlags: result.currentRedFlags,
+    historicalRedFlags: result.historicalRedFlags,
+    redFlagSummary: redFlagSummaryFromResult(result),
   };
 }
 
@@ -493,10 +493,7 @@ async function loadMatchDetail(matchId: number) {
       pendingScreenshotCount: freshnessCounts.pendingScreenshotCount,
       failedScreenshotCount: freshnessCounts.failedScreenshotCount,
     }),
-    redFlagSummary: redFlagSummaryFromRows(
-      redFlagEvents,
-      match.lastRedFlagRadar,
-    ),
+    ...redFlagHistoryFromRows(redFlagEvents, match.lastRedFlagRadar),
   };
 }
 
@@ -1121,7 +1118,7 @@ router.get("/matches", async (_req, res): Promise<void> => {
           pendingScreenshotCount: freshnessCounts.pendingScreenshotCount,
           failedScreenshotCount: freshnessCounts.failedScreenshotCount,
         }),
-        redFlagSummary: redFlagSummaryFromRows(
+        ...redFlagHistoryFromRows(
           redFlagsByMatch.get(r.id) ?? [],
           r.lastRedFlagRadar,
         ),

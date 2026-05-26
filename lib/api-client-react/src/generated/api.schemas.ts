@@ -147,6 +147,33 @@ export const DateBriefFreshness = {
   missing: 'missing',
 } as const;
 
+export type RedFlagSeverity = typeof RedFlagSeverity[keyof typeof RedFlagSeverity];
+
+
+export const RedFlagSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export type RedFlagStatus = typeof RedFlagStatus[keyof typeof RedFlagStatus];
+
+
+export const RedFlagStatus = {
+  current: 'current',
+  'previously-seen': 'previously-seen',
+} as const;
+
+export interface RedFlag {
+  severity: RedFlagSeverity;
+  label: string;
+  evidence: string;
+  status?: RedFlagStatus;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  occurrenceCount?: number;
+}
+
 export interface RedFlagSummary {
   currentCount: number;
   historicalCount: number;
@@ -178,6 +205,9 @@ export interface Match {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlags: RedFlag[];
+  currentRedFlags: RedFlag[];
+  historicalRedFlags: RedFlag[];
   redFlagSummary: RedFlagSummary;
   scoreHistory?: ScoreHistoryPoint[];
   /**
@@ -266,6 +296,9 @@ export interface MatchDetail {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlags: RedFlag[];
+  currentRedFlags: RedFlag[];
+  historicalRedFlags: RedFlag[];
   redFlagSummary: RedFlagSummary;
   transcript: TranscriptTurn[];
   createdAt: string;
@@ -386,33 +419,6 @@ export interface DateBriefResult {
   /** Markdown-formatted pre-date prep brief */
   brief: string;
   generatedAt: string;
-}
-
-export type RedFlagSeverity = typeof RedFlagSeverity[keyof typeof RedFlagSeverity];
-
-
-export const RedFlagSeverity = {
-  low: 'low',
-  medium: 'medium',
-  high: 'high',
-} as const;
-
-export type RedFlagStatus = typeof RedFlagStatus[keyof typeof RedFlagStatus];
-
-
-export const RedFlagStatus = {
-  current: 'current',
-  'previously-seen': 'previously-seen',
-} as const;
-
-export interface RedFlag {
-  severity: RedFlagSeverity;
-  label: string;
-  evidence: string;
-  status?: RedFlagStatus;
-  firstSeenAt?: string;
-  lastSeenAt?: string;
-  occurrenceCount?: number;
 }
 
 export interface GreenFlag {
