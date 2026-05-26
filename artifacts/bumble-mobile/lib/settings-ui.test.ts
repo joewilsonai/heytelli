@@ -13,6 +13,10 @@ function read(relativePath: string): string {
 test("settings screen exposes profile, circle, and date defaults", () => {
   const screen = read("../app/settings.tsx");
 
+  assert.match(screen, /My dating OS/);
+  assert.match(screen, /Profile radar/);
+  assert.match(screen, /Circle seats/);
+  assert.match(screen, /Date defaults/);
   assert.match(screen, /My Dating Profile/);
   assert.match(screen, /Trusted Circle/);
   assert.match(screen, /circle\s+people/);
@@ -72,5 +76,5 @@ test("settings route is registered and reachable from home", () => {
 
   assert.match(layout, /name="settings"/);
   assert.match(home, /href="\/settings"/);
-  assert.match(home, /accessibilityLabel="Settings"/);
+  assert.match(home, /accessibilityLabel="My dating OS"/);
 });

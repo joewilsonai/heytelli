@@ -57,6 +57,38 @@ export default function SettingsScreen() {
     () => buildProfileReview(draft.datingProfile),
     [draft.datingProfile],
   );
+  const profileReady = Boolean(
+    draft.datingProfile.profileText.trim() ||
+    draft.datingProfile.profileScreenshotUris.length > 0,
+  );
+  const dateDefaultsReady = Boolean(
+    draft.dateSafetyDefaults.transportPlan.trim() ||
+    draft.dateSafetyDefaults.codeWord.trim() ||
+    draft.dateSafetyDefaults.circleNote.trim(),
+  );
+  const osTiles = [
+    {
+      label: "Profile radar",
+      value: profileReady ? "Ready" : "Add profile",
+      icon: "shield" as const,
+      bg: profileReady ? c.successBg : c.warningBg,
+      fg: profileReady ? c.success : c.warning,
+    },
+    {
+      label: "Circle seats",
+      value: `${draft.trustedCircle.length}/${MAX_TRUSTED_CIRCLE_PEOPLE}`,
+      icon: "users" as const,
+      bg: draft.trustedCircle.length > 0 ? c.secondary : c.warningBg,
+      fg: draft.trustedCircle.length > 0 ? c.secondaryForeground : c.warning,
+    },
+    {
+      label: "Date defaults",
+      value: dateDefaultsReady ? "Set" : "Add exit plan",
+      icon: "calendar" as const,
+      bg: dateDefaultsReady ? c.accent : c.muted,
+      fg: dateDefaultsReady ? c.accentForeground : c.mutedForeground,
+    },
+  ];
 
   const updateProfile = (next: Partial<HeyTelliSettings["datingProfile"]>) => {
     setDraftDirty(true);
@@ -316,13 +348,19 @@ export default function SettingsScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen
-        options={{ title: "Settings", headerTintColor: c.foreground }}
+        options={{ title: "My dating OS", headerTintColor: c.foreground }}
       />
       <View style={{ gap: 4 }}>
-        <H1>Settings</H1>
+        <H1>My dating OS</H1>
         <Body muted>
-          Your profile, circle, and date defaults stay private on this phone.
+          Your profile radar, trusted circle, and date defaults stay private on
+          this phone.
         </Body>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {osTiles.map((tile) => (
+          <OsStatusTile key={tile.label} {...tile} />
+        ))}
       </View>
 
       <Card>
@@ -538,6 +576,72 @@ function clampMinutes(value: string, min: number, max: number): number {
   const parsed = Number.parseInt(value.replace(/\D/g, ""), 10);
   if (!Number.isFinite(parsed)) return min;
   return Math.max(min, Math.min(max, parsed));
+}
+
+function OsStatusTile({
+  label,
+  value,
+  icon,
+  bg,
+  fg,
+}: {
+  label: string;
+  value: string;
+  icon: keyof typeof Feather.glyphMap;
+  bg: string;
+  fg: string;
+}) {
+  const c = useColors();
+  return (
+    <View
+      style={{
+        flex: 1,
+        minHeight: 86,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.card,
+        padding: 11,
+        gap: 8,
+      }}
+    >
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          backgroundColor: bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Feather name={icon} size={14} color={fg} />
+      </View>
+      <View style={{ gap: 2 }}>
+        <Text
+          style={{
+            color: c.mutedForeground,
+            fontSize: 10,
+            fontFamily: "Inter_700Bold",
+            textTransform: "uppercase",
+          }}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            color: c.foreground,
+            fontSize: 13,
+            fontFamily: "Inter_700Bold",
+          }}
+          numberOfLines={2}
+        >
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 function ReviewBlock({
