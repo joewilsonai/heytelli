@@ -24,6 +24,13 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /draftDirty/);
 });
 
+test("trusted circle contact picker uses guarded metro require", () => {
+  const contacts = read("./trusted-circle-contacts.ts");
+
+  assert.match(contacts, /require\("expo-contacts"\)/);
+  assert.doesNotMatch(contacts, /await import\("expo-contacts"\)/);
+});
+
 test("settings route is registered and reachable from home", () => {
   const layout = read("../app/_layout.tsx");
   const home = read("../app/index.tsx");

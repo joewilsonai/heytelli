@@ -6,6 +6,9 @@ import {
 } from "./user-settings.ts";
 
 type ContactModule = typeof import("expo-contacts");
+type MetroRequire = (moduleName: string) => unknown;
+
+declare const require: MetroRequire;
 
 function getPhoneNumber(details: any): string | null {
   const phones = details?.phones ?? details?.phoneNumbers ?? [];
@@ -30,7 +33,7 @@ export async function pickTrustedCircleContact(options: {
 > {
   let Contacts: ContactModule;
   try {
-    Contacts = await import("expo-contacts");
+    Contacts = require("expo-contacts") as ContactModule;
   } catch {
     return {
       status: "unavailable",
