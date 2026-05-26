@@ -64,7 +64,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Match"
+                $ref: "#/components/schemas/MatchDetail"
         "400":
           description: Bad request
           content:
@@ -143,7 +143,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Match"
+                $ref: "#/components/schemas/MatchDetail"
         "404":
           description: Not found
           content:
@@ -588,29 +588,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
-  /matches/{id}/replies:
-    post:
-      operationId: generateMatchReplies
-      tags: [matches]
-      summary: Generate 3 reply suggestions using full conversation history and extracted profile
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: integer }
-      responses:
-        "200":
-          description: Reply suggestions
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ReplyResult"
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorEnvelope"
   /chat/conversations:
     get:
       operationId: listChatConversations
@@ -839,6 +816,102 @@ components:
         current = the persisted read reflects all analyzed screenshots.
         stale   = newer screenshots exist or some screenshots need analysis.
         missing = no read has ever been generated.
+    DateSafetyPlan:
+      type: object
+      required:
+        [
+          trustedCircleName,
+          transportPlan,
+          checkInAt,
+          expectedEndAt,
+          codeWord,
+          circleNote,
+          shareLiveLocation,
+          updatedAt,
+        ]
+      properties:
+        trustedCircleName:
+          type: ["string", "null"]
+          description: First name or label of the trusted person/circle. Phone numbers are not stored.
+        transportPlan:
+          type: ["string", "null"]
+          description: User-entered transport or exit plan.
+        checkInAt:
+          type: ["string", "null"]
+          format: date-time
+        expectedEndAt:
+          type: ["string", "null"]
+          format: date-time
+        codeWord:
+          type: ["string", "null"]
+          description: Optional word the user can share with trusted contacts.
+        circleNote:
+          type: ["string", "null"]
+          description: Optional user-authored note shown in the Date Card preview.
+        shareLiveLocation:
+          type: boolean
+          description: User intent only; the app does not continuously track by default.
+        updatedAt:
+          type: string
+          format: date-time
+    DateSafetyPlanInput:
+      type: object
+      required:
+        [
+          trustedCircleName,
+          transportPlan,
+          checkInAt,
+          expectedEndAt,
+          codeWord,
+          circleNote,
+          shareLiveLocation,
+        ]
+      properties:
+        trustedCircleName:
+          type: ["string", "null"]
+          description: First name or label of the trusted person/circle. Phone numbers are not stored.
+        transportPlan:
+          type: ["string", "null"]
+          description: User-entered transport or exit plan.
+        checkInAt:
+          type: ["string", "null"]
+          format: date-time
+        expectedEndAt:
+          type: ["string", "null"]
+          format: date-time
+        codeWord:
+          type: ["string", "null"]
+          description: Optional word the user can share with trusted contacts.
+        circleNote:
+          type: ["string", "null"]
+          description: Optional user-authored note shown in the Date Card preview.
+        shareLiveLocation:
+          type: boolean
+          description: User intent only; the app does not continuously track by default.
+    DateSafetyPlanListStatus:
+      type: object
+      required:
+        [
+          hasPlan,
+          hasTrustedCircle,
+          hasTransportPlan,
+          hasCheckIn,
+          hasExpectedEnd,
+          hasCodeWord,
+          hasCircleNote,
+          shareLiveLocation,
+          updatedAt,
+        ]
+      properties:
+        hasPlan: { type: boolean }
+        hasTrustedCircle: { type: boolean }
+        hasTransportPlan: { type: boolean }
+        hasCheckIn: { type: boolean }
+        hasExpectedEnd: { type: boolean }
+        hasCodeWord: { type: boolean }
+        hasCircleNote: { type: boolean }
+        shareLiveLocation: { type: boolean }
+        updatedAt: { type: ["string", "null"], format: date-time }
     MatchStatus:
       type: string
       enum: [active, archived, ghosted]
@@ -863,6 +936,7 @@ components:
         - analysisFreshness
         - lastDateBrief
         - dateBriefFreshness
+        - dateSafetyPlanStatus
         - lastRead
         - readFreshness
         - redFlags
@@ -899,6 +973,8 @@ components:
             - type: "null"
         dateBriefFreshness:
           $ref: "#/components/schemas/DateBriefFreshness"
+        dateSafetyPlanStatus:
+          $ref: "#/components/schemas/DateSafetyPlanListStatus"
         lastRead:
           oneOf:
             - $ref: "#/components/schemas/MatchReadSnapshot"
@@ -992,6 +1068,7 @@ components:
         - analysisFreshness
         - lastDateBrief
         - dateBriefFreshness
+        - dateSafetyPlan
         - lastRead
         - readFreshness
         - redFlags
@@ -1026,6 +1103,10 @@ components:
             - type: "null"
         dateBriefFreshness:
           $ref: "#/components/schemas/DateBriefFreshness"
+        dateSafetyPlan:
+          oneOf:
+            - $ref: "#/components/schemas/DateSafetyPlan"
+            - type: "null"
         lastRead:
           oneOf:
             - $ref: "#/components/schemas/MatchReadSnapshot"
@@ -1106,6 +1187,10 @@ components:
         nextDateAt: { type: ["string", "null"], format: date-time }
         nextDateLocation: { type: ["string", "null"] }
         nextDateOutfit: { type: ["string", "null"] }
+        dateSafetyPlan:
+          oneOf:
+            - $ref: "#/components/schemas/DateSafetyPlanInput"
+            - type: "null"
         dateHistory:
           type: array
           items:
@@ -1224,13 +1309,6 @@ components:
             $ref: "#/components/schemas/MatchTimelineEvent"
         match:
           $ref: "#/components/schemas/MatchDetail"
-    ReplyResult:
-      type: object
-      required: [replies]
-      properties:
-        replies:
-          type: array
-          items: { type: string }
     DateBriefResult:
       type: object
       required: [brief, generatedAt]
@@ -1335,6 +1413,7 @@ components:
           enum:
             [
               date_scheduled,
+              safety_plan_updated,
               voice_debrief,
               date_debrief,
               in_person_recording,

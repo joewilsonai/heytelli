@@ -1,5 +1,13 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
-import type { ExtractedProfile, TranscriptTurn, DateHistoryEntry } from "@workspace/db";
+import type {
+  ExtractedProfile,
+  TranscriptTurn,
+  DateHistoryEntry,
+} from "@workspace/db";
+import {
+  detectDatingSafetyRedFlags,
+  mergeSafetyRedFlags,
+} from "./datingSafetyTaxonomy";
 
 const MODEL = "gpt-5.4";
 
@@ -67,9 +75,22 @@ ${notes || "(none)"}`;
   });
   const raw = completion.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw);
+  const aiRedFlags = Array.isArray(parsed.redFlags)
+    ? parsed.redFlags.slice(0, 8)
+    : [];
+  const safetyRedFlags = detectDatingSafetyRedFlags({
+    name,
+    profile,
+    transcript,
+    dateHistory,
+    notes,
+  });
   return {
-    redFlags: Array.isArray(parsed.redFlags) ? parsed.redFlags.slice(0, 8) : [],
-    greenFlags: Array.isArray(parsed.greenFlags) ? parsed.greenFlags.slice(0, 8) : [],
-    overallRead: typeof parsed.overallRead === "string" ? parsed.overallRead : "",
+    redFlags: mergeSafetyRedFlags(aiRedFlags, safetyRedFlags).slice(0, 8),
+    greenFlags: Array.isArray(parsed.greenFlags)
+      ? parsed.greenFlags.slice(0, 8)
+      : [],
+    overallRead:
+      typeof parsed.overallRead === "string" ? parsed.overallRead : "",
   };
 }

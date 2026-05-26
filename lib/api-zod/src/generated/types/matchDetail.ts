@@ -8,6 +8,7 @@
 import type { DateBriefFreshness } from './dateBriefFreshness';
 import type { DateBriefSnapshot } from './dateBriefSnapshot';
 import type { DateHistoryEntry } from './dateHistoryEntry';
+import type { DateSafetyPlan } from './dateSafetyPlan';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchDetailAnalysisFreshness } from './matchDetailAnalysisFreshness';
 import type { MatchReadFreshness } from './matchReadFreshness';
@@ -38,6 +39,7 @@ export interface MatchDetail {
   dateHistory: DateHistoryEntry[];
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  dateSafetyPlan: DateSafetyPlan | null;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
   redFlags: RedFlag[];

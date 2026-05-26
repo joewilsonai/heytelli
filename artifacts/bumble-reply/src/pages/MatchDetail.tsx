@@ -7,7 +7,7 @@ import {
   useUpdateMatch,
   useDeleteMatch,
   useAddScreenshot,
-  useGenerateMatchReplies,
+  getCheatSheet,
   useGenerateDateBrief,
   useRescoreMatch,
   getGetMatchQueryKey,
@@ -17,6 +17,7 @@ import type {
   MatchDetail as MatchDetailType,
   ExtractedProfile,
   MatchScore,
+  CheatSheetReply,
 } from "@workspace/api-client-react";
 import {
   ArrowLeft,
@@ -78,16 +79,28 @@ function formatLastUpload(shots: { uploadedAt: string | Date }[]): string {
   return `${abs} (${rel})`;
 }
 
-function ReplyCard({ text }: { text: string }) {
+const REPLY_STYLE_LABELS: Record<CheatSheetReply["style"], string> = {
+  playful: "Playful",
+  curious: "Curious",
+  direct: "Direct",
+};
+
+function ReplyCard({ reply }: { reply: CheatSheetReply }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(reply.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
   return (
     <Card className="p-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-      <p className="text-foreground text-lg leading-relaxed">{text}</p>
+      <div className="flex items-center justify-between gap-3">
+        <Badge variant="secondary" className="rounded-full">
+          {REPLY_STYLE_LABELS[reply.style]}
+        </Badge>
+        <Copy className="w-4 h-4 text-muted-foreground" />
+      </div>
+      <p className="text-foreground text-lg leading-relaxed">{reply.text}</p>
       <div className="flex justify-end mt-auto">
         <Button
           variant={copied ? "default" : "secondary"}
@@ -1511,7 +1524,11 @@ export default function MatchDetail() {
       },
     },
   });
-  const [replies, setReplies] = useState<string[] | null>(null);
+  const [replies, setReplies] = useState<CheatSheetReply[] | null>(null);
+  const [replyOptionsBusy, setReplyOptionsBusy] = useState(false);
+  const [replyOptionsError, setReplyOptionsError] = useState<string | null>(
+    null,
+  );
   const [screenshotsOpen, setScreenshotsOpen] = useState(false);
 
   const addScreenshot = useAddScreenshot({
@@ -1535,11 +1552,20 @@ export default function MatchDetail() {
     },
   });
 
-  const generateReplies = useGenerateMatchReplies({
-    mutation: {
-      onSuccess: (res) => setReplies(res.replies),
-    },
-  });
+  const generateReplyOptions = async () => {
+    setReplyOptionsBusy(true);
+    setReplyOptionsError(null);
+    try {
+      const res = await getCheatSheet(id);
+      setReplies(res.replies);
+    } catch (err) {
+      setReplyOptionsError(
+        err instanceof Error ? err.message : "Failed to generate reply options",
+      );
+    } finally {
+      setReplyOptionsBusy(false);
+    }
+  };
 
   const screenshotUrls = useMemo(
     () =>
@@ -1718,36 +1744,36 @@ export default function MatchDetail() {
             <Card className="p-6 rounded-3xl">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" /> Generate replies
+                  <Sparkles className="w-5 h-5 text-primary" /> Reply options
                 </h2>
                 <Button
-                  onClick={() => generateReplies.mutate({ id })}
-                  disabled={generateReplies.isPending || data.screenshots.length === 0}
+                  onClick={generateReplyOptions}
+                  disabled={replyOptionsBusy}
                   className="gap-2 rounded-full font-semibold"
-                  data-testid="button-generate-replies"
+                  data-testid="button-generate-reply-options"
                 >
-                  {generateReplies.isPending ? (
+                  {replyOptionsBusy ? (
                     <><RefreshCcw className="w-4 h-4 animate-spin" /> Generating</>
                   ) : (
-                    <><Sparkles className="w-4 h-4" /> {replies ? "Regenerate" : "Generate 3 replies"}</>
+                    <><Sparkles className="w-4 h-4" /> {replies ? "Refresh options" : "Generate options"}</>
                   )}
                 </Button>
               </div>
-              {generateReplies.isError && (
+              {replyOptionsError && (
                 <p className="text-destructive text-sm mb-3 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
-                  {(generateReplies.error as Error)?.message || "Failed to generate replies"}
+                  {replyOptionsError}
                 </p>
               )}
-              {!replies && !generateReplies.isPending && (
+              {!replies && !replyOptionsBusy && (
                 <p className="text-muted-foreground text-sm">
-                  Use the full conversation history + extracted profile to suggest 3 tailored replies.
+                  Checks the current thread and gives playful, curious, and direct options you can copy.
                 </p>
               )}
               {replies && (
                 <div className="flex flex-col gap-3">
                   {replies.map((r, i) => (
-                    <ReplyCard key={i} text={r} />
+                    <ReplyCard key={i} reply={r} />
                   ))}
                 </div>
               )}

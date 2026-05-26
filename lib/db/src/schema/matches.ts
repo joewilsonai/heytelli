@@ -66,6 +66,17 @@ export type MatchReadSnapshot = {
   screenshotCountAt: number;
 };
 
+export type DateSafetyPlan = {
+  trustedCircleName: string | null;
+  transportPlan: string | null;
+  checkInAt: string | null;
+  expectedEndAt: string | null;
+  codeWord: string | null;
+  circleNote: string | null;
+  shareLiveLocation: boolean;
+  updatedAt: string;
+};
+
 export type RedFlagRadarSnapshot = {
   redFlags: Array<{
     severity: "low" | "medium" | "high";
@@ -196,6 +207,7 @@ export const matches = pgTable("matches", {
     screenshotCountAt: number;
     contextHash: string;
   } | null>(),
+  dateSafetyPlan: jsonb("date_safety_plan").$type<DateSafetyPlan | null>(),
   lastRead: jsonb("last_read").$type<MatchReadSnapshot | null>(),
   lastRedFlagRadar: jsonb(
     "last_red_flag_radar",

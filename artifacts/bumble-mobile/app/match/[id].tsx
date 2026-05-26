@@ -12,7 +12,9 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  Share,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
@@ -65,6 +67,11 @@ import {
 } from "@/lib/notifications";
 import { formatDateTime, formatTimeAgo, isPast } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
+import {
+  buildDateCardMessage,
+  buildSoftExitMessage,
+  getDateSafetyPlanStatus,
+} from "@/lib/date-safety-plan";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 
@@ -165,7 +172,10 @@ export default function MatchDetailScreen() {
           <PostDateDebriefCard match={data} onChange={() => refetch()} />
         )}
         {data.nextDateAt && !isPast(data.nextDateAt) && (
-          <NextDateCard match={data} onChange={() => refetch()} />
+          <>
+            <NextDateCard match={data} onChange={() => refetch()} />
+            <DateSafetyPlanCard match={data} onChange={() => refetch()} />
+          </>
         )}
         {!data.nextDateAt && (
           <ScheduleDateCard match={data} onChange={() => refetch()} />
@@ -1400,6 +1410,430 @@ function ScheduleDateCard({
           </View>
         </View>
       )}
+    </Card>
+  );
+}
+
+function withTimeOnDate(dateValue: string | null, timeValue: Date): Date {
+  const base = dateValue ? new Date(dateValue) : new Date();
+  if (Number.isNaN(base.getTime())) return timeValue;
+  const next = new Date(base);
+  next.setHours(timeValue.getHours(), timeValue.getMinutes(), 0, 0);
+  if (next.getTime() <= base.getTime()) {
+    next.setDate(next.getDate() + 1);
+  }
+  return next;
+}
+
+function defaultPlanTime(
+  match: MatchDetail,
+  field: "checkInAt" | "expectedEndAt",
+): Date {
+  const existing = match.dateSafetyPlan?.[field];
+  if (existing) {
+    const date = new Date(existing);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  const start = match.nextDateAt ? new Date(match.nextDateAt) : new Date();
+  if (Number.isNaN(start.getTime())) return new Date();
+  const next = new Date(start);
+  next.setMinutes(0, 0, 0);
+  next.setHours(next.getHours() + (field === "checkInAt" ? 1 : 3));
+  return next;
+}
+
+function DateSafetyPlanCard({
+  match,
+  onChange,
+}: {
+  match: MatchDetail;
+  onChange: () => void;
+}) {
+  const c = useColors();
+  const plan = match.dateSafetyPlan;
+  const status = getDateSafetyPlanStatus(match);
+  const [open, setOpen] = useState(status.state !== "ready");
+  const [trustedCircleName, setTrustedCircleName] = useState(
+    plan?.trustedCircleName ?? "",
+  );
+  const [transportPlan, setTransportPlan] = useState(plan?.transportPlan ?? "");
+  const [checkInAt, setCheckInAt] = useState(() =>
+    defaultPlanTime(match, "checkInAt"),
+  );
+  const [expectedEndAt, setExpectedEndAt] = useState(() =>
+    defaultPlanTime(match, "expectedEndAt"),
+  );
+  const [codeWord, setCodeWord] = useState(plan?.codeWord ?? "");
+  const [circleNote, setCircleNote] = useState(plan?.circleNote ?? "");
+  const [shareLiveLocation, setShareLiveLocation] = useState(
+    plan?.shareLiveLocation ?? false,
+  );
+  const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [androidPickerMode, setAndroidPickerMode] = useState<
+    "check-in" | "end" | null
+  >(null);
+
+  const previewMatch = {
+    ...match,
+    dateSafetyPlan: {
+      trustedCircleName: trustedCircleName.trim() || null,
+      transportPlan: transportPlan.trim() || null,
+      checkInAt: checkInAt.toISOString(),
+      expectedEndAt: expectedEndAt.toISOString(),
+      codeWord: codeWord.trim() || null,
+      circleNote: circleNote.trim() || null,
+      shareLiveLocation,
+    },
+  };
+  const previewStatus = getDateSafetyPlanStatus(previewMatch);
+  const displayStatus = open ? previewStatus : status;
+  const shareTarget = open ? previewMatch : match;
+  const shareStatus = getDateSafetyPlanStatus(shareTarget);
+
+  const shareMessage = async (message: string) => {
+    try {
+      await Share.share({ message });
+    } catch (e: any) {
+      Alert.alert("Couldn't share", e?.message ?? "Try again.");
+    }
+  };
+
+  const save = async () => {
+    if (!match.nextDateAt) {
+      Alert.alert("Schedule the date first", "Add a date and time first.");
+      return;
+    }
+    if (expectedEndAt.getTime() <= new Date(match.nextDateAt).getTime()) {
+      Alert.alert(
+        "Expected end?",
+        "Pick an expected end time after the date starts.",
+      );
+      return;
+    }
+    if (previewStatus.state !== "ready") {
+      Alert.alert(
+        "Finish the Date Card",
+        `Add ${previewStatus.missing.join(", ")} before saving or sharing.`,
+      );
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateMatch(match.id, {
+        dateSafetyPlan: {
+          trustedCircleName: trustedCircleName.trim() || null,
+          transportPlan: transportPlan.trim() || null,
+          checkInAt: checkInAt.toISOString(),
+          expectedEndAt: expectedEndAt.toISOString(),
+          codeWord: codeWord.trim() || null,
+          circleNote: circleNote.trim() || null,
+          shareLiveLocation,
+        },
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      setOpen(false);
+      onChange();
+    } catch (e: any) {
+      Alert.alert("Couldn't save safety plan", e?.message ?? "Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clear = async () => {
+    setClearing(true);
+    try {
+      await updateMatch(match.id, { dateSafetyPlan: null });
+      setTrustedCircleName("");
+      setTransportPlan("");
+      setCheckInAt(defaultPlanTime({ ...match, dateSafetyPlan: null }, "checkInAt"));
+      setExpectedEndAt(
+        defaultPlanTime({ ...match, dateSafetyPlan: null }, "expectedEndAt"),
+      );
+      setCodeWord("");
+      setCircleNote("");
+      setShareLiveLocation(false);
+      setOpen(true);
+      onChange();
+    } catch (e: any) {
+      Alert.alert("Couldn't clear safety plan", e?.message ?? "Try again.");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const pickTime = (kind: "check-in" | "end", date: Date | undefined) => {
+    setAndroidPickerMode(null);
+    if (!date) return;
+    const next = withTimeOnDate(match.nextDateAt, date);
+    if (kind === "check-in") setCheckInAt(next);
+    else setExpectedEndAt(next);
+  };
+
+  const statusTone =
+    displayStatus.state === "ready"
+      ? { bg: c.successBg, fg: c.success, icon: "check" as const }
+      : { bg: c.warningBg, fg: c.warning, icon: "shield" as const };
+
+  return (
+    <Card
+      style={{
+        borderColor: displayStatus.state === "ready" ? c.success : c.warning,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather name="users" size={16} color={c.primary} />
+          <SectionLabel>Date card</SectionLabel>
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+            paddingHorizontal: 9,
+            paddingVertical: 5,
+            borderRadius: 999,
+            backgroundColor: statusTone.bg,
+          }}
+        >
+          <Feather name={statusTone.icon} size={12} color={statusTone.fg} />
+          <Text
+            style={{
+              color: statusTone.fg,
+              fontSize: 11,
+              fontFamily: "Inter_600SemiBold",
+            }}
+          >
+            {displayStatus.label}
+          </Text>
+        </View>
+      </View>
+      <Body muted style={{ fontSize: 12, marginTop: 2 }}>
+        Share the plan with your circle. Only first name, where, when, transport,
+        check-in, and your note are included.
+      </Body>
+      {displayStatus.missing.length > 0 && !open && (
+        <Body muted style={{ fontSize: 12, marginTop: 8 }}>
+          Missing: {displayStatus.missing.join(", ")}
+        </Body>
+      )}
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+        <Button
+          label={open ? "Hide" : plan ? "Edit plan" : "Make plan"}
+          icon={open ? "chevron-up" : "shield"}
+          onPress={() => setOpen((v) => !v)}
+          variant="secondary"
+          style={{ flex: 1 }}
+        />
+        <Button
+          label="Share"
+          icon="share"
+          onPress={() => shareMessage(buildDateCardMessage(shareTarget))}
+          disabled={shareStatus.state !== "ready"}
+          variant="ghost"
+          style={{ flex: 1 }}
+        />
+      </View>
+      {open && (
+        <View style={{ gap: 10, marginTop: 12 }}>
+          <Input
+            placeholder="Circle first name (not a phone number)"
+            value={trustedCircleName}
+            onChangeText={setTrustedCircleName}
+          />
+          <Input
+            placeholder="Transport / exit plan"
+            value={transportPlan}
+            onChangeText={setTransportPlan}
+          />
+          {Platform.OS === "ios" ? (
+            <>
+              <PickerRow label="Check-in">
+                <DateTimePicker
+                  value={checkInAt}
+                  mode="time"
+                  display="compact"
+                  minuteInterval={15}
+                  onChange={(_, date) => pickTime("check-in", date)}
+                />
+              </PickerRow>
+              <PickerRow label="Expected end">
+                <DateTimePicker
+                  value={expectedEndAt}
+                  mode="time"
+                  display="compact"
+                  minuteInterval={15}
+                  onChange={(_, date) => pickTime("end", date)}
+                />
+              </PickerRow>
+            </>
+          ) : (
+            <>
+              <PickerTriggerRow
+                label="Check-in"
+                value={checkInAt.toLocaleTimeString(undefined, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                onPress={() => setAndroidPickerMode("check-in")}
+              />
+              <PickerTriggerRow
+                label="Expected end"
+                value={expectedEndAt.toLocaleTimeString(undefined, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                onPress={() => setAndroidPickerMode("end")}
+              />
+              {androidPickerMode && (
+                <DateTimePicker
+                  value={
+                    androidPickerMode === "check-in"
+                      ? checkInAt
+                      : expectedEndAt
+                  }
+                  mode="time"
+                  display="default"
+                  minuteInterval={15}
+                  onChange={(_, date) => pickTime(androidPickerMode, date)}
+                />
+              )}
+            </>
+          )}
+          <Input
+            placeholder="Code word (optional)"
+            value={codeWord}
+            onChangeText={setCodeWord}
+          />
+          <Input
+            placeholder="Note for your circle (optional)"
+            value={circleNote}
+            onChangeText={setCircleNote}
+            multiline
+          />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              borderWidth: 1,
+              borderColor: c.border,
+              borderRadius: 10,
+              padding: 12,
+              backgroundColor: c.background,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: c.foreground,
+                  fontSize: 14,
+                  fontFamily: "Inter_600SemiBold",
+                }}
+              >
+                Date-only location intent
+              </Text>
+              <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+                The Date Card says location is date-only if you turn it on.
+              </Text>
+            </View>
+            <Switch
+              value={shareLiveLocation}
+              onValueChange={setShareLiveLocation}
+              trackColor={{ true: c.primary, false: c.muted }}
+            />
+          </View>
+          <View
+            style={{
+              padding: 12,
+              backgroundColor: c.muted,
+              borderRadius: 10,
+              gap: 6,
+            }}
+          >
+            <Text
+              style={{
+                color: c.mutedForeground,
+                fontSize: 11,
+                fontFamily: "Inter_600SemiBold",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Preview
+            </Text>
+            <Text
+              selectable
+              style={{ color: c.foreground, fontSize: 12, lineHeight: 18 }}
+            >
+              {buildDateCardMessage(previewMatch)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Button
+              label="Save"
+              icon="save"
+              onPress={save}
+              loading={saving}
+              style={{ flex: 1 }}
+            />
+            <Button
+              label="Clear"
+              onPress={clear}
+              loading={clearing}
+              disabled={!plan}
+              variant="ghost"
+            />
+          </View>
+        </View>
+      )}
+      <View
+        style={{
+          height: 1,
+          backgroundColor: c.border,
+          marginVertical: 12,
+        }}
+      />
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Button
+          label="Call me"
+          icon="phone"
+          onPress={() => shareMessage(buildSoftExitMessage(shareTarget, "call"))}
+          variant="ghost"
+          style={{ flex: 1 }}
+          small
+        />
+        <Button
+          label="Pickup"
+          icon="navigation"
+          onPress={() =>
+            shareMessage(buildSoftExitMessage(shareTarget, "pickup"))
+          }
+          variant="ghost"
+          style={{ flex: 1 }}
+          small
+        />
+        <Button
+          label="Text me"
+          icon="message-circle"
+          onPress={() => shareMessage(buildSoftExitMessage(shareTarget, "text"))}
+          variant="ghost"
+          style={{ flex: 1 }}
+          small
+        />
+      </View>
     </Card>
   );
 }

@@ -25,7 +25,6 @@ import {
   DeleteMatchParams,
   AddScreenshotParams,
   AddScreenshotBody,
-  GenerateMatchRepliesParams,
   PreviewMatchExtractionBody,
   ListScreenshotsParams,
   RescoreMatchParams,
@@ -49,6 +48,10 @@ import { generateCheatSheet } from "../lib/cheatSheet";
 import { generateWeeklyDebrief } from "../lib/weeklyDebrief";
 import { suggestTags } from "../lib/tagSuggestions";
 import { buildDateSchedulePatchPlan } from "../lib/dateScheduling";
+import {
+  buildDateSafetyPlanPatchPlan,
+  summarizeDateSafetyPlanForList,
+} from "../lib/dateSafetyPlan";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logger } from "../lib/logger";
 import {
@@ -56,7 +59,6 @@ import {
   extractFromScreenshots,
   mergeExtraction,
   mergeVibeTags,
-  generateRepliesFromContext,
   recordScoreHistory,
   runExtractionInBackground,
 } from "../lib/extraction";
@@ -1165,6 +1167,8 @@ router.get("/matches", async (_req, res): Promise<void> => {
 
   res.json(
     rows.map((r) => {
+      const normalized = withNormalizedProfile(r);
+      const { dateSafetyPlan, ...publicMatch } = normalized;
       const turns = normalizeTranscript(r.transcript);
       const lastTurn = turns[turns.length - 1];
       const lastAct = lastActivity.get(r.id) ?? null;
@@ -1183,7 +1187,8 @@ router.get("/matches", async (_req, res): Promise<void> => {
         notes: r.notes,
       });
       return {
-        ...withNormalizedProfile(r),
+        ...publicMatch,
+        dateSafetyPlanStatus: summarizeDateSafetyPlanForList(dateSafetyPlan),
         scoreHistory: (byMatch.get(r.id) ?? []).map((h) => ({
           sexPotential: h.sexPotential,
           conversionAbility: h.conversionAbility,
@@ -1319,6 +1324,8 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     updates.nextDateLocation = body.data.nextDateLocation;
   if (body.data.nextDateOutfit !== undefined)
     updates.nextDateOutfit = body.data.nextDateOutfit;
+  if (body.data.dateSafetyPlan !== undefined)
+    updates.dateSafetyPlan = body.data.dateSafetyPlan;
   if (body.data.tags !== undefined) updates.tags = body.data.tags;
   if (body.data.dateHistory !== undefined)
     updates.dateHistory = normalizeDateHistory(body.data.dateHistory);
@@ -1372,6 +1379,18 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     if (dateSchedulePlan.clearLastDateBrief) {
       updates.lastDateBrief = null;
     }
+    const safetyPlanTouched = body.data.dateSafetyPlan !== undefined;
+    const dateSafetyPlanPatch = safetyPlanTouched
+      ? buildDateSafetyPlanPatchPlan({
+          matchId: existing.id,
+          matchName: body.data.name ?? existing.name,
+          existingPlan: existing.dateSafetyPlan,
+          nextPlan: body.data.dateSafetyPlan,
+        })
+      : { dateSafetyPlan: existing.dateSafetyPlan, timelineEvent: null };
+    if (safetyPlanTouched) {
+      updates.dateSafetyPlan = dateSafetyPlanPatch.dateSafetyPlan;
+    }
 
     if (Object.keys(updates).length === 0) {
       return { notFound: false as const, updated: existing };
@@ -1406,6 +1425,11 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
       await tx
         .insert(matchTimelineEvents)
         .values(dateSchedulePlan.timelineEvent);
+    }
+    if (dateSafetyPlanPatch.timelineEvent) {
+      await tx
+        .insert(matchTimelineEvents)
+        .values(dateSafetyPlanPatch.timelineEvent);
     }
     return { notFound: false as const, updated: updated ?? existing };
   });
@@ -1601,43 +1625,6 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Rescore failed");
     res.status(500).json({ error: "Failed to rescore match" });
-  }
-});
-
-router.post("/matches/:id/replies", async (req, res): Promise<void> => {
-  const params = GenerateMatchRepliesParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const detail = await loadMatchDetail(params.data.id);
-  if (!detail) {
-    res.status(404).json({ error: "Match not found" });
-    return;
-  }
-
-  if (detail.screenshots.length === 0) {
-    res.status(400).json({ error: "Match has no screenshots yet" });
-    return;
-  }
-
-  try {
-    const shotsForVision = selectScreenshotsForVision(detail.screenshots);
-    const dataUrls = await Promise.all(
-      shotsForVision.map((s) => objectPathToDataUrl(s.objectPath)),
-    );
-    const replies = await generateRepliesFromContext(
-      dataUrls,
-      detail.extractedProfile,
-      detail.name,
-      detail.notes,
-      detail.transcript,
-    );
-    res.json({ replies });
-  } catch (err) {
-    req.log.error({ err }, "Reply generation failed");
-    res.status(500).json({ error: "Failed to generate replies" });
   }
 });
 

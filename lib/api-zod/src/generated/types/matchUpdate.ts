@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DateHistoryEntry } from './dateHistoryEntry';
+import type { DateSafetyPlanInput } from './dateSafetyPlanInput';
 import type { ExtractedProfile } from './extractedProfile';
 import type { MatchStatus } from './matchStatus';
 import type { TranscriptTurn } from './transcriptTurn';
@@ -26,6 +27,7 @@ export interface MatchUpdate {
   nextDateLocation?: string | null;
   /** @nullable */
   nextDateOutfit?: string | null;
+  dateSafetyPlan?: DateSafetyPlanInput | null;
   dateHistory?: DateHistoryEntry[];
   transcript?: TranscriptTurn[];
 }

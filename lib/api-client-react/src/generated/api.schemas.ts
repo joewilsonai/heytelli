@@ -90,6 +90,78 @@ export const MatchReadFreshness = {
   missing: 'missing',
 } as const;
 
+export interface DateSafetyPlan {
+  /**
+     * First name or label of the trusted person/circle. Phone numbers are not stored.
+     * @nullable
+     */
+  trustedCircleName: string | null;
+  /**
+     * User-entered transport or exit plan.
+     * @nullable
+     */
+  transportPlan: string | null;
+  /** @nullable */
+  checkInAt: string | null;
+  /** @nullable */
+  expectedEndAt: string | null;
+  /**
+     * Optional word the user can share with trusted contacts.
+     * @nullable
+     */
+  codeWord: string | null;
+  /**
+     * Optional user-authored note shown in the Date Card preview.
+     * @nullable
+     */
+  circleNote: string | null;
+  /** User intent only; the app does not continuously track by default. */
+  shareLiveLocation: boolean;
+  updatedAt: string;
+}
+
+export interface DateSafetyPlanInput {
+  /**
+     * First name or label of the trusted person/circle. Phone numbers are not stored.
+     * @nullable
+     */
+  trustedCircleName: string | null;
+  /**
+     * User-entered transport or exit plan.
+     * @nullable
+     */
+  transportPlan: string | null;
+  /** @nullable */
+  checkInAt: string | null;
+  /** @nullable */
+  expectedEndAt: string | null;
+  /**
+     * Optional word the user can share with trusted contacts.
+     * @nullable
+     */
+  codeWord: string | null;
+  /**
+     * Optional user-authored note shown in the Date Card preview.
+     * @nullable
+     */
+  circleNote: string | null;
+  /** User intent only; the app does not continuously track by default. */
+  shareLiveLocation: boolean;
+}
+
+export interface DateSafetyPlanListStatus {
+  hasPlan: boolean;
+  hasTrustedCircle: boolean;
+  hasTransportPlan: boolean;
+  hasCheckIn: boolean;
+  hasExpectedEnd: boolean;
+  hasCodeWord: boolean;
+  hasCircleNote: boolean;
+  shareLiveLocation: boolean;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
 export type MatchStatus = typeof MatchStatus[keyof typeof MatchStatus];
 
 
@@ -203,6 +275,7 @@ export interface Match {
   updatedAt: string;
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  dateSafetyPlanStatus: DateSafetyPlanListStatus;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
   redFlags: RedFlag[];
@@ -280,6 +353,7 @@ export type MatchTimelineEventType = typeof MatchTimelineEventType[keyof typeof 
 
 export const MatchTimelineEventType = {
   date_scheduled: 'date_scheduled',
+  safety_plan_updated: 'safety_plan_updated',
   voice_debrief: 'voice_debrief',
   date_debrief: 'date_debrief',
   in_person_recording: 'in_person_recording',
@@ -339,6 +413,7 @@ export interface MatchDetail {
   dateHistory: DateHistoryEntry[];
   lastDateBrief: DateBriefSnapshot | null;
   dateBriefFreshness: DateBriefFreshness;
+  dateSafetyPlan: DateSafetyPlan | null;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
   redFlags: RedFlag[];
@@ -388,6 +463,7 @@ export interface MatchUpdate {
   nextDateLocation?: string | null;
   /** @nullable */
   nextDateOutfit?: string | null;
+  dateSafetyPlan?: DateSafetyPlanInput | null;
   dateHistory?: DateHistoryEntry[];
   transcript?: TranscriptTurn[];
 }
@@ -477,10 +553,6 @@ export interface VoiceDebriefResult {
   analysis: VoiceDebriefAnalysis;
   timelineEvents: MatchTimelineEvent[];
   match: MatchDetail;
-}
-
-export interface ReplyResult {
-  replies: string[];
 }
 
 export interface DateBriefResult {

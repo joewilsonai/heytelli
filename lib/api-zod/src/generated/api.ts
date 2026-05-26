@@ -88,6 +88,17 @@ export const ListMatchesResponseItem = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlanStatus": zod.object({
+  "hasPlan": zod.boolean(),
+  "hasTrustedCircle": zod.boolean(),
+  "hasTransportPlan": zod.boolean(),
+  "hasCheckIn": zod.boolean(),
+  "hasExpectedEnd": zod.boolean(),
+  "hasCodeWord": zod.boolean(),
+  "hasCircleNote": zod.boolean(),
+  "shareLiveLocation": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+}),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -268,6 +279,16 @@ export const GetMatchResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -325,7 +346,7 @@ export const GetMatchResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -390,6 +411,15 @@ export const UpdateMatchBody = zod.object({
   "nextDateAt": zod.coerce.date().nullish(),
   "nextDateLocation": zod.string().nullish(),
   "nextDateOutfit": zod.string().nullish(),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.')
+}),zod.null()]).optional(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
   "when": zod.coerce.date(),
@@ -411,15 +441,6 @@ export const updateMatchResponseExtractedProfileScoresConversionAbilityValueOneM
 
 export const updateMatchResponseExtractedProfileScoresChemistryValueOneMin = 0;
 export const updateMatchResponseExtractedProfileScoresChemistryValueOneMax = 10;
-
-export const updateMatchResponseScoreHistoryItemSexPotentialMin = 0;
-export const updateMatchResponseScoreHistoryItemSexPotentialMax = 10;
-
-export const updateMatchResponseScoreHistoryItemConversionAbilityMin = 0;
-export const updateMatchResponseScoreHistoryItemConversionAbilityMax = 10;
-
-export const updateMatchResponseScoreHistoryItemChemistryMin = 0;
-export const updateMatchResponseScoreHistoryItemChemistryMax = 10;
 
 
 
@@ -462,8 +483,6 @@ export const UpdateMatchResponse = zod.object({
   "recap": zod.string(),
   "createdAt": zod.coerce.date()
 })),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date(),
   "lastDateBrief": zod.union([zod.object({
   "brief": zod.string(),
   "generatedAt": zod.coerce.date(),
@@ -471,6 +490,16 @@ export const UpdateMatchResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -510,14 +539,33 @@ export const UpdateMatchResponse = zod.object({
   "highSeverityCount": zod.number(),
   "lastAnalyzedAt": zod.coerce.date().nullable()
 }),
-  "scoreHistory": zod.array(zod.object({
-  "sexPotential": zod.number().min(updateMatchResponseScoreHistoryItemSexPotentialMin).max(updateMatchResponseScoreHistoryItemSexPotentialMax).nullable(),
-  "conversionAbility": zod.number().min(updateMatchResponseScoreHistoryItemConversionAbilityMin).max(updateMatchResponseScoreHistoryItemConversionAbilityMax).nullable(),
-  "chemistry": zod.number().min(updateMatchResponseScoreHistoryItemChemistryMin).max(updateMatchResponseScoreHistoryItemChemistryMax).nullable(),
+  "transcript": zod.array(zod.object({
+  "speaker": zod.enum(['her', 'me']),
+  "text": zod.string()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "screenshots": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "objectPath": zod.string().nullable(),
+  "uploadedAt": zod.coerce.date(),
+  "extractionStatus": zod.enum(['pending', 'done', 'failed']),
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
+})),
+  "timelineEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "matchId": zod.number(),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "body": zod.string().nullable(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "occurredAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
-})).optional(),
-  "lastSpeaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullish().describe('Speaker of the most recent transcript turn, if any'),
-  "lastActivityAt": zod.coerce.date().nullish().describe('Timestamp of most recent screenshot upload (or null if none)'),
+})),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
@@ -619,6 +667,16 @@ export const AddScreenshotResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -676,7 +734,7 @@ export const AddScreenshotResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -755,6 +813,16 @@ export const RescoreMatchResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -812,7 +880,7 @@ export const RescoreMatchResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1013,6 +1081,16 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -1070,7 +1148,7 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1244,7 +1322,7 @@ export const InPersonRecordingResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1299,6 +1377,16 @@ export const InPersonRecordingResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -1356,7 +1444,7 @@ export const InPersonRecordingResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1425,7 +1513,7 @@ export const VoiceDebriefResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1480,6 +1568,16 @@ export const VoiceDebriefResponse = zod.object({
   "contextHash": zod.string().describe('Hash of date-related context (dateHistory, nextDate\*, notes) at generation time')
 }),zod.null()]),
   "dateBriefFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = brief is up to date.\nstale   = new analyzed screenshots, changed date details, or > 5 days old.\nmissing = no brief has ever been generated.\n'),
+  "dateSafetyPlan": zod.union([zod.object({
+  "trustedCircleName": zod.string().nullable().describe('First name or label of the trusted person\/circle. Phone numbers are not stored.'),
+  "transportPlan": zod.string().nullable().describe('User-entered transport or exit plan.'),
+  "checkInAt": zod.coerce.date().nullable(),
+  "expectedEndAt": zod.coerce.date().nullable(),
+  "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
+  "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "lastRead": zod.union([zod.object({
   "body": zod.string().describe('Persisted latest AI read for this connection.'),
   "generatedAt": zod.coerce.date(),
@@ -1537,7 +1635,7 @@ export const VoiceDebriefResponse = zod.object({
   "timelineEvents": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "type": zod.enum(['date_scheduled', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
+  "type": zod.enum(['date_scheduled', 'safety_plan_updated', 'voice_debrief', 'date_debrief', 'in_person_recording', 'manual_note', 'screenshot_import', 'chat_insight', 'red_flag_seen', 'green_flag_seen', 'tag_added', 'tag_removed']),
   "source": zod.enum(['user', 'ai', 'voice-debrief', 'in-person-recording', 'chat']),
   "title": zod.string(),
   "summary": zod.string().nullable(),
@@ -1550,18 +1648,6 @@ export const VoiceDebriefResponse = zod.object({
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
   "analysisFreshness": zod.enum(['current', 'needs-analysis', 'never-analyzed']).describe('Whether stored transcript reflects all screenshots')
 })
-})
-
-
-/**
- * @summary Generate 3 reply suggestions using full conversation history and extracted profile
- */
-export const GenerateMatchRepliesParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const GenerateMatchRepliesResponse = zod.object({
-  "replies": zod.array(zod.string())
 })
 
 

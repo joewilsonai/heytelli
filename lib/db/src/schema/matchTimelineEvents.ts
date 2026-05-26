@@ -12,6 +12,7 @@ import { matches } from "./matches";
 
 export type MatchTimelineEventType =
   | "date_scheduled"
+  | "safety_plan_updated"
   | "voice_debrief"
   | "date_debrief"
   | "in_person_recording"

@@ -78,8 +78,35 @@ test("surfaces date safety when a future date is planned", () => {
   );
 
   assert.equal(model.status.label, "Date planned");
-  assert.equal(model.nextAction, "Plan date safety");
+  assert.equal(model.signal.label, "Needs Date Card");
+  assert.equal(model.nextAction, "Make Date Card");
   assert.ok(model.contextChips.includes("Date set"));
+});
+
+test("surfaces circle-ready date cards on the dashboard", () => {
+  const model = getHomeMatchCardModel(
+    {
+      ...baseMatch,
+      nextDateAt: "2026-05-24T00:00:00.000Z",
+      nextDateLocation: "Paper Plane",
+      dateSafetyPlanStatus: {
+        hasPlan: true,
+        hasTrustedCircle: true,
+        hasTransportPlan: true,
+        hasCheckIn: true,
+        hasExpectedEnd: true,
+        hasCodeWord: true,
+        hasCircleNote: false,
+        shareLiveLocation: false,
+        updatedAt: "2026-05-23T12:00:00.000Z",
+      },
+    },
+    new Date("2026-05-23T01:00:00.000Z"),
+  );
+
+  assert.equal(model.signal.label, "Circle ready");
+  assert.equal(model.nextAction, "Share Date Card");
+  assert.ok(model.contextChips.includes("Circle ready"));
 });
 
 test("uses connection and momentum scores without exposing old score labels", () => {

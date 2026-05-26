@@ -1,6 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { getRedFlagRadar } from "@workspace/api-client-react";
@@ -11,6 +18,7 @@ import type {
 } from "@workspace/api-client-react";
 
 import { Body, Card, SectionLabel } from "./ui";
+import { getSafetyResources } from "@/lib/safety-resources";
 
 export function RedFlagsCard({
   matchId,
@@ -82,6 +90,10 @@ export function RedFlagsCard({
   const hasSavedDetails = currentFlags.length > 0 || historicalFlags.length > 0;
   const greenFlags = data?.greenFlags ?? [];
   const overallRead = data?.overallRead ?? "";
+  const resources = getSafetyResources([
+    ...currentFlags,
+    ...historicalFlags,
+  ]);
 
   const renderFlagList = (title: string, flags: RedFlag[], muted = false) => (
     <View style={{ gap: 6 }}>
@@ -235,6 +247,68 @@ export function RedFlagsCard({
             )}
           {historicalFlags.length > 0 &&
             renderFlagList("PREVIOUSLY FLAGGED", historicalFlags, true)}
+          {resources.length > 0 ? (
+            <View
+              style={{
+                gap: 8,
+                padding: 10,
+                backgroundColor: c.destructive + "10",
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: c.destructive + "33",
+              }}
+            >
+              <Text
+                style={{
+                  color: c.destructive,
+                  fontSize: 12,
+                  fontFamily: "Inter_600SemiBold",
+                  letterSpacing: 0.5,
+                }}
+              >
+                SUPPORT OPTIONS
+              </Text>
+              <Body muted style={{ fontSize: 12 }}>
+                You do not owe money, photos, secrecy, or proof. Save originals
+                if you may need to report later.
+              </Body>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {resources.map((resource) => (
+                  <Pressable
+                    key={resource.url}
+                    onPress={() => Linking.openURL(resource.url)}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 5,
+                      paddingHorizontal: 10,
+                      paddingVertical: 7,
+                      borderRadius: 999,
+                      backgroundColor: c.card,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Feather
+                      name="external-link"
+                      size={12}
+                      color={c.foreground}
+                    />
+                    <Text
+                      style={{
+                        color: c.foreground,
+                        fontSize: 12,
+                        fontFamily: "Inter_600SemiBold",
+                      }}
+                    >
+                      {resource.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
           {greenFlags.length > 0 ? (
             <View style={{ gap: 6 }}>
               <Text

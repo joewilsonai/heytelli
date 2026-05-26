@@ -38,7 +38,6 @@ import type {
   MatchDetail,
   MatchUpdate,
   RedFlagRadarResult,
-  ReplyResult,
   ResponseStats,
   Screenshot,
   ScreenshotInput,
@@ -236,9 +235,9 @@ initial profile. The screenshot is appended to the match's conversation log.
 
  * @summary Create a match from an initial screenshot
  */
-export const createMatch = async (matchCreateInput: MatchCreateInput, options?: RequestInit): Promise<Match> => {
+export const createMatch = async (matchCreateInput: MatchCreateInput, options?: RequestInit): Promise<MatchDetail> => {
 
-  return customFetch<Match>(getCreateMatchUrl(),
+  return customFetch<MatchDetail>(getCreateMatchUrl(),
   {
     ...options,
     method: 'POST',
@@ -460,9 +459,9 @@ export const getUpdateMatchUrl = (id: number,) => {
  * @summary Update a match's editable fields
  */
 export const updateMatch = async (id: number,
-    matchUpdate: MatchUpdate, options?: RequestInit): Promise<Match> => {
+    matchUpdate: MatchUpdate, options?: RequestInit): Promise<MatchDetail> => {
 
-  return customFetch<Match>(getUpdateMatchUrl(id),
+  return customFetch<MatchDetail>(getUpdateMatchUrl(id),
   {
     ...options,
     method: 'PATCH',
@@ -1872,76 +1871,6 @@ export const useVoiceDebrief = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getVoiceDebriefMutationOptions(options));
-    }
-
-export const getGenerateMatchRepliesUrl = (id: number,) => {
-
-
-
-
-  return `/api/matches/${id}/replies`
-}
-
-/**
- * @summary Generate 3 reply suggestions using full conversation history and extracted profile
- */
-export const generateMatchReplies = async (id: number, options?: RequestInit): Promise<ReplyResult> => {
-
-  return customFetch<ReplyResult>(getGenerateMatchRepliesUrl(id),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-export const getGenerateMatchRepliesMutationOptions = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMatchReplies>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof generateMatchReplies>>, TError,{id: number}, TContext> => {
-
-const mutationKey = ['generateMatchReplies'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateMatchReplies>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
-
-          return  generateMatchReplies(id,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type GenerateMatchRepliesMutationResult = NonNullable<Awaited<ReturnType<typeof generateMatchReplies>>>
-
-    export type GenerateMatchRepliesMutationError = ErrorType<ErrorEnvelope>
-
-    /**
- * @summary Generate 3 reply suggestions using full conversation history and extracted profile
- */
-export const useGenerateMatchReplies = <TError = ErrorType<ErrorEnvelope>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateMatchReplies>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof generateMatchReplies>>,
-        TError,
-        {id: number},
-        TContext
-      > => {
-      return useMutation(getGenerateMatchRepliesMutationOptions(options));
     }
 
 export const getListChatConversationsUrl = () => {

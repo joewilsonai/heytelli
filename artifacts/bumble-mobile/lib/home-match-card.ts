@@ -1,3 +1,9 @@
+import {
+  getDateSafetyPlanStatus,
+  type DateSafetyPlan,
+  type DateSafetyPlanListStatus,
+} from "./date-safety-plan.ts";
+
 export type HomeMatchCardMatch = {
   name: string;
   status: "active" | "archived" | "ghosted" | string;
@@ -14,6 +20,9 @@ export type HomeMatchCardMatch = {
     };
   };
   nextDateAt: string | null;
+  nextDateLocation?: string | null;
+  dateSafetyPlan?: DateSafetyPlan | null;
+  dateSafetyPlanStatus?: DateSafetyPlanListStatus | null;
   lastSpeaker?: "her" | "me" | null;
   lastActivityAt?: string | null;
   pendingScreenshotCount: number;
@@ -133,6 +142,11 @@ function getSignal(
     return { label: "Saved concern", tone: "danger" };
   }
   if (concerns > 0) return { label: "Watch pattern", tone: "warning" };
+  if (hasFutureDate(match, now)) {
+    const status = getDateSafetyPlanStatus(match, now);
+    if (status.state === "ready") return { label: "Circle ready", tone: "success" };
+    return { label: "Needs Date Card", tone: "warning" };
+  }
   if (isStale(match, now)) return { label: "Stale", tone: "warning" };
   if (needsContext) return { label: "Needs more context", tone: "warning" };
   if (
@@ -164,7 +178,10 @@ function getNextAction(match: HomeMatchCardMatch, now: Date): string {
   }
   if ((match.redFlagSummary?.highSeverityCount ?? 0) > 0)
     return "Review saved concern";
-  if (hasFutureDate(match, now)) return "Plan date safety";
+  if (hasFutureDate(match, now)) {
+    const status = getDateSafetyPlanStatus(match, now);
+    return status.state === "ready" ? "Share Date Card" : "Make Date Card";
+  }
   if (isStale(match, now)) return "Follow up or let it fade";
   if (!match.lastActivityAt) return "Upload latest chat";
   if (match.lastSpeaker === "me") return "Wait for reply";
@@ -261,6 +278,10 @@ function getContextChips(match: HomeMatchCardMatch, now: Date): string[] {
   if (match.extractedProfile.job || match.extractedProfile.location)
     chips.push("Profile");
   if (hasFutureDate(match, now)) chips.push("Date set");
+  if (hasFutureDate(match, now)) {
+    const status = getDateSafetyPlanStatus(match, now);
+    if (status.state === "ready") chips.push("Circle ready");
+  }
   if (match.dateHistory.length > 0) chips.push("Date history");
   if (pendingContextCount(match) > 0)
     chips.push(`${pendingContextCount(match)} to analyze`);
