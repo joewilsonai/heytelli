@@ -27,8 +27,9 @@ import {
 import type { ChatMessage } from "@workspace/api-client-react";
 
 import { Body, EmptyState, IconButton } from "@/components/ui";
+import { getApiBaseUrl } from "@/lib/api-base";
 
-const DOMAIN = process.env.EXPO_PUBLIC_DOMAIN;
+const apiBaseUrl = getApiBaseUrl();
 
 type Bubble = {
   key: string;
@@ -68,8 +69,11 @@ export default function ChatScreen() {
     abortRef.current = controller;
 
     try {
+      if (!apiBaseUrl) {
+        throw new Error("API base URL is not configured.");
+      }
       const res = await expoFetch(
-        `https://${DOMAIN}/api/chat/conversations/${convId}/messages`,
+        `${apiBaseUrl}/api/chat/conversations/${convId}/messages`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
