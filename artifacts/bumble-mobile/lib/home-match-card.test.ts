@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getHomeMatchCardModel, getFirstName } from "./home-match-card.ts";
+import {
+  getHomeDailyBriefModel,
+  getHomeMatchCardModel,
+  getHomeTrendSnapshot,
+  getFirstName,
+} from "./home-match-card.ts";
 
 const baseMatch = {
   id: 1,
@@ -208,4 +213,53 @@ test("surfaces saved red flag history on the dashboard", () => {
   assert.equal(model.nextAction, "Review saved pattern");
   assert.equal(model.primaryAction.kind, "review_pattern");
   assert.ok(model.contextChips.includes("1 pattern"));
+});
+
+test("builds a best-friend daily brief from active matches", () => {
+  const brief = getHomeDailyBriefModel(
+    [
+      {
+        ...baseMatch,
+        name: "Maya Rose",
+        nextDateAt: "2026-05-24T20:00:00.000Z",
+      },
+      {
+        ...baseMatch,
+        name: "Gretchen Lane",
+        pendingScreenshotCount: 2,
+        analysisFreshness: "needs-analysis",
+        lastRead: {
+          body: "Saved read stays visible.",
+          generatedAt: "2026-05-26T12:00:00.000Z",
+          screenshotCountAt: 2,
+        },
+        readFreshness: "stale",
+      },
+    ],
+    new Date("2026-05-23T13:00:00.000Z"),
+  );
+
+  assert.equal(brief.headline, "Telli noticed...");
+  assert.equal(brief.items[0]?.matchName, "Gretchen");
+  assert.match(brief.items[0]?.body ?? "", /screenshots waiting/i);
+  assert.match(brief.items.map((item) => item.body).join(" "), /Date Card/i);
+});
+
+test("summarizes trends without exposing old score labels", () => {
+  const trend = getHomeTrendSnapshot([
+    {
+      ...baseMatch,
+      tags: ["slow planner"],
+      redFlagSummary: {
+        currentCount: 0,
+        historicalCount: 1,
+        highSeverityCount: 0,
+        lastAnalyzedAt: "2026-05-26T12:00:00.000Z",
+      },
+    },
+  ]);
+
+  assert.equal(trend.title, "Pattern watch");
+  assert.doesNotMatch(trend.body, /Sex|Conv|Chem/);
+  assert.match(trend.body, /slow planner|saved pattern/i);
 });

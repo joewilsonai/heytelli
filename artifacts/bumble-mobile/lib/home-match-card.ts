@@ -99,6 +99,26 @@ export type HomeMatchCardModel = {
   attentionRank: number;
 };
 
+export type HomeBriefItem = {
+  matchName: string;
+  title: string;
+  body: string;
+  tone: HomeSignalTone;
+  actionKind: HomePrimaryActionKind;
+};
+
+export type HomeDailyBriefModel = {
+  headline: "Telli noticed...";
+  body: string;
+  items: HomeBriefItem[];
+};
+
+export type HomeTrendSnapshot = {
+  title: string;
+  body: string;
+  tone: HomeSignalTone;
+};
+
 const STALE_MS = 48 * 60 * 60 * 1000;
 
 export function getFirstName(name: string): string {
@@ -438,5 +458,170 @@ export function getHomeMatchCardModel(
     nextAction: getNextAction(match, now),
     contextChips: getContextChips(match, now),
     attentionRank: getAttentionRank(match, now),
+  };
+}
+
+function briefBodyForAction(
+  match: HomeMatchCardMatch,
+  model: HomeMatchCardModel,
+): Pick<HomeBriefItem, "title" | "body"> | null {
+  const pending = pendingContextCount(match);
+  switch (model.primaryAction.kind) {
+    case "review_screenshots":
+      return {
+        title: "New screenshots waiting",
+        body: `${model.name} has ${pending} screenshot${pending === 1 ? "" : "s"} waiting. The last read stays visible until you refresh it.`,
+      };
+    case "make_date_card":
+      return {
+        title: "Date plan needs a Date Card",
+        body: `${model.name} has a date coming up. Finish the Date Card before you meet.`,
+      };
+    case "share_date_card":
+      return {
+        title: "Circle is ready",
+        body: `${model.name}'s Date Card is ready to share with your circle.`,
+      };
+    case "review_pattern":
+      return {
+        title: "Saved pattern to review",
+        body: `${model.name} has a saved pattern worth checking before the next move.`,
+      };
+    case "review_reply":
+      return {
+        title: "Reply with context",
+        body: `${model.name} replied. Check the read before you decide what to say.`,
+      };
+    case "decide_next_move":
+      return {
+        title: "Decision moment",
+        body: `${model.name} has gone quiet. Follow up, pause, or let it fade.`,
+      };
+    case "add_screenshots":
+      return {
+        title: "Start the read",
+        body: `${model.name} needs profile or chat screenshots before Telli can spot patterns.`,
+      };
+    case "wait":
+      return null;
+  }
+}
+
+export function getHomeDailyBriefModel(
+  matches: HomeMatchCardMatch[],
+  now = new Date(),
+): HomeDailyBriefModel {
+  const items = matches
+    .filter((match) => match.status === "active")
+    .map((match) => {
+      const model = getHomeMatchCardModel(match, now);
+      const copy = briefBodyForAction(match, model);
+      if (!copy) return null;
+      return {
+        ...copy,
+        matchName: model.name,
+        tone: model.primaryAction.tone,
+        actionKind: model.primaryAction.kind,
+        attentionRank: model.attentionRank,
+        lastActivity: parseTime(match.lastActivityAt) ?? 0,
+      };
+    })
+    .filter(
+      (
+        item,
+      ): item is HomeBriefItem & {
+        attentionRank: number;
+        lastActivity: number;
+      } => Boolean(item),
+    )
+    .sort(
+      (a, b) =>
+        b.attentionRank - a.attentionRank || b.lastActivity - a.lastActivity,
+    )
+    .slice(0, 3)
+    .map(
+      ({
+        attentionRank: _attentionRank,
+        lastActivity: _lastActivity,
+        ...item
+      }) => item,
+    );
+
+  return {
+    headline: "Telli noticed...",
+    body:
+      items.length > 0
+        ? "A tiny priority list for safer, clearer dating today."
+        : "Nothing urgent. Your reads, patterns, and date plans are calm for now.",
+    items,
+  };
+}
+
+export function getHomeTrendSnapshot(
+  matches: HomeMatchCardMatch[],
+): HomeTrendSnapshot {
+  const active = matches.filter((match) => match.status === "active");
+  const pending = active.reduce(
+    (total, match) => total + pendingContextCount(match),
+    0,
+  );
+  const savedPatterns = active.reduce(
+    (total, match) => total + savedConcernCount(match),
+    0,
+  );
+  const highSeverity = active.reduce(
+    (total, match) => total + (match.redFlagSummary?.highSeverityCount ?? 0),
+    0,
+  );
+  const upcomingDates = active.filter((match) => match.nextDateAt).length;
+  const tagCounts = new Map<string, number>();
+  active.forEach((match) => {
+    (match.tags ?? []).forEach((tag) => {
+      const normalized = tag.trim();
+      if (!normalized) return;
+      tagCounts.set(normalized, (tagCounts.get(normalized) ?? 0) + 1);
+    });
+  });
+  const topTag = Array.from(tagCounts.entries()).sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+  )[0]?.[0];
+
+  if (highSeverity > 0 || savedPatterns > 0) {
+    const tagPhrase = topTag ? `, including "${topTag}"` : "";
+    return {
+      title: "Pattern watch",
+      body: `${savedPatterns} saved pattern${savedPatterns === 1 ? "" : "s"}${tagPhrase}. Keep those visible even when the latest read changes.`,
+      tone: highSeverity > 0 ? "danger" : "warning",
+    };
+  }
+
+  if (pending > 0) {
+    return {
+      title: "Context waiting",
+      body: `${pending} screenshot${pending === 1 ? "" : "s"} waiting to be analyzed across active matches.`,
+      tone: "warning",
+    };
+  }
+
+  if (upcomingDates > 0) {
+    return {
+      title: "Date mode",
+      body: `${upcomingDates} upcoming date${upcomingDates === 1 ? "" : "s"}. Keep Date Cards and circle checks ready before you go.`,
+      tone: "primary",
+    };
+  }
+
+  if (topTag) {
+    return {
+      title: "Pattern watch",
+      body: `The strongest current theme is "${topTag}". Use it as a lens, not a verdict.`,
+      tone: "primary",
+    };
+  }
+
+  return {
+    title: "Clear for now",
+    body: "No urgent trends are standing out. Add new screenshots when the story changes.",
+    tone: "success",
   };
 }
