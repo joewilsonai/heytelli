@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "./api-base";
+import { batchProfileAnalysisDataUrls } from "./profile-analysis-batches";
 import {
   prepareProfileScreenshotsForAnalysis,
   type PreparedProfileScreenshots,
@@ -11,6 +12,7 @@ export type ProfileAnalysisResult = {
   photoNotes: string;
   profileScreenshotUris: string[];
   skippedScreenshotUris: string[];
+  skippedOversizedScreenshotUris: string[];
 };
 
 export class ProfileScreenshotUnavailableError extends Error {
@@ -42,6 +44,49 @@ function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function mergeField(values: string[]): string {
+  const seen = new Set<string>();
+  return values
+    .map((value) => value.trim())
+    .filter((value) => {
+      if (!value || seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    })
+    .join("\n\n");
+}
+
+async function postProfileAnalysisBatch(
+  apiBaseUrl: string,
+  images: string[],
+): Promise<
+  Omit<
+    ProfileAnalysisResult,
+    | "profileScreenshotUris"
+    | "skippedScreenshotUris"
+    | "skippedOversizedScreenshotUris"
+  >
+> {
+  const response = await fetch(`${apiBaseUrl}/api/settings/profile/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ images }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error ?? "Profile analysis failed.");
+  }
+
+  const body = await response.json();
+  return {
+    profileText: clean(body.profileText),
+    lookingFor: clean(body.lookingFor),
+    boundaries: clean(body.boundaries),
+    photoNotes: clean(body.photoNotes),
+  };
+}
+
 export async function analyzeDatingProfileScreenshots(
   profileScreenshotUris: string[],
 ): Promise<ProfileAnalysisResult> {
@@ -60,24 +105,32 @@ export async function analyzeDatingProfileScreenshots(
     throw new ProfileScreenshotUnavailableError(prepared);
   }
 
-  const response = await fetch(`${apiBaseUrl}/api/settings/profile/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ images: prepared.dataUrls }),
-  });
+  const batchPlan = batchProfileAnalysisDataUrls(prepared.dataUrls);
+  const skippedOversizedScreenshotUris =
+    batchPlan.skippedOversizedIndexes.flatMap((index) =>
+      prepared.profileScreenshotUris[index]
+        ? [prepared.profileScreenshotUris[index]!]
+        : [],
+    );
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body?.error ?? "Profile analysis failed.");
+  if (batchPlan.batches.length === 0) {
+    throw new Error(
+      "Those profile screenshots are too large to analyze. Clear them, crop them tighter, and add them again.",
+    );
   }
 
-  const body = await response.json();
+  const analyses = [];
+  for (const batch of batchPlan.batches) {
+    analyses.push(await postProfileAnalysisBatch(apiBaseUrl, batch));
+  }
+
   return {
-    profileText: clean(body.profileText),
-    lookingFor: clean(body.lookingFor),
-    boundaries: clean(body.boundaries),
-    photoNotes: clean(body.photoNotes),
+    profileText: mergeField(analyses.map((analysis) => analysis.profileText)),
+    lookingFor: mergeField(analyses.map((analysis) => analysis.lookingFor)),
+    boundaries: mergeField(analyses.map((analysis) => analysis.boundaries)),
+    photoNotes: mergeField(analyses.map((analysis) => analysis.photoNotes)),
     profileScreenshotUris: prepared.profileScreenshotUris,
     skippedScreenshotUris: prepared.skippedScreenshotUris,
+    skippedOversizedScreenshotUris,
   };
 }

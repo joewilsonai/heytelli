@@ -42,6 +42,7 @@ test("settings profile screenshots allow ten and analyze into profile fields", (
   assert.match(screen, /clearProfileScreenshots/);
   assert.match(screen, /setAnalyzingProfile\(true\)/);
   assert.match(screen, /skippedScreenshotUris/);
+  assert.match(screen, /skippedOversizedScreenshotUris/);
   assert.match(
     screen,
     /profileScreenshotUris: analysis\.profileScreenshotUris/,
@@ -52,6 +53,7 @@ test("settings profile screenshots allow ten and analyze into profile fields", (
   assert.match(screen, /photoNotes: analysis\.photoNotes/);
   assert.match(analysis, /\/api\/settings\/profile\/analyze/);
   assert.match(analysis, /prepareProfileScreenshotsForAnalysis/);
+  assert.match(analysis, /batchProfileAnalysisDataUrls/);
 });
 
 test("trusted circle contact picker statically imports expo contacts", () => {

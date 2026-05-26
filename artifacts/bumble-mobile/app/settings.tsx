@@ -277,7 +277,9 @@ export default function SettingsScreen() {
         "Profile analyzed",
         analysis.skippedScreenshotUris.length > 0
           ? `HeyTelli filled your profile fields and removed ${analysis.skippedScreenshotUris.length} unavailable screenshot${analysis.skippedScreenshotUris.length === 1 ? "" : "s"}.`
-          : "HeyTelli filled your profile fields.",
+          : analysis.skippedOversizedScreenshotUris.length > 0
+            ? `HeyTelli filled your profile fields. ${analysis.skippedOversizedScreenshotUris.length} screenshot${analysis.skippedOversizedScreenshotUris.length === 1 ? " was" : "s were"} too large to include; crop tighter and add again if something is missing.`
+            : "HeyTelli filled your profile fields.",
       );
     } catch (error: any) {
       if (isProfileScreenshotUnavailableError(error)) {
