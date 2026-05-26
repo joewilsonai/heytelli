@@ -24,7 +24,7 @@ export function getMatchDetailHeroModel(
     add_screenshots:
       "Start with the latest profile or chat screenshots so HeyTelli can build a grounded read.",
     review_screenshots:
-      "New screenshots are waiting. Keep the saved read visible, then reanalyze when you are ready.",
+      "New screenshots are waiting. Telli will keep the last read visible, then refresh it when you reanalyze.",
     make_date_card:
       "Finish the Date Card before you meet: place, time, transport, check-in, and circle note.",
     share_date_card:

@@ -66,7 +66,8 @@ test("hero prioritizes waiting screenshots over old reads", () => {
   });
 
   assert.equal(model.title, "Review screenshots");
-  assert.match(model.body, /Keep the saved read visible/);
+  assert.match(model.body, /last read visible/);
+  assert.match(model.body, /Telli will keep the last read visible/);
 });
 
 test("hero uses pattern language for saved high-severity concerns", () => {

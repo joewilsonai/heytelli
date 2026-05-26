@@ -161,6 +161,11 @@ export default function MatchDetailScreen() {
         }
       >
         <HeaderCard match={data} onChange={() => refetch()} />
+        <SectionIntro
+          icon="eye"
+          title="Read"
+          body="The latest read, saved patterns, and what deserves attention before you reply or meet."
+        />
         <NextStepCard match={data} />
         <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
         <LatestReadCard match={data} onChange={() => refetch()} />
@@ -174,38 +179,14 @@ export default function MatchDetailScreen() {
             historicalRedFlags: data.historicalRedFlags ?? [],
           }}
         />
-        <DatingPatternGlossaryCard compact />
-        <ResponseStatsCard matchId={data.id} />
-        <ChatLinkCard matchId={data.id} matchName={data.name} />
-        <VoiceDebriefCard
-          matchId={data.id}
-          matchName={data.name}
-          onApplied={() => refetch()}
+        <SectionIntro
+          icon="book-open"
+          title="Story"
+          body="Trends, receipts, tags, and the timeline of what has happened with this person."
         />
+        <StoryOverviewCard match={data} />
         <TimelineCard events={data.timelineEvents ?? []} />
-        <ToolsRow
-          matchId={data.id}
-          matchName={data.name}
-          onApplied={() => refetch()}
-        />
-        {isPast(data.nextDateAt) && data.nextDateAt && (
-          <PostDateDebriefCard match={data} onChange={() => refetch()} />
-        )}
-        {data.nextDateAt && !isPast(data.nextDateAt) && (
-          <>
-            <NextDateCard match={data} onChange={() => refetch()} />
-            <DateSafetyPlanCard match={data} onChange={() => refetch()} />
-            <BetaFeedbackCard
-              matchId={data.id}
-              surface="date-card"
-              prompt="Would you send this Date Card to a friend?"
-            />
-          </>
-        )}
-        {!data.nextDateAt && (
-          <ScheduleDateCard match={data} onChange={() => refetch()} />
-        )}
-        <CheatSheetCard matchId={data.id} />
+        <DatingPatternGlossaryCard compact />
         <ScreenshotsCard match={data} onChange={() => refetch()} />
         <Pressable
           onPress={() => router.push(`/match/${data.id}/photos`)}
@@ -242,6 +223,46 @@ export default function MatchDetailScreen() {
         />
         <TagHistoryCard matchId={data.id} />
         <NotesCard match={data} onChange={() => refetch()} />
+        <SectionIntro
+          icon="calendar"
+          title="Date"
+          body="Plan the date, brief yourself before you go, and keep your circle in the loop."
+        />
+        {isPast(data.nextDateAt) && data.nextDateAt && (
+          <PostDateDebriefCard match={data} onChange={() => refetch()} />
+        )}
+        {data.nextDateAt && !isPast(data.nextDateAt) && (
+          <>
+            <NextDateCard match={data} onChange={() => refetch()} />
+            <DateSafetyPlanCard match={data} onChange={() => refetch()} />
+            <BetaFeedbackCard
+              matchId={data.id}
+              surface="date-card"
+              prompt="Would you send this Date Card to a friend?"
+            />
+          </>
+        )}
+        {!data.nextDateAt && (
+          <ScheduleDateCard match={data} onChange={() => refetch()} />
+        )}
+        <SectionIntro
+          icon="message-circle"
+          title="Talk"
+          body="Ask Telli, talk out a debrief, check a voice note, or get one careful reply."
+        />
+        <ChatLinkCard matchId={data.id} matchName={data.name} />
+        <VoiceDebriefCard
+          matchId={data.id}
+          matchName={data.name}
+          onApplied={() => refetch()}
+        />
+        <ToolsRow
+          matchId={data.id}
+          matchName={data.name}
+          onApplied={() => refetch()}
+        />
+        <ResponseStatsCard matchId={data.id} />
+        <CheatSheetCard matchId={data.id} />
         <StatusActionsCard
           match={data}
           onChange={() => refetch()}
@@ -254,6 +275,225 @@ export default function MatchDetailScreen() {
 }
 
 /* ------------------------------- Cards ----------------------------------- */
+
+function SectionIntro({
+  icon,
+  title,
+  body,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  body: string;
+}) {
+  const c = useColors();
+  return (
+    <View
+      style={{
+        paddingTop: 8,
+        paddingHorizontal: 2,
+        gap: 5,
+        flexDirection: "row",
+        alignItems: "flex-start",
+      }}
+    >
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          backgroundColor: c.secondary,
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: 1,
+        }}
+      >
+        <Feather name={icon} size={15} color={c.secondaryForeground} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            color: c.foreground,
+            fontSize: 18,
+            fontFamily: "Inter_700Bold",
+          }}
+        >
+          {title}
+        </Text>
+        <Text
+          style={{
+            color: c.mutedForeground,
+            fontSize: 12,
+            lineHeight: 17,
+          }}
+        >
+          {body}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function StoryOverviewCard({ match }: { match: MatchDetail }) {
+  const c = useColors();
+  const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
+  const savedPatterns =
+    (match.redFlagSummary?.currentCount ?? 0) +
+    (match.redFlagSummary?.historicalCount ?? 0);
+  const highSeverity = match.redFlagSummary?.highSeverityCount ?? 0;
+  const events = (match.timelineEvents ?? []).slice().sort((a, b) => {
+    return new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
+  });
+  const latestEvent = events[0];
+  const theme = match.tags?.[0] ?? match.vibeTags?.[0] ?? null;
+  const tone =
+    highSeverity > 0
+      ? "danger"
+      : savedPatterns > 0 || pending > 0
+        ? "warning"
+        : "primary";
+  const colors = heroToneColors(tone, c);
+  const trendTitle =
+    savedPatterns > 0
+      ? "Saved pattern is part of the story"
+      : pending > 0
+        ? "New receipts need a refresh"
+        : match.dateHistory.length > 0
+          ? "You have date history here"
+          : theme
+            ? `Theme: ${theme}`
+            : "The story is still forming";
+  const trendBody =
+    savedPatterns > 0
+      ? `${savedPatterns} saved pattern${savedPatterns === 1 ? "" : "s"} stay visible here even when the next analysis changes.`
+      : pending > 0
+        ? `${pending} screenshot${pending === 1 ? "" : "s"} can update the read, tags, and timeline when you reanalyze.`
+        : latestEvent
+          ? `Last saved moment: ${latestEvent.title}.`
+          : "Add screenshots, notes, or a debrief to build the private story over time.";
+  const freshness =
+    match.analysisFreshness === "current"
+      ? "Analysis up to date"
+      : pending > 0
+        ? `${pending} screenshot${pending === 1 ? "" : "s"} waiting`
+        : "Refresh when the story changes";
+  const stats = [
+    {
+      label: "Receipts",
+      value: String(match.screenshots.length),
+    },
+    {
+      label: "Timeline",
+      value: String(events.length),
+    },
+    {
+      label: "Tags",
+      value: String(match.tags?.length ?? 0),
+    },
+  ];
+
+  return (
+    <Card style={{ borderColor: colors.border }}>
+      <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+        <View
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: colors.bg,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Feather name="trending-up" size={20} color={colors.fg} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <SectionLabel>Trend analysis</SectionLabel>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 17,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            {trendTitle}
+          </Text>
+        </View>
+      </View>
+      <Body muted style={{ marginTop: 10, fontSize: 13, lineHeight: 19 }}>
+        {trendBody}
+      </Body>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          marginTop: 12,
+        }}
+      >
+        {stats.map((stat) => (
+          <View
+            key={stat.label}
+            style={{
+              flexGrow: 1,
+              flexBasis: "30%",
+              borderRadius: 10,
+              backgroundColor: c.background,
+              borderWidth: 1,
+              borderColor: c.border,
+              padding: 9,
+              gap: 2,
+            }}
+          >
+            <Text
+              style={{
+                color: c.mutedForeground,
+                fontSize: 10,
+                fontFamily: "Inter_700Bold",
+                textTransform: "uppercase",
+              }}
+            >
+              {stat.label}
+            </Text>
+            <Text
+              style={{
+                color: c.foreground,
+                fontSize: 16,
+                fontFamily: "Inter_700Bold",
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {stat.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View
+        style={{
+          marginTop: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          alignSelf: "flex-start",
+          borderRadius: 999,
+          backgroundColor: colors.bg,
+          paddingHorizontal: 9,
+          paddingVertical: 5,
+        }}
+      >
+        <Feather name="refresh-cw" size={11} color={colors.fg} />
+        <Text
+          style={{
+            color: colors.fg,
+            fontSize: 11,
+            fontFamily: "Inter_700Bold",
+          }}
+        >
+          {freshness}
+        </Text>
+      </View>
+    </Card>
+  );
+}
 
 function VoiceDebriefCard({
   matchId,
@@ -714,11 +954,23 @@ function heroToneColors(
   tone: "success" | "warning" | "danger" | "muted" | "primary",
   c: ReturnType<typeof useColors>,
 ) {
-  if (tone === "success") return { bg: c.successBg, fg: c.success };
-  if (tone === "warning") return { bg: c.warningBg, fg: c.warning };
-  if (tone === "danger") return { bg: c.destructive + "12", fg: c.destructive };
-  if (tone === "primary") return { bg: c.infoBg, fg: c.info };
-  return { bg: c.muted, fg: c.mutedForeground };
+  if (tone === "success") {
+    return { bg: c.successBg, fg: c.success, border: c.success + "55" };
+  }
+  if (tone === "warning") {
+    return { bg: c.warningBg, fg: c.warning, border: c.warning + "55" };
+  }
+  if (tone === "danger") {
+    return {
+      bg: c.destructive + "12",
+      fg: c.destructive,
+      border: c.destructive + "55",
+    };
+  }
+  if (tone === "primary") {
+    return { bg: c.infoBg, fg: c.info, border: c.info + "55" };
+  }
+  return { bg: c.muted, fg: c.mutedForeground, border: c.border };
 }
 
 function NextStepCard({ match }: { match: MatchDetail }) {
