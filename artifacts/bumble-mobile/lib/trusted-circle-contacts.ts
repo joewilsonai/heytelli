@@ -1,14 +1,10 @@
+import * as Contacts from "expo-contacts";
 import { Platform } from "react-native";
 
 import {
   sanitizeCircleContact,
   type TrustedCirclePerson,
 } from "./user-settings.ts";
-
-type ContactModule = typeof import("expo-contacts");
-type MetroRequire = (moduleName: string) => unknown;
-
-declare const require: MetroRequire;
 
 function getPhoneNumber(details: any): string | null {
   const phones = details?.phones ?? details?.phoneNumbers ?? [];
@@ -31,16 +27,6 @@ export async function pickTrustedCircleContact(options: {
   | { status: "cancelled" }
   | { status: "unavailable"; message: string }
 > {
-  let Contacts: ContactModule;
-  try {
-    Contacts = require("expo-contacts") as ContactModule;
-  } catch {
-    return {
-      status: "unavailable",
-      message: "Contacts support needs a new HeyTelli dev build.",
-    };
-  }
-
   try {
     if (Platform.OS === "android") {
       return {

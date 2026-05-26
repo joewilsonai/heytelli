@@ -24,10 +24,11 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /draftDirty/);
 });
 
-test("trusted circle contact picker uses guarded metro require", () => {
+test("trusted circle contact picker statically imports expo contacts", () => {
   const contacts = read("./trusted-circle-contacts.ts");
 
-  assert.match(contacts, /require\("expo-contacts"\)/);
+  assert.match(contacts, /import \* as Contacts from "expo-contacts"/);
+  assert.doesNotMatch(contacts, /require\("expo-contacts"\)/);
   assert.doesNotMatch(contacts, /await import\("expo-contacts"\)/);
 });
 
