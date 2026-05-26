@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CircleCheckStatus } from './circleCheckStatus';
+import type { CoverModeTheme } from './coverModeTheme';
+import type { DateModeStatus } from './dateModeStatus';
 
 export interface DateSafetyPlanListStatus {
   hasPlan: boolean;
@@ -20,6 +22,13 @@ export interface DateSafetyPlanListStatus {
   circleCheckStatus: CircleCheckStatus | null;
   /** @nullable */
   lastCircleCheckAt: Date | null;
+  coverModeEnabled: boolean;
+  coverModeTheme: CoverModeTheme | null;
+  dateModeStatus: DateModeStatus | null;
+  /** @nullable */
+  dateModeStartedAt: Date | null;
+  /** @nullable */
+  dateModeClosedAt: Date | null;
   /** @nullable */
   updatedAt: Date | null;
 }

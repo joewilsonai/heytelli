@@ -50,6 +50,7 @@ import { suggestTags } from "../lib/tagSuggestions";
 import { buildDateSchedulePatchPlan } from "../lib/dateScheduling";
 import {
   buildDateSafetyPlanPatchPlan,
+  normalizePersistedDateSafetyPlan,
   summarizeDateSafetyPlanForList,
 } from "../lib/dateSafetyPlan";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -199,12 +200,17 @@ async function purgeAnalyzedRawImages(input: {
 }
 
 function withNormalizedProfile<
-  T extends { extractedProfile: unknown; dateHistory?: unknown },
+  T extends {
+    extractedProfile: unknown;
+    dateHistory?: unknown;
+    dateSafetyPlan?: unknown;
+  },
 >(m: T) {
   return {
     ...m,
     extractedProfile: normalizeExtractedProfile(m.extractedProfile),
     dateHistory: normalizeDateHistory(m.dateHistory),
+    dateSafetyPlan: normalizePersistedDateSafetyPlan(m.dateSafetyPlan),
   };
 }
 

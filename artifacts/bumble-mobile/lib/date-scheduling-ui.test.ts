@@ -37,11 +37,27 @@ test("match screen walks through safe date planning after a date is entered", ()
   assert.match(matchScreen, /buildSoftExitMessage\(shareTarget, "pickup"\)/);
   assert.match(matchScreen, /buildSoftExitMessage\(shareTarget, "text"\)/);
   assert.equal(
-    [...matchScreen.matchAll(/disabled=\{shareStatus\.state !== "ready"\}/g)]
-      .length >= 4,
+    [...matchScreen.matchAll(/disabled=\{circleActionDisabled/g)].length >= 4,
     true,
   );
   assert.match(matchScreen, /scheduleDateSafetyReminders/);
+});
+
+test("match screen exposes per-date date mode and clock cover controls", () => {
+  assert.match(matchScreen, /Start Date Mode/);
+  assert.match(matchScreen, /Date Mode/);
+  assert.match(matchScreen, /Cover Mode/);
+  assert.match(matchScreen, /Clock screen/);
+  assert.match(matchScreen, /activeDateMode/);
+  assert.match(matchScreen, /!isPast\(data\.nextDateAt\) \|\| activeDateMode/);
+  assert.match(matchScreen, /coverModeEnabled/);
+  assert.match(matchScreen, /coverModeTheme/);
+  assert.match(matchScreen, /dateModeStatus/);
+  assert.match(matchScreen, /dateModeStartedAt/);
+  assert.match(matchScreen, /dateSafetyPlan: null/);
+  assert.match(matchScreen, /circleActionDisabled/);
+  assert.doesNotMatch(matchScreen, /Hold the clock to reveal controls/);
+  assert.match(matchScreen, /Hide as clock/);
 });
 
 test("match screen includes the dating pattern glossary near the radar", () => {

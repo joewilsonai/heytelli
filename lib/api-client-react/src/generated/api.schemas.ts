@@ -143,6 +143,29 @@ export const CircleCheckStatus = {
   completed: 'completed',
 } as const;
 
+export type CoverModeTheme = typeof CoverModeTheme[keyof typeof CoverModeTheme];
+
+
+export const CoverModeTheme = {
+  clock: 'clock',
+  notes: 'notes',
+  breathing: 'breathing',
+} as const;
+
+export type DateModeStatus = typeof DateModeStatus[keyof typeof DateModeStatus];
+
+
+export const DateModeStatus = {
+  planning: 'planning',
+  date_card_sent: 'date_card_sent',
+  on_date: 'on_date',
+  check_in_due: 'check_in_due',
+  safe: 'safe',
+  needs_exit: 'needs_exit',
+  home_safe: 'home_safe',
+  missed_check_in: 'missed_check_in',
+} as const;
+
 export interface DateSafetyPlan {
   /**
      * First name or label of the trusted person/circle. Phone numbers are not stored.
@@ -174,6 +197,13 @@ export interface DateSafetyPlan {
   circleCheckStatus: CircleCheckStatus | null;
   /** @nullable */
   lastCircleCheckAt: string | null;
+  coverModeEnabled: boolean;
+  coverModeTheme: CoverModeTheme | null;
+  dateModeStatus: DateModeStatus | null;
+  /** @nullable */
+  dateModeStartedAt: string | null;
+  /** @nullable */
+  dateModeClosedAt: string | null;
   updatedAt: string;
 }
 
@@ -208,6 +238,13 @@ export interface DateSafetyPlanInput {
   circleCheckStatus: CircleCheckStatus | null;
   /** @nullable */
   lastCircleCheckAt: string | null;
+  coverModeEnabled?: boolean;
+  coverModeTheme?: CoverModeTheme | null;
+  dateModeStatus?: DateModeStatus | null;
+  /** @nullable */
+  dateModeStartedAt?: string | null;
+  /** @nullable */
+  dateModeClosedAt?: string | null;
 }
 
 export interface DateSafetyPlanListStatus {
@@ -223,6 +260,13 @@ export interface DateSafetyPlanListStatus {
   circleCheckStatus: CircleCheckStatus | null;
   /** @nullable */
   lastCircleCheckAt: string | null;
+  coverModeEnabled: boolean;
+  coverModeTheme: CoverModeTheme | null;
+  dateModeStatus: DateModeStatus | null;
+  /** @nullable */
+  dateModeStartedAt: string | null;
+  /** @nullable */
+  dateModeClosedAt: string | null;
   /** @nullable */
   updatedAt: string | null;
 }

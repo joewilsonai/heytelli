@@ -1,5 +1,6 @@
 import {
   getDateSafetyPlanStatus,
+  type DateModeStatus,
   type DateSafetyPlan,
   type DateSafetyPlanListStatus,
 } from "./date-safety-plan.ts";
@@ -60,7 +61,8 @@ export type HomePrimaryActionKind =
   | "review_pattern"
   | "review_reply"
   | "wait"
-  | "decide_next_move";
+  | "decide_next_move"
+  | "open_date_mode";
 
 export type HomeDashboardSection =
   | "date"
@@ -120,6 +122,13 @@ export type HomeTrendSnapshot = {
 };
 
 const STALE_MS = 48 * 60 * 60 * 1000;
+const ACTIVE_DATE_MODE_STATUSES = new Set<DateModeStatus>([
+  "on_date",
+  "check_in_due",
+  "safe",
+  "needs_exit",
+  "missed_check_in",
+]);
 
 export function getFirstName(name: string): string {
   const trimmed = name.trim();
@@ -136,6 +145,33 @@ function parseTime(value: string | null | undefined): number | null {
 function hasFutureDate(match: HomeMatchCardMatch, now: Date): boolean {
   const time = parseTime(match.nextDateAt);
   return time != null && time > now.getTime();
+}
+
+function getDateModeStatus(match: HomeMatchCardMatch): DateModeStatus | null {
+  return (
+    match.dateSafetyPlan?.dateModeStatus ??
+    match.dateSafetyPlanStatus?.dateModeStatus ??
+    null
+  );
+}
+
+function isDateModeClosed(match: HomeMatchCardMatch): boolean {
+  return Boolean(
+    firstNonEmpty(
+      match.dateSafetyPlan?.dateModeClosedAt,
+      match.dateSafetyPlanStatus?.dateModeClosedAt,
+    ),
+  );
+}
+
+function hasActiveDateMode(match: HomeMatchCardMatch): boolean {
+  const status = getDateModeStatus(match);
+  return (
+    match.status === "active" &&
+    status != null &&
+    ACTIVE_DATE_MODE_STATUSES.has(status) &&
+    !isDateModeClosed(match)
+  );
 }
 
 function isSameLocalDay(time: number, now: Date): boolean {
@@ -180,6 +216,8 @@ function getStatus(
 ): HomeMatchCardModel["status"] {
   if (match.status === "archived") return { label: "Archived", tone: "muted" };
   if (match.status === "ghosted") return { label: "Quiet", tone: "muted" };
+  if (hasActiveDateMode(match))
+    return { label: "On date now", tone: "primary" };
   if (hasFutureDate(match, now))
     return { label: "Date planned", tone: "primary" };
   if (isStale(match, now)) return { label: "Needs reply", tone: "warning" };
@@ -199,6 +237,7 @@ function getSignal(
   const concerns = savedConcernCount(match);
 
   if (match.status !== "active") return { label: "Stale", tone: "muted" };
+  if (hasActiveDateMode(match)) return { label: "Date Mode", tone: "primary" };
   if ((match.redFlagSummary?.highSeverityCount ?? 0) > 0) {
     return { label: "Saved pattern", tone: "danger" };
   }
@@ -232,6 +271,7 @@ function getSignal(
 function getNextAction(match: HomeMatchCardMatch, now: Date): string {
   if (match.status === "archived") return "Revisit only if something changed";
   if (match.status === "ghosted") return "Let it fade";
+  if (hasActiveDateMode(match)) return "Open Date Mode";
   if (
     pendingContextCount(match) > 0 ||
     match.analysisFreshness === "needs-analysis"
@@ -257,6 +297,13 @@ function getPrimaryAction(
 ): HomeMatchCardModel["primaryAction"] {
   if (match.status !== "active") {
     return { kind: "wait", label: "Keep archived", tone: "muted" };
+  }
+  if (hasActiveDateMode(match)) {
+    return {
+      kind: "open_date_mode",
+      label: "Open Date Mode",
+      tone: "primary",
+    };
   }
   if (
     pendingContextCount(match) > 0 ||
@@ -308,6 +355,13 @@ function getDashboardSection(
   match: HomeMatchCardMatch,
   now: Date,
 ): HomeMatchCardModel["section"] {
+  if (hasActiveDateMode(match)) {
+    return {
+      key: "date",
+      label: "Date Mode",
+      tone: "primary",
+    };
+  }
   if (hasFutureDate(match, now)) {
     return {
       key: "date",
@@ -411,6 +465,7 @@ function getContextChips(match: HomeMatchCardMatch, now: Date): string[] {
   const chips: string[] = [];
   const count = match.screenshotCount;
 
+  if (hasActiveDateMode(match)) chips.push("Date Mode");
   if (typeof count === "number" && count > 0) {
     chips.push(`${count} screenshot${count === 1 ? "" : "s"}`);
   }
@@ -434,6 +489,7 @@ function getContextChips(match: HomeMatchCardMatch, now: Date): string[] {
 }
 
 function getAttentionRank(match: HomeMatchCardMatch, now: Date): number {
+  if (hasActiveDateMode(match)) return 110;
   if (pendingContextCount(match) > 0 || match.analysisFreshness !== "current")
     return 100;
   if ((match.redFlagSummary?.highSeverityCount ?? 0) > 0) return 95;
@@ -481,6 +537,11 @@ function briefBodyForAction(
       return {
         title: "Circle is ready",
         body: `${model.name}'s Date Card is ready to share with your circle.`,
+      };
+    case "open_date_mode":
+      return {
+        title: "Date Mode is active",
+        body: `${model.name} is in Date Mode. Open the live safety controls when needed.`,
       };
     case "review_pattern":
       return {

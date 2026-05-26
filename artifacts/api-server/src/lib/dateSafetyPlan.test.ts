@@ -25,6 +25,11 @@ test("normalizes date safety plans without storing contact phone numbers", async
       },
       circleCheckStatus: "needs_help",
       lastCircleCheckAt: "2026-06-01T03:00:00.000Z",
+      coverModeEnabled: true,
+      coverModeTheme: "notes",
+      dateModeStatus: "on_date",
+      dateModeStartedAt: "2026-06-01T02:15:00.000Z",
+      dateModeClosedAt: "not-a-date",
     },
     new Date("2026-05-26T16:00:00.000Z"),
   );
@@ -47,6 +52,11 @@ test("normalizes date safety plans without storing contact phone numbers", async
     },
     circleCheckStatus: "needs_help",
     lastCircleCheckAt: "2026-06-01T03:00:00.000Z",
+    coverModeEnabled: true,
+    coverModeTheme: "notes",
+    dateModeStatus: "on_date",
+    dateModeStartedAt: "2026-06-01T02:15:00.000Z",
+    dateModeClosedAt: null,
     updatedAt: "2026-05-26T16:00:00.000Z",
   });
   assert.equal("trustedCirclePhone" in (plan ?? {}), false);
@@ -74,6 +84,11 @@ test("builds a date safety plan timeline event only when the plan changes", asyn
     },
     circleCheckStatus: "planned",
     lastCircleCheckAt: null,
+    coverModeEnabled: false,
+    coverModeTheme: null,
+    dateModeStatus: "planning",
+    dateModeStartedAt: null,
+    dateModeClosedAt: null,
     updatedAt: "2026-05-26T16:00:00.000Z",
   };
 
@@ -94,6 +109,10 @@ test("builds a date safety plan timeline event only when the plan changes", asyn
       ...existingPlan,
       trustedCircleName: "Riley",
       expectedEndAt: "2026-06-01T05:00:00.000Z",
+      coverModeEnabled: true,
+      coverModeTheme: "breathing",
+      dateModeStatus: "on_date",
+      dateModeStartedAt: "2026-06-01T02:30:00.000Z",
     },
     observedAt: new Date("2026-05-26T18:00:00.000Z"),
   });
@@ -111,6 +130,11 @@ test("builds a date safety plan timeline event only when the plan changes", asyn
     shareLiveLocation: false,
     safeDateChecklistReady: true,
     circleCheckStatus: "planned",
+    coverModeEnabled: true,
+    coverModeTheme: "breathing",
+    dateModeStatus: "on_date",
+    dateModeStartedAt: "2026-06-01T02:30:00.000Z",
+    dateModeClosedAt: null,
   });
 });
 
@@ -135,6 +159,11 @@ test("summarizes date safety plans for list responses without leaking secrets", 
     },
     circleCheckStatus: "safe",
     lastCircleCheckAt: "2026-06-01T02:45:00.000Z",
+    coverModeEnabled: true,
+    coverModeTheme: "clock",
+    dateModeStatus: "safe",
+    dateModeStartedAt: "2026-06-01T02:30:00.000Z",
+    dateModeClosedAt: "2026-06-01T04:30:00.000Z",
     updatedAt: "2026-05-26T16:00:00.000Z",
   });
 
@@ -150,7 +179,197 @@ test("summarizes date safety plans for list responses without leaking secrets", 
     safeDateChecklistReady: true,
     circleCheckStatus: "safe",
     lastCircleCheckAt: "2026-06-01T02:45:00.000Z",
+    coverModeEnabled: true,
+    coverModeTheme: "clock",
+    dateModeStatus: "safe",
+    dateModeStartedAt: "2026-06-01T02:30:00.000Z",
+    dateModeClosedAt: "2026-06-01T04:30:00.000Z",
     updatedAt: "2026-05-26T16:00:00.000Z",
   });
   assert.doesNotMatch(JSON.stringify(status), /pineapple|Ask staff|Maya/);
+});
+
+test("cleans invalid cover and date mode values while preserving enabled cover mode", async () => {
+  const {
+    normalizeDateSafetyPlan,
+    normalizePersistedDateSafetyPlan,
+    summarizeDateSafetyPlanForList,
+  } = await import("./dateSafetyPlan");
+
+  const plan = normalizeDateSafetyPlan(
+    {
+      coverModeEnabled: true,
+      coverModeTheme: "dashboard",
+      dateModeStatus: "lost",
+      dateModeStartedAt: "not-a-date",
+      dateModeClosedAt: "also-not-a-date",
+      trustedCircleEmail: "maya@example.com",
+    },
+    new Date("2026-05-26T16:00:00.000Z"),
+  );
+
+  assert.equal("trustedCircleEmail" in (plan ?? {}), false);
+  assert.deepEqual(plan, {
+    trustedCircleName: null,
+    transportPlan: null,
+    checkInAt: null,
+    expectedEndAt: null,
+    codeWord: null,
+    circleNote: null,
+    shareLiveLocation: false,
+    safeDateChecklist: {
+      publicPlace: false,
+      ownTransport: false,
+      circleHasPlan: false,
+      profileReviewed: false,
+      noPrivateLocationPressure: false,
+      noMoneyOrPhotoPressure: false,
+    },
+    circleCheckStatus: null,
+    lastCircleCheckAt: null,
+    coverModeEnabled: true,
+    coverModeTheme: null,
+    dateModeStatus: null,
+    dateModeStartedAt: null,
+    dateModeClosedAt: null,
+    updatedAt: "2026-05-26T16:00:00.000Z",
+  });
+
+  assert.deepEqual(summarizeDateSafetyPlanForList(plan), {
+    hasPlan: true,
+    hasTrustedCircle: false,
+    hasTransportPlan: false,
+    hasCheckIn: false,
+    hasExpectedEnd: false,
+    hasCodeWord: false,
+    hasCircleNote: false,
+    shareLiveLocation: false,
+    safeDateChecklistReady: false,
+    circleCheckStatus: null,
+    lastCircleCheckAt: null,
+    coverModeEnabled: true,
+    coverModeTheme: null,
+    dateModeStatus: null,
+    dateModeStartedAt: null,
+    dateModeClosedAt: null,
+    updatedAt: "2026-05-26T16:00:00.000Z",
+  });
+
+  assert.deepEqual(
+    normalizePersistedDateSafetyPlan({
+      trustedCircleName: "Maya",
+      transportPlan: "rideshare",
+      checkInAt: "2026-06-01T02:30:00.000Z",
+      expectedEndAt: "2026-06-01T05:00:00.000Z",
+      codeWord: "pineapple",
+      circleNote: null,
+      shareLiveLocation: false,
+      safeDateChecklist: {
+        publicPlace: true,
+        ownTransport: true,
+        circleHasPlan: true,
+        profileReviewed: true,
+        noPrivateLocationPressure: true,
+        noMoneyOrPhotoPressure: true,
+      },
+      circleCheckStatus: "planned",
+      lastCircleCheckAt: null,
+      updatedAt: "2026-05-26T15:00:00.000Z",
+    }),
+    {
+      trustedCircleName: "Maya",
+      transportPlan: "rideshare",
+      checkInAt: "2026-06-01T02:30:00.000Z",
+      expectedEndAt: "2026-06-01T05:00:00.000Z",
+      codeWord: "pineapple",
+      circleNote: null,
+      shareLiveLocation: false,
+      safeDateChecklist: {
+        publicPlace: true,
+        ownTransport: true,
+        circleHasPlan: true,
+        profileReviewed: true,
+        noPrivateLocationPressure: true,
+        noMoneyOrPhotoPressure: true,
+      },
+      circleCheckStatus: "planned",
+      lastCircleCheckAt: null,
+      coverModeEnabled: false,
+      coverModeTheme: null,
+      dateModeStatus: null,
+      dateModeStartedAt: null,
+      dateModeClosedAt: null,
+      updatedAt: "2026-05-26T15:00:00.000Z",
+    },
+  );
+});
+
+test("generated update contract preserves cover and date mode fields", async () => {
+  const { UpdateMatchBody } = await import("@workspace/api-zod");
+
+  const parsed = UpdateMatchBody.parse({
+    dateSafetyPlan: {
+      trustedCircleName: null,
+      transportPlan: null,
+      checkInAt: null,
+      expectedEndAt: null,
+      codeWord: null,
+      circleNote: null,
+      shareLiveLocation: false,
+      safeDateChecklist: {
+        publicPlace: false,
+        ownTransport: false,
+        circleHasPlan: false,
+        profileReviewed: false,
+        noPrivateLocationPressure: false,
+        noMoneyOrPhotoPressure: false,
+      },
+      circleCheckStatus: null,
+      lastCircleCheckAt: null,
+      coverModeEnabled: true,
+      coverModeTheme: "notes",
+      dateModeStatus: "check_in_due",
+      dateModeStartedAt: "2026-06-01T02:30:00.000Z",
+      dateModeClosedAt: null,
+    },
+  });
+
+  const dateSafetyPlan = parsed.dateSafetyPlan as Record<string, unknown>;
+  assert.equal(dateSafetyPlan.coverModeEnabled, true);
+  assert.equal(dateSafetyPlan.coverModeTheme, "notes");
+  assert.equal(dateSafetyPlan.dateModeStatus, "check_in_due");
+  assert.equal(
+    (dateSafetyPlan.dateModeStartedAt as Date).toISOString(),
+    "2026-06-01T02:30:00.000Z",
+  );
+  assert.equal(dateSafetyPlan.dateModeClosedAt, null);
+});
+
+test("generated update contract accepts legacy date safety plans without cover fields", async () => {
+  const { UpdateMatchBody } = await import("@workspace/api-zod");
+
+  const parsed = UpdateMatchBody.parse({
+    dateSafetyPlan: {
+      trustedCircleName: "Maya",
+      transportPlan: "Driving myself",
+      checkInAt: "2026-06-01T02:30:00.000Z",
+      expectedEndAt: "2026-06-01T05:00:00.000Z",
+      codeWord: "pineapple",
+      circleNote: null,
+      shareLiveLocation: false,
+      safeDateChecklist: {
+        publicPlace: true,
+        ownTransport: true,
+        circleHasPlan: true,
+        profileReviewed: true,
+        noPrivateLocationPressure: true,
+        noMoneyOrPhotoPressure: true,
+      },
+      circleCheckStatus: "planned",
+      lastCircleCheckAt: null,
+    },
+  });
+
+  assert.equal(parsed.dateSafetyPlan?.coverModeEnabled, undefined);
+  assert.equal(parsed.dateSafetyPlan?.dateModeStatus, undefined);
 });

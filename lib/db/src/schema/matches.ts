@@ -77,6 +77,18 @@ export type SafeDateChecklist = {
 
 export type CircleCheckStatus = "planned" | "safe" | "needs_help" | "completed";
 
+export type DateModeStatus =
+  | "planning"
+  | "date_card_sent"
+  | "on_date"
+  | "check_in_due"
+  | "safe"
+  | "needs_exit"
+  | "home_safe"
+  | "missed_check_in";
+
+export type CoverModeTheme = "clock" | "notes" | "breathing";
+
 export type DateSafetyPlan = {
   trustedCircleName: string | null;
   transportPlan: string | null;
@@ -88,6 +100,11 @@ export type DateSafetyPlan = {
   safeDateChecklist: SafeDateChecklist;
   circleCheckStatus: CircleCheckStatus | null;
   lastCircleCheckAt: string | null;
+  coverModeEnabled: boolean;
+  coverModeTheme: CoverModeTheme | null;
+  dateModeStatus: DateModeStatus | null;
+  dateModeStartedAt: string | null;
+  dateModeClosedAt: string | null;
   updatedAt: string;
 };
 

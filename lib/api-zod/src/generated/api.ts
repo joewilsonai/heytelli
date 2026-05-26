@@ -100,6 +100,11 @@ export const ListMatchesResponseItem = zod.object({
   "safeDateChecklistReady": zod.boolean(),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date().nullable()
 }),
   "lastRead": zod.union([zod.object({
@@ -300,6 +305,11 @@ export const GetMatchResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -441,7 +451,12 @@ export const UpdateMatchBody = zod.object({
   "noMoneyOrPhotoPressure": zod.boolean()
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
-  "lastCircleCheckAt": zod.coerce.date().nullable()
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean().optional(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]).optional(),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]).optional(),
+  "dateModeStartedAt": zod.coerce.date().nullish(),
+  "dateModeClosedAt": zod.coerce.date().nullish()
 }),zod.null()]).optional(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -531,6 +546,11 @@ export const UpdateMatchResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -718,6 +738,11 @@ export const AddScreenshotResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -874,6 +899,11 @@ export const RescoreMatchResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1152,6 +1182,11 @@ export const ApplyTagSuggestionsResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1458,6 +1493,11 @@ export const InPersonRecordingResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1659,6 +1699,11 @@ export const VoiceDebriefResponse = zod.object({
 }),
   "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
   "lastCircleCheckAt": zod.coerce.date().nullable(),
+  "coverModeEnabled": zod.boolean(),
+  "coverModeTheme": zod.union([zod.enum(['clock', 'notes', 'breathing']),zod.null()]),
+  "dateModeStatus": zod.union([zod.enum(['planning', 'date_card_sent', 'on_date', 'check_in_due', 'safe', 'needs_exit', 'home_safe', 'missed_check_in']),zod.null()]),
+  "dateModeStartedAt": zod.coerce.date().nullable(),
+  "dateModeClosedAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({

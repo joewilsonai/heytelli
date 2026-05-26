@@ -7,6 +7,8 @@ import {
   buildDateCardMessage,
   buildSoftExitMessage,
   getDateSafetyChecklistProgress,
+  getCoverModeLabel,
+  getDateModeStatusLabel,
   getDateSafetyPlanStatus,
   type DateSafetyPlanMatch,
 } from "./date-safety-plan.ts";
@@ -203,6 +205,33 @@ test("builds a privacy-first date card message from allowed fields only", () => 
   assert.doesNotMatch(message, /objectPath/);
   assert.doesNotMatch(message, /private-chat/);
   assert.match(message, /No images included/);
+});
+
+test("labels date mode and cover mode without leaking them into Date Card text", () => {
+  const message = buildDateCardMessage({
+    ...baseMatch,
+    photoObjectPath: "profiles/maya-rose.png",
+    dateSafetyPlan: {
+      ...baseMatch.dateSafetyPlan!,
+      coverModeEnabled: true,
+      coverModeTheme: "clock",
+      dateModeStatus: "on_date",
+      dateModeStartedAt: "2026-06-01T00:45:00.000Z",
+      dateModeClosedAt: null,
+    },
+  });
+
+  assert.equal(getDateModeStatusLabel("on_date"), "On date");
+  assert.equal(getDateModeStatusLabel("missed_check_in"), "Missed check-in");
+  assert.equal(getCoverModeLabel("clock"), "Clock screen");
+  assert.equal(getCoverModeLabel("breathing"), "Breathing screen");
+  assert.doesNotMatch(message, /Date Mode/i);
+  assert.doesNotMatch(message, /Cover Mode/i);
+  assert.doesNotMatch(message, /Clock screen/i);
+  assert.doesNotMatch(message, /coverMode/i);
+  assert.doesNotMatch(message, /dateMode/i);
+  assert.doesNotMatch(message, /profiles\/maya-rose/);
+  assert.doesNotMatch(message, /Rose/);
 });
 
 test("date card supports three circle contacts by first name", () => {

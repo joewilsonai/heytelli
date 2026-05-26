@@ -29,6 +29,8 @@ export function getMatchDetailHeroModel(
       "Finish the Date Card before you meet: place, time, transport, check-in, and circle note.",
     share_date_card:
       "Your plan is ready. Share it with your circle, then use check-ins during the date.",
+    open_date_mode:
+      "Date Mode is active. Keep check-ins close, use your cover if you need privacy, and close the loop when you are home safe.",
     review_pattern:
       "A saved pattern needs your eyes. Review the evidence, then decide what feels right.",
     review_reply:

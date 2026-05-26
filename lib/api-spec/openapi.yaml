@@ -885,6 +885,11 @@ components:
           safeDateChecklist,
           circleCheckStatus,
           lastCircleCheckAt,
+          coverModeEnabled,
+          coverModeTheme,
+          dateModeStatus,
+          dateModeStartedAt,
+          dateModeClosedAt,
           updatedAt,
         ]
       properties:
@@ -916,6 +921,22 @@ components:
             - $ref: "#/components/schemas/CircleCheckStatus"
             - type: "null"
         lastCircleCheckAt:
+          type: ["string", "null"]
+          format: date-time
+        coverModeEnabled:
+          type: boolean
+        coverModeTheme:
+          oneOf:
+            - $ref: "#/components/schemas/CoverModeTheme"
+            - type: "null"
+        dateModeStatus:
+          oneOf:
+            - $ref: "#/components/schemas/DateModeStatus"
+            - type: "null"
+        dateModeStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        dateModeClosedAt:
           type: ["string", "null"]
           format: date-time
         updatedAt:
@@ -967,6 +988,22 @@ components:
         lastCircleCheckAt:
           type: ["string", "null"]
           format: date-time
+        coverModeEnabled:
+          type: boolean
+        coverModeTheme:
+          oneOf:
+            - $ref: "#/components/schemas/CoverModeTheme"
+            - type: "null"
+        dateModeStatus:
+          oneOf:
+            - $ref: "#/components/schemas/DateModeStatus"
+            - type: "null"
+        dateModeStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        dateModeClosedAt:
+          type: ["string", "null"]
+          format: date-time
     SafeDateChecklist:
       type: object
       required:
@@ -988,6 +1025,22 @@ components:
     CircleCheckStatus:
       type: string
       enum: [planned, safe, needs_help, completed]
+    DateModeStatus:
+      type: string
+      enum:
+        [
+          planning,
+          date_card_sent,
+          on_date,
+          check_in_due,
+          safe,
+          needs_exit,
+          home_safe,
+          missed_check_in,
+        ]
+    CoverModeTheme:
+      type: string
+      enum: [clock, notes, breathing]
     DateSafetyPlanListStatus:
       type: object
       required:
@@ -1003,6 +1056,11 @@ components:
           safeDateChecklistReady,
           circleCheckStatus,
           lastCircleCheckAt,
+          coverModeEnabled,
+          coverModeTheme,
+          dateModeStatus,
+          dateModeStartedAt,
+          dateModeClosedAt,
           updatedAt,
         ]
       properties:
@@ -1020,6 +1078,17 @@ components:
             - $ref: "#/components/schemas/CircleCheckStatus"
             - type: "null"
         lastCircleCheckAt: { type: ["string", "null"], format: date-time }
+        coverModeEnabled: { type: boolean }
+        coverModeTheme:
+          oneOf:
+            - $ref: "#/components/schemas/CoverModeTheme"
+            - type: "null"
+        dateModeStatus:
+          oneOf:
+            - $ref: "#/components/schemas/DateModeStatus"
+            - type: "null"
+        dateModeStartedAt: { type: ["string", "null"], format: date-time }
+        dateModeClosedAt: { type: ["string", "null"], format: date-time }
         updatedAt: { type: ["string", "null"], format: date-time }
     MatchStatus:
       type: string

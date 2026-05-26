@@ -137,6 +137,44 @@ test("surfaces circle-ready date cards on the dashboard", () => {
   assert.ok(model.contextChips.includes("Circle ready"));
 });
 
+test("surfaces active Date Mode before ordinary Date Card readiness", () => {
+  const model = getHomeMatchCardModel(
+    {
+      ...baseMatch,
+      nextDateAt: "2026-05-24T20:00:00.000Z",
+      nextDateLocation: "Paper Plane",
+      dateSafetyPlanStatus: {
+        hasPlan: true,
+        hasTrustedCircle: true,
+        hasTransportPlan: true,
+        hasCheckIn: true,
+        hasExpectedEnd: true,
+        hasCodeWord: true,
+        hasCircleNote: false,
+        shareLiveLocation: false,
+        safeDateChecklistReady: true,
+        circleCheckStatus: "planned",
+        lastCircleCheckAt: null,
+        coverModeEnabled: true,
+        coverModeTheme: "clock",
+        dateModeStatus: "on_date",
+        dateModeStartedAt: "2026-05-24T19:45:00.000Z",
+        dateModeClosedAt: null,
+        updatedAt: "2026-05-24T19:45:00.000Z",
+      },
+    },
+    new Date("2026-05-23T13:00:00.000Z"),
+  );
+
+  assert.equal(model.status.label, "On date now");
+  assert.equal(model.signal.label, "Date Mode");
+  assert.equal(model.nextAction, "Open Date Mode");
+  assert.equal(model.primaryAction.kind, "open_date_mode");
+  assert.equal(model.primaryAction.label, "Open Date Mode");
+  assert.equal(model.section.key, "date");
+  assert.ok(model.contextChips.includes("Date Mode"));
+});
+
 test("uses connection and momentum scores without exposing old score labels", () => {
   const model = getHomeMatchCardModel({
     ...baseMatch,

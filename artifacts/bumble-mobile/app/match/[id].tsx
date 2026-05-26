@@ -37,6 +37,7 @@ import {
 } from "@workspace/api-client-react";
 import type {
   DateHistoryEntry,
+  DateSafetyPlanInput,
   MatchDetail,
   MatchTimelineEvent,
   MatchStatus,
@@ -77,9 +78,13 @@ import {
   buildSoftExitMessage,
   getDateSafetyChecklistProgress,
   getDateSafetyPlanStatus,
+  getCoverModeLabel,
+  getDateModeStatusLabel,
   SAFE_DATE_CHECKLIST_ITEMS,
   type CircleCheckStatus,
+  type CoverModeTheme,
   type DateSafetyPlan,
+  type DateModeStatus,
   type SafeDateChecklist,
 } from "@/lib/date-safety-plan";
 import {
@@ -99,8 +104,21 @@ export default function MatchDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Number(id);
+  const [dateCoverRevealed, setDateCoverRevealed] = useState(false);
   const { data, isLoading, refetch, isRefetching, error } =
     useGetMatch(matchId);
+  const activeDateMode = Boolean(
+    data?.dateSafetyPlan &&
+    isDateModeActive(data.dateSafetyPlan.dateModeStatus) &&
+    !data.dateSafetyPlan.dateModeClosedAt,
+  );
+  const dateCoverActive = Boolean(
+    data?.dateSafetyPlan?.coverModeEnabled && activeDateMode,
+  );
+
+  useEffect(() => {
+    if (!dateCoverActive) setDateCoverRevealed(false);
+  }, [dateCoverActive]);
 
   if (isLoading) {
     return (
@@ -137,6 +155,15 @@ export default function MatchDetailScreen() {
           action={{ label: "Go back", onPress: () => router.back() }}
         />
       </View>
+    );
+  }
+
+  if (dateCoverActive && !dateCoverRevealed) {
+    return (
+      <DateModeCoverScreen
+        match={data}
+        onReveal={() => setDateCoverRevealed(true)}
+      />
     );
   }
 
@@ -228,13 +255,17 @@ export default function MatchDetailScreen() {
           title="Date"
           body="Plan the date, brief yourself before you go, and keep your circle in the loop."
         />
-        {isPast(data.nextDateAt) && data.nextDateAt && (
+        {isPast(data.nextDateAt) && data.nextDateAt && !activeDateMode && (
           <PostDateDebriefCard match={data} onChange={() => refetch()} />
         )}
-        {data.nextDateAt && !isPast(data.nextDateAt) && (
+        {data.nextDateAt && (!isPast(data.nextDateAt) || activeDateMode) && (
           <>
             <NextDateCard match={data} onChange={() => refetch()} />
-            <DateSafetyPlanCard match={data} onChange={() => refetch()} />
+            <DateSafetyPlanCard
+              match={data}
+              onChange={() => refetch()}
+              onHideCover={() => setDateCoverRevealed(false)}
+            />
             <BetaFeedbackCard
               matchId={data.id}
               surface="date-card"
@@ -1658,6 +1689,7 @@ function ScheduleDateCard({
         nextDateAt: parsed.toISOString(),
         nextDateLocation: location,
         nextDateOutfit: outfit.trim() || null,
+        dateSafetyPlan: null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
@@ -1882,12 +1914,222 @@ function initialSafeDateChecklist(
   };
 }
 
+const COVER_MODE_OPTIONS: Array<{
+  id: CoverModeTheme;
+  label: string;
+  detail: string;
+  icon: keyof typeof Feather.glyphMap;
+}> = [
+  {
+    id: "clock",
+    label: "Clock screen",
+    detail: "A dim, harmless time view for this date.",
+    icon: "clock",
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    detail: "Looks like a quiet note page.",
+    icon: "file-text",
+  },
+  {
+    id: "breathing",
+    label: "Breathing",
+    detail: "Looks like a simple focus timer.",
+    icon: "circle",
+  },
+];
+
+function isDateModeActive(status: DateModeStatus | null | undefined): boolean {
+  return (
+    status === "on_date" ||
+    status === "check_in_due" ||
+    status === "safe" ||
+    status === "needs_exit" ||
+    status === "missed_check_in"
+  );
+}
+
+function dateModeStatusForCircle(
+  status: CircleCheckStatus,
+): DateModeStatus | null {
+  if (status === "safe") return "safe";
+  if (status === "needs_help") return "needs_exit";
+  if (status === "completed") return "home_safe";
+  return null;
+}
+
+function DateModeCoverScreen({
+  match,
+  onReveal,
+}: {
+  match: MatchDetail;
+  onReveal: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const [now, setNow] = useState(() => new Date());
+  const theme = match.dateSafetyPlan?.coverModeTheme ?? "clock";
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const time = now.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const date = now.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  if (theme === "notes") {
+    return (
+      <View
+        style={{
+          flex: 1,
+          paddingTop: insets.top + 28,
+          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: 22,
+          backgroundColor: "#fbfaf6",
+          gap: 24,
+        }}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <Pressable onLongPress={onReveal} delayLongPress={550}>
+          <Text
+            style={{
+              color: "#1f2933",
+              fontSize: 34,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            Notes
+          </Text>
+        </Pressable>
+        <View style={{ gap: 18, marginTop: 20 }}>
+          {[0, 1, 2, 3, 4].map((line) => (
+            <View
+              key={line}
+              style={{
+                height: 1,
+                backgroundColor: "#d8d2c4",
+                opacity: line === 4 ? 0.45 : 1,
+              }}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (theme === "breathing") {
+    return (
+      <View
+        style={{
+          flex: 1,
+          paddingTop: insets.top + 30,
+          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: 22,
+          backgroundColor: "#101820",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 22,
+        }}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <Pressable
+          onLongPress={onReveal}
+          delayLongPress={550}
+          style={{
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.34)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: "#f7fafc",
+              fontSize: 24,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            Breathe
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingTop: insets.top + 34,
+        paddingBottom: insets.bottom + 24,
+        paddingHorizontal: 22,
+        backgroundColor: "#050608",
+        alignItems: "center",
+      }}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      <Pressable
+        onLongPress={onReveal}
+        delayLongPress={550}
+        style={{
+          marginTop: 72,
+          alignItems: "center",
+          gap: 8,
+          width: "100%",
+        }}
+      >
+        <Text
+          style={{
+            color: "#f7fafc",
+            fontSize: 72,
+            fontFamily: "Inter_700Bold",
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {time}
+        </Text>
+        <Text
+          style={{
+            color: "rgba(255,255,255,0.74)",
+            fontSize: 18,
+            fontFamily: "Inter_500Medium",
+          }}
+        >
+          {date}
+        </Text>
+      </Pressable>
+      <View
+        style={{
+          marginTop: "auto",
+          width: 76,
+          height: 5,
+          borderRadius: 99,
+          backgroundColor: "rgba(255,255,255,0.32)",
+        }}
+      />
+    </View>
+  );
+}
+
 function DateSafetyPlanCard({
   match,
   onChange,
+  onHideCover,
 }: {
   match: MatchDetail;
   onChange: () => void;
+  onHideCover: () => void;
 }) {
   const c = useColors();
   const { settings } = useUserSettings();
@@ -1919,6 +2161,21 @@ function DateSafetyPlanCard({
   const [shareLiveLocation, setShareLiveLocation] = useState(
     plan?.shareLiveLocation ?? defaultPlan.shareLiveLocation ?? false,
   );
+  const [coverModeEnabled, setCoverModeEnabled] = useState(
+    plan?.coverModeEnabled ?? false,
+  );
+  const [coverModeTheme, setCoverModeTheme] = useState<CoverModeTheme>(
+    plan?.coverModeTheme ?? "clock",
+  );
+  const [dateModeStatus, setDateModeStatus] = useState<DateModeStatus>(
+    plan?.dateModeStatus ?? "planning",
+  );
+  const [dateModeStartedAt, setDateModeStartedAt] = useState<string | null>(
+    plan?.dateModeStartedAt ?? null,
+  );
+  const [dateModeClosedAt, setDateModeClosedAt] = useState<string | null>(
+    plan?.dateModeClosedAt ?? null,
+  );
   const [safeDateChecklist, setSafeDateChecklist] = useState<SafeDateChecklist>(
     () => initialSafeDateChecklist(match, defaultPlan),
   );
@@ -1947,6 +2204,11 @@ function DateSafetyPlanCard({
     setCodeWord(defaultPlan.codeWord ?? "");
     setCircleNote(defaultPlan.circleNote ?? "");
     setShareLiveLocation(defaultPlan.shareLiveLocation ?? false);
+    setCoverModeEnabled(false);
+    setCoverModeTheme("clock");
+    setDateModeStatus("planning");
+    setDateModeStartedAt(null);
+    setDateModeClosedAt(null);
     setSafeDateChecklist(initialSafeDateChecklist(match, defaultPlan));
     setDefaultPlanAppliedKey(defaultPlanKey);
   }, [
@@ -1971,6 +2233,11 @@ function DateSafetyPlanCard({
       safeDateChecklist,
       circleCheckStatus: plan?.circleCheckStatus ?? "planned",
       lastCircleCheckAt: plan?.lastCircleCheckAt ?? null,
+      coverModeEnabled,
+      coverModeTheme,
+      dateModeStatus,
+      dateModeStartedAt,
+      dateModeClosedAt,
     },
   };
   const previewStatus = getDateSafetyPlanStatus(previewMatch);
@@ -1989,7 +2256,10 @@ function DateSafetyPlanCard({
     }
   };
 
-  const currentPlanInput = (nextChecklist = safeDateChecklist) => ({
+  const currentPlanInput = (
+    nextChecklist = safeDateChecklist,
+    overrides: Partial<DateSafetyPlanInput> = {},
+  ): DateSafetyPlanInput => ({
     trustedCircleName: trustedCircleName.trim() || null,
     transportPlan: transportPlan.trim() || null,
     checkInAt: checkInAt.toISOString(),
@@ -2000,6 +2270,12 @@ function DateSafetyPlanCard({
     safeDateChecklist: nextChecklist,
     circleCheckStatus: plan?.circleCheckStatus ?? "planned",
     lastCircleCheckAt: plan?.lastCircleCheckAt ?? null,
+    coverModeEnabled,
+    coverModeTheme,
+    dateModeStatus,
+    dateModeStartedAt,
+    dateModeClosedAt,
+    ...overrides,
   });
 
   const handleShareDateCard = async () => {
@@ -2013,10 +2289,14 @@ function DateSafetyPlanCard({
     const shared = await shareMessage(buildDateCardMessage(shareTarget));
     if (!shared) return;
     const sharedChecklist = { ...safeDateChecklist, circleHasPlan: true };
+    const nextDateModeStatus: DateModeStatus = "date_card_sent";
     setSafeDateChecklist(sharedChecklist);
+    setDateModeStatus(nextDateModeStatus);
     try {
       await updateMatch(match.id, {
-        dateSafetyPlan: currentPlanInput(sharedChecklist),
+        dateSafetyPlan: currentPlanInput(sharedChecklist, {
+          dateModeStatus: nextDateModeStatus,
+        }),
       });
       setPlanDirty(false);
       setOpen(false);
@@ -2102,6 +2382,11 @@ function DateSafetyPlanCard({
       setCodeWord(defaultPlan.codeWord ?? "");
       setCircleNote(defaultPlan.circleNote ?? "");
       setShareLiveLocation(defaultPlan.shareLiveLocation ?? false);
+      setCoverModeEnabled(false);
+      setCoverModeTheme("clock");
+      setDateModeStatus("planning");
+      setDateModeStartedAt(null);
+      setDateModeClosedAt(null);
       setSafeDateChecklist(
         initialSafeDateChecklist(
           { ...match, dateSafetyPlan: null },
@@ -2136,6 +2421,42 @@ function DateSafetyPlanCard({
     }));
   };
 
+  const startDateMode = async () => {
+    if (shareStatus.state !== "ready") {
+      Alert.alert(
+        "Finish the Date Card",
+        `Add ${shareStatus.missing.join(", ")} before starting Date Mode.`,
+      );
+      return;
+    }
+    const startedAt = new Date().toISOString();
+    setCircleChecking(true);
+    try {
+      await updateMatch(match.id, {
+        dateSafetyPlan: currentPlanInput(safeDateChecklist, {
+          dateModeStatus: "on_date",
+          dateModeStartedAt: startedAt,
+          dateModeClosedAt: null,
+          coverModeEnabled,
+          coverModeTheme,
+        }),
+      });
+      setDateModeStatus("on_date");
+      setDateModeStartedAt(startedAt);
+      setDateModeClosedAt(null);
+      setPlanDirty(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      onChange();
+      if (coverModeEnabled) onHideCover();
+    } catch (e: any) {
+      Alert.alert("Couldn't start Date Mode", e?.message ?? "Try again.");
+    } finally {
+      setCircleChecking(false);
+    }
+  };
+
   const updateCircleStatus = async (
     status: CircleCheckStatus,
     message: string,
@@ -2145,20 +2466,20 @@ function DateSafetyPlanCard({
       const shared = await shareMessage(message);
       if (!shared) return;
       const checkedAt = new Date().toISOString();
+      const nextDateModeStatus =
+        dateModeStatusForCircle(status) ?? dateModeStatus;
+      const nextDateModeClosedAt =
+        status === "completed" ? checkedAt : dateModeClosedAt;
       await updateMatch(match.id, {
-        dateSafetyPlan: {
-          trustedCircleName: trustedCircleName.trim() || null,
-          transportPlan: transportPlan.trim() || null,
-          checkInAt: checkInAt.toISOString(),
-          expectedEndAt: expectedEndAt.toISOString(),
-          codeWord: codeWord.trim() || null,
-          circleNote: circleNote.trim() || null,
-          shareLiveLocation,
-          safeDateChecklist,
+        dateSafetyPlan: currentPlanInput(safeDateChecklist, {
           circleCheckStatus: status,
           lastCircleCheckAt: checkedAt,
-        },
+          dateModeStatus: nextDateModeStatus,
+          dateModeClosedAt: nextDateModeClosedAt,
+        }),
       });
+      setDateModeStatus(nextDateModeStatus);
+      setDateModeClosedAt(nextDateModeClosedAt);
       setPlanDirty(false);
       onChange();
     } catch (e: any) {
@@ -2180,6 +2501,12 @@ function DateSafetyPlanCard({
         : plan?.circleCheckStatus === "completed"
           ? "Date closed"
           : "Not shared yet";
+  const dateModeLabel = getDateModeStatusLabel(dateModeStatus);
+  const coverModeLabel = coverModeEnabled
+    ? getCoverModeLabel(coverModeTheme)
+    : "Off";
+  const dateModeActive = isDateModeActive(dateModeStatus);
+  const circleActionDisabled = shareStatus.state !== "ready" || circleChecking;
   const summaryItems = [
     {
       label: "Circle",
@@ -2196,6 +2523,14 @@ function DateSafetyPlanCard({
     {
       label: "Status",
       value: circleStatusLabel,
+    },
+    {
+      label: "Date Mode",
+      value: dateModeLabel,
+    },
+    {
+      label: "Cover",
+      value: coverModeLabel,
     },
   ];
 
@@ -2344,6 +2679,93 @@ function DateSafetyPlanCard({
           variant="ghost"
           style={{ flex: 1 }}
         />
+      </View>
+      <View
+        style={{
+          marginTop: 12,
+          borderWidth: 1,
+          borderColor: dateModeActive ? c.primary : c.border,
+          borderRadius: 12,
+          backgroundColor: dateModeActive ? c.secondary : c.background,
+          padding: 12,
+          gap: 10,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Feather name="shield" size={15} color={c.primary} />
+            <Text
+              style={{
+                color: c.foreground,
+                fontSize: 14,
+                fontFamily: "Inter_700Bold",
+              }}
+            >
+              Date Mode
+            </Text>
+          </View>
+          <Text
+            style={{
+              color: dateModeActive ? c.primary : c.mutedForeground,
+              fontSize: 12,
+              fontFamily: "Inter_700Bold",
+            }}
+          >
+            {dateModeLabel}
+          </Text>
+        </View>
+        <Body muted style={{ fontSize: 12, lineHeight: 17 }}>
+          Start this when you are actually on the date. It keeps the safety
+          actions close and can hide the app behind a harmless cover for this
+          date only.
+        </Body>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button
+            label={dateModeActive ? "Hide as clock" : "Start Date Mode"}
+            icon={dateModeActive ? "clock" : "play-circle"}
+            onPress={dateModeActive ? onHideCover : startDateMode}
+            loading={!dateModeActive && circleChecking}
+            disabled={
+              circleActionDisabled || (dateModeActive && !coverModeEnabled)
+            }
+            variant={dateModeActive ? "secondary" : "primary"}
+            style={{ flex: 1 }}
+            small
+          />
+          <Button
+            label="Home safe"
+            icon="home"
+            onPress={() =>
+              updateCircleStatus(
+                "completed",
+                buildCircleCheckMessage(shareTarget, "completed"),
+              )
+            }
+            disabled={circleActionDisabled || !dateModeActive}
+            variant="ghost"
+            style={{ flex: 1 }}
+            small
+          />
+        </View>
+        <Text
+          style={{
+            color: c.mutedForeground,
+            fontSize: 11,
+            lineHeight: 15,
+          }}
+        >
+          Cover Mode: {coverModeLabel}
+          {coverModeEnabled
+            ? ". Long-press the cover to get back to HeyTelli."
+            : ". Turn it on in the plan editor."}
+        </Text>
       </View>
       {open && (
         <View style={{ gap: 10, marginTop: 12 }}>
@@ -2497,6 +2919,98 @@ function DateSafetyPlanCard({
               }}
               trackColor={{ true: c.primary, false: c.muted }}
             />
+          </View>
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: coverModeEnabled ? c.primary : c.border,
+              borderRadius: 10,
+              padding: 12,
+              gap: 10,
+              backgroundColor: c.background,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text
+                  style={{
+                    color: c.foreground,
+                    fontSize: 14,
+                    fontFamily: "Inter_600SemiBold",
+                  }}
+                >
+                  Cover Mode
+                </Text>
+                <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+                  Pick the harmless screen for this specific date.
+                </Text>
+              </View>
+              <Switch
+                value={coverModeEnabled}
+                onValueChange={(value) => {
+                  setPlanDirty(true);
+                  setCoverModeEnabled(value);
+                  if (value && !coverModeTheme) setCoverModeTheme("clock");
+                }}
+                trackColor={{ true: c.primary, false: c.muted }}
+              />
+            </View>
+            {coverModeEnabled && (
+              <View style={{ gap: 8 }}>
+                {COVER_MODE_OPTIONS.map((option) => {
+                  const selected = coverModeTheme === option.id;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      onPress={() => {
+                        setPlanDirty(true);
+                        setCoverModeTheme(option.id);
+                      }}
+                      style={({ pressed }) => ({
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 9,
+                        borderWidth: 1,
+                        borderColor: selected ? c.primary : c.border,
+                        borderRadius: 10,
+                        padding: 10,
+                        backgroundColor: selected ? c.secondary : c.card,
+                        opacity: pressed ? 0.72 : 1,
+                      })}
+                    >
+                      <Feather
+                        name={option.icon}
+                        size={16}
+                        color={selected ? c.primary : c.mutedForeground}
+                      />
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text
+                          style={{
+                            color: c.foreground,
+                            fontSize: 13,
+                            fontFamily: "Inter_600SemiBold",
+                          }}
+                        >
+                          {option.label}
+                        </Text>
+                        <Text
+                          style={{ color: c.mutedForeground, fontSize: 11 }}
+                        >
+                          {option.detail}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
           <View
             style={{
@@ -2655,7 +3169,7 @@ function DateSafetyPlanCard({
               )
             }
             loading={circleChecking}
-            disabled={shareStatus.state !== "ready"}
+            disabled={circleActionDisabled}
             variant="ghost"
             style={{ flex: 1 }}
             small
@@ -2669,7 +3183,7 @@ function DateSafetyPlanCard({
                 buildSoftExitMessage(shareTarget, "call"),
               )
             }
-            disabled={shareStatus.state !== "ready"}
+            disabled={circleActionDisabled}
             variant="ghost"
             style={{ flex: 1 }}
             small
@@ -2685,7 +3199,7 @@ function DateSafetyPlanCard({
                 buildSoftExitMessage(shareTarget, "pickup"),
               )
             }
-            disabled={shareStatus.state !== "ready"}
+            disabled={circleActionDisabled}
             variant="ghost"
             style={{ flex: 1 }}
             small
@@ -2699,7 +3213,7 @@ function DateSafetyPlanCard({
                 buildSoftExitMessage(shareTarget, "text"),
               )
             }
-            disabled={shareStatus.state !== "ready"}
+            disabled={circleActionDisabled}
             variant="ghost"
             style={{ flex: 1 }}
             small
@@ -2789,6 +3303,7 @@ function NextDateCard({
         nextDateAt: null,
         nextDateLocation: null,
         nextDateOutfit: null,
+        dateSafetyPlan: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
       cancelDateSafetyReminders(match.id).catch(() => {});
@@ -3037,6 +3552,7 @@ function PostDateDebriefCard({
         nextDateAt: null,
         nextDateLocation: null,
         nextDateOutfit: null,
+        dateSafetyPlan: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
       cancelDateSafetyReminders(match.id).catch(() => {});
@@ -3063,6 +3579,7 @@ function PostDateDebriefCard({
         nextDateAt: null,
         nextDateLocation: null,
         nextDateOutfit: null,
+        dateSafetyPlan: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
       cancelDateSafetyReminders(match.id).catch(() => {});

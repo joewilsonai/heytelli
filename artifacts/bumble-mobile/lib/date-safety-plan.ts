@@ -11,6 +11,18 @@ export type SafeDateChecklistKey = keyof SafeDateChecklist;
 
 export type CircleCheckStatus = "planned" | "safe" | "needs_help" | "completed";
 
+export type DateModeStatus =
+  | "planning"
+  | "date_card_sent"
+  | "on_date"
+  | "check_in_due"
+  | "safe"
+  | "needs_exit"
+  | "home_safe"
+  | "missed_check_in";
+
+export type CoverModeTheme = "clock" | "notes" | "breathing";
+
 export type DateSafetyPlan = {
   trustedCircleName?: string | null;
   transportPlan?: string | null;
@@ -22,6 +34,11 @@ export type DateSafetyPlan = {
   safeDateChecklist?: Partial<SafeDateChecklist> | null;
   circleCheckStatus?: CircleCheckStatus | null;
   lastCircleCheckAt?: string | null;
+  coverModeEnabled?: boolean | null;
+  coverModeTheme?: CoverModeTheme | null;
+  dateModeStatus?: DateModeStatus | null;
+  dateModeStartedAt?: string | null;
+  dateModeClosedAt?: string | null;
   updatedAt?: string;
 };
 
@@ -37,6 +54,11 @@ export type DateSafetyPlanListStatus = {
   safeDateChecklistReady?: boolean;
   circleCheckStatus?: CircleCheckStatus | null;
   lastCircleCheckAt?: string | null;
+  coverModeEnabled?: boolean | null;
+  coverModeTheme?: CoverModeTheme | null;
+  dateModeStatus?: DateModeStatus | null;
+  dateModeStartedAt?: string | null;
+  dateModeClosedAt?: string | null;
   updatedAt: string | null;
 };
 
@@ -105,6 +127,35 @@ const EMPTY_CHECKLIST: SafeDateChecklist = {
   noPrivateLocationPressure: false,
   noMoneyOrPhotoPressure: false,
 };
+
+const DATE_MODE_STATUS_LABELS: Record<DateModeStatus, string> = {
+  planning: "Planning",
+  date_card_sent: "Date Card sent",
+  on_date: "On date",
+  check_in_due: "Check-in due",
+  safe: "Safe",
+  needs_exit: "Needs exit",
+  home_safe: "Home safe",
+  missed_check_in: "Missed check-in",
+};
+
+const COVER_MODE_LABELS: Record<CoverModeTheme, string> = {
+  clock: "Clock screen",
+  notes: "Notes screen",
+  breathing: "Breathing screen",
+};
+
+export function getDateModeStatusLabel(
+  status: DateModeStatus | null | undefined,
+): string {
+  return status ? DATE_MODE_STATUS_LABELS[status] : "Date Mode";
+}
+
+export function getCoverModeLabel(
+  theme: CoverModeTheme | null | undefined,
+): string {
+  return theme ? COVER_MODE_LABELS[theme] : "Cover Mode";
+}
 
 function firstName(name: string): string {
   const trimmed = name.trim();

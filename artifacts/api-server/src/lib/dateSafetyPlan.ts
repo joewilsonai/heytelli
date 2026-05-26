@@ -1,6 +1,8 @@
 import type {
   CircleCheckStatus,
+  CoverModeTheme,
   DateSafetyPlan,
+  DateModeStatus,
   InsertMatchTimelineEvent,
   SafeDateChecklist,
 } from "@workspace/db";
@@ -28,6 +30,11 @@ export type DateSafetyPlanListStatus = {
   safeDateChecklistReady: boolean;
   circleCheckStatus: CircleCheckStatus | null;
   lastCircleCheckAt: string | null;
+  coverModeEnabled: boolean;
+  coverModeTheme: CoverModeTheme | null;
+  dateModeStatus: DateModeStatus | null;
+  dateModeStartedAt: string | null;
+  dateModeClosedAt: string | null;
   updatedAt: string | null;
 };
 
@@ -97,6 +104,25 @@ function cleanCircleCheckStatus(value: unknown): CircleCheckStatus | null {
     : null;
 }
 
+function cleanCoverModeTheme(value: unknown): CoverModeTheme | null {
+  return value === "clock" || value === "notes" || value === "breathing"
+    ? value
+    : null;
+}
+
+function cleanDateModeStatus(value: unknown): DateModeStatus | null {
+  return value === "planning" ||
+    value === "date_card_sent" ||
+    value === "on_date" ||
+    value === "check_in_due" ||
+    value === "safe" ||
+    value === "needs_exit" ||
+    value === "home_safe" ||
+    value === "missed_check_in"
+    ? value
+    : null;
+}
+
 export function normalizeDateSafetyPlan(
   input: unknown,
   observedAt = new Date(),
@@ -115,6 +141,11 @@ export function normalizeDateSafetyPlan(
     safeDateChecklist: cleanChecklist(obj.safeDateChecklist),
     circleCheckStatus: cleanCircleCheckStatus(obj.circleCheckStatus),
     lastCircleCheckAt: cleanIso(obj.lastCircleCheckAt),
+    coverModeEnabled: obj.coverModeEnabled === true,
+    coverModeTheme: cleanCoverModeTheme(obj.coverModeTheme),
+    dateModeStatus: cleanDateModeStatus(obj.dateModeStatus),
+    dateModeStartedAt: cleanIso(obj.dateModeStartedAt),
+    dateModeClosedAt: cleanIso(obj.dateModeClosedAt),
     updatedAt: observedAt.toISOString(),
   };
 
@@ -126,14 +157,28 @@ export function normalizeDateSafetyPlan(
     plan.codeWord,
     plan.circleNote,
     plan.lastCircleCheckAt,
+    plan.coverModeTheme,
+    plan.dateModeStatus,
+    plan.dateModeStartedAt,
+    plan.dateModeClosedAt,
   ].some(Boolean);
 
   return hasAnyValue ||
     plan.shareLiveLocation ||
+    plan.coverModeEnabled ||
     checklistReady(plan.safeDateChecklist) ||
     plan.circleCheckStatus
     ? plan
     : null;
+}
+
+export function normalizePersistedDateSafetyPlan(
+  input: unknown,
+): DateSafetyPlan | null {
+  if (!input || typeof input !== "object") return null;
+  const obj = input as DateSafetyPlanInput;
+  const updatedAt = cleanIso(obj.updatedAt) ?? new Date().toISOString();
+  return normalizeDateSafetyPlan(input, new Date(updatedAt));
 }
 
 export function summarizeDateSafetyPlanForList(
@@ -152,6 +197,11 @@ export function summarizeDateSafetyPlanForList(
       safeDateChecklistReady: false,
       circleCheckStatus: null,
       lastCircleCheckAt: null,
+      coverModeEnabled: false,
+      coverModeTheme: null,
+      dateModeStatus: null,
+      dateModeStartedAt: null,
+      dateModeClosedAt: null,
       updatedAt: null,
     };
   }
@@ -166,6 +216,11 @@ export function summarizeDateSafetyPlanForList(
   const safeDateChecklist = cleanChecklist(obj.safeDateChecklist);
   const circleCheckStatus = cleanCircleCheckStatus(obj.circleCheckStatus);
   const lastCircleCheckAt = cleanIso(obj.lastCircleCheckAt);
+  const coverModeEnabled = obj.coverModeEnabled === true;
+  const coverModeTheme = cleanCoverModeTheme(obj.coverModeTheme);
+  const dateModeStatus = cleanDateModeStatus(obj.dateModeStatus);
+  const dateModeStartedAt = cleanIso(obj.dateModeStartedAt);
+  const dateModeClosedAt = cleanIso(obj.dateModeClosedAt);
   const hasPlan =
     [
       trustedCircleName,
@@ -175,8 +230,13 @@ export function summarizeDateSafetyPlanForList(
       codeWord,
       circleNote,
       lastCircleCheckAt,
+      coverModeTheme,
+      dateModeStatus,
+      dateModeStartedAt,
+      dateModeClosedAt,
     ].some(Boolean) ||
     shareLiveLocation ||
+    coverModeEnabled ||
     checklistReady(safeDateChecklist) ||
     Boolean(circleCheckStatus);
 
@@ -192,6 +252,11 @@ export function summarizeDateSafetyPlanForList(
     safeDateChecklistReady: checklistReadyForDateCard(safeDateChecklist),
     circleCheckStatus,
     lastCircleCheckAt,
+    coverModeEnabled,
+    coverModeTheme,
+    dateModeStatus,
+    dateModeStartedAt,
+    dateModeClosedAt,
     updatedAt: cleanIso(obj.updatedAt),
   };
 }
@@ -209,6 +274,11 @@ function comparablePlan(plan: DateSafetyPlan | null) {
     safeDateChecklist: plan.safeDateChecklist,
     circleCheckStatus: plan.circleCheckStatus,
     lastCircleCheckAt: plan.lastCircleCheckAt,
+    coverModeEnabled: plan.coverModeEnabled,
+    coverModeTheme: plan.coverModeTheme,
+    dateModeStatus: plan.dateModeStatus,
+    dateModeStartedAt: plan.dateModeStartedAt,
+    dateModeClosedAt: plan.dateModeClosedAt,
   };
 }
 
@@ -264,6 +334,11 @@ export function buildDateSafetyPlanPatchPlan(input: {
           shareLiveLocation: false,
           safeDateChecklistReady: false,
           circleCheckStatus: null,
+          coverModeEnabled: false,
+          coverModeTheme: null,
+          dateModeStatus: null,
+          dateModeStartedAt: null,
+          dateModeClosedAt: null,
         },
         occurredAt: observedAt,
       },
@@ -298,6 +373,11 @@ export function buildDateSafetyPlanPatchPlan(input: {
           dateSafetyPlan.safeDateChecklist,
         ),
         circleCheckStatus: dateSafetyPlan.circleCheckStatus,
+        coverModeEnabled: dateSafetyPlan.coverModeEnabled,
+        coverModeTheme: dateSafetyPlan.coverModeTheme,
+        dateModeStatus: dateSafetyPlan.dateModeStatus,
+        dateModeStartedAt: dateSafetyPlan.dateModeStartedAt,
+        dateModeClosedAt: dateSafetyPlan.dateModeClosedAt,
       },
       occurredAt: observedAt,
     },

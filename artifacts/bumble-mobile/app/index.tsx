@@ -642,6 +642,7 @@ function briefIcon(item: HomeBriefItem): keyof typeof Feather.glyphMap {
       return "image";
     case "make_date_card":
     case "share_date_card":
+    case "open_date_mode":
       return "calendar";
     case "review_pattern":
       return "alert-circle";
