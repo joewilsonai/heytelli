@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HeyTelli — private dating clarity, built for women</title>
+    <meta
+      name="description"
+      content="HeyTelli helps you remember the conversations, prepare for the dates, and trust your own read — privately, on your phone. Join the beta."
+    />
+    <meta name="theme-color" content="#FAF7F3" />
+
+    <!-- Open Graph / social -->
+    <meta property="og:title" content="HeyTelli — the calmest voice in your group chat" />
+    <meta
+      property="og:description"
+      content="Private dating clarity, built for women. Join the beta."
+    />
+    <meta property="og:type" content="website" />
+
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23FAF7F3'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' fill='%23D9694C' text-anchor='middle'%3EH%3C/text%3E%3C/svg%3E"
+    />
+
+    <style>
+      :root {
+        --cream: #faf7f3;
+        --surface: #ffffff;
+        --ink: #2e2632;
+        --muted: #756e78;
+        --accent: #d9694c;
+        --accent-hover: #c2553e;
+        --line: #e7e0d8;
+        --focus: rgba(217, 105, 76, 0.28);
+        --ok: #3f7d5b;
+        --err: #b4543e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+      }
+
+      .page {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 22px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 540px;
+        text-align: center;
+      }
+
+      .wordmark {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        color: var(--ink);
+        margin: 0 0 48px;
+      }
+
+      .wordmark .dot {
+        color: var(--accent);
+      }
+
+      h1 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(32px, 7vw, 46px);
+        line-height: 1.12;
+        letter-spacing: -0.5px;
+        margin: 0 0 18px;
+      }
+
+      .subhead {
+        font-size: clamp(16px, 4vw, 18px);
+        color: var(--muted);
+        margin: 0 auto 34px;
+        max-width: 440px;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 420px;
+        margin: 0 auto;
+      }
+
+      .field {
+        width: 100%;
+        padding: 15px 16px;
+        font-size: 16px; /* >=16px avoids iOS zoom-on-focus */
+        font-family: inherit;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+
+      .field::placeholder {
+        color: #a59ea8;
+      }
+
+      .field:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--focus);
+      }
+
+      button {
+        padding: 15px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        font-family: inherit;
+        color: #fff;
+        background: var(--accent);
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.15s, transform 0.05s;
+      }
+
+      button:hover {
+        background: var(--accent-hover);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .reassure {
+        margin: 22px auto 0;
+        max-width: 400px;
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+
+      .status {
+        min-height: 20px;
+        margin-top: 16px;
+        font-size: 14px;
+      }
+
+      .status.ok {
+        color: var(--ok);
+      }
+
+      .status.err {
+        color: var(--err);
+      }
+
+      /* success state */
+      .success {
+        display: none;
+        animation: rise 0.4s ease;
+      }
+
+      .success h2 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(26px, 6vw, 34px);
+        margin: 0 0 12px;
+      }
+
+      .success p {
+        color: var(--muted);
+        margin: 0 auto;
+        max-width: 380px;
+      }
+
+      .share {
+        margin-top: 24px;
+        font-size: 14px;
+      }
+
+      .share button {
+        margin-top: 8px;
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--line);
+        font-weight: 500;
+      }
+
+      .share button:hover {
+        background: #fff;
+        border-color: var(--accent);
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .success {
+          animation: none;
+        }
+        button:active {
+          transform: none;
+        }
+      }
+
+      footer {
+        text-align: center;
+        padding: 22px;
+        font-size: 12px;
+        color: #a59ea8;
+      }
+
+      @media (min-width: 560px) {
+        form {
+          flex-direction: row;
+        }
+        .field {
+          flex: 1;
+        }
+        button {
+          white-space: nowrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="card">
+        <p class="wordmark">HeyTelli<span class="dot">.</span></p>
+
+        <!-- Signup view -->
+        <div id="signup-view">
+          <h1>The calmest voice in your group chat.</h1>
+          <p class="subhead">
+            HeyTelli helps you remember the conversations, prepare for the
+            dates, and trust your own read — privately, on your phone.
+          </p>
+
+          <form id="signup-form" novalidate>
+            <input
+              id="email"
+              class="field"
+              type="email"
+              name="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="you@email.com"
+              aria-label="Email address"
+              required
+            />
+            <button id="submit-btn" type="submit">Request beta access</button>
+          </form>
+
+          <p class="status" id="status" role="alert" aria-live="polite"></p>
+
+          <p class="reassure">
+            Built for women. We never rate or judge anyone. Your screenshots and
+            reflections stay yours.
+          </p>
+        </div>
+
+        <!-- Success view -->
+        <div class="success" id="success-view">
+          <h2>You're on the list.</h2>
+          <p>
+            We'll email your TestFlight invite when your spot opens. Keep an eye
+            on your inbox.
+          </p>
+          <div class="share" id="share-block" hidden>
+            <span>Want in sooner? Share your invite link.</span><br />
+            <button type="button" id="copy-btn">Copy my link</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>Private by default · © <span id="year"></span> HeyTelli</footer>
+
+    <script>
+      // ---------------------------------------------------------------------
+      // CONFIG — replace with your GetWaitlist numeric waitlist ID.
+      // Find it in your GetWaitlist dashboard (widget/embed snippet:
+      // `waitlist_id: 12345`). This is a PUBLIC id and safe to ship.
+      // Do NOT put your secret API key here.
+      // ---------------------------------------------------------------------
+      const WAITLIST_ID = 0; // TODO: set me
+
+      const SIGNUP_ENDPOINT = "https://api.getwaitlist.com/api/v1/signup";
+
+      const form = document.getElementById("signup-form");
+      const emailInput = document.getElementById("email");
+      const submitBtn = document.getElementById("submit-btn");
+      const statusEl = document.getElementById("status");
+      const signupView = document.getElementById("signup-view");
+      const successView = document.getElementById("success-view");
+      const shareBlock = document.getElementById("share-block");
+      const copyBtn = document.getElementById("copy-btn");
+
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      function setStatus(msg, kind) {
+        statusEl.textContent = msg;
+        statusEl.className = "status" + (kind ? " " + kind : "");
+      }
+
+      function isValidEmail(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      }
+
+      let referralLink = "";
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = emailInput.value.trim();
+
+        if (!isValidEmail(email)) {
+          setStatus("Please enter a valid email address.", "err");
+          emailInput.focus();
+          return;
+        }
+
+        if (!WAITLIST_ID) {
+          setStatus(
+            "Signups aren't connected yet. (Set WAITLIST_ID in index.html.)",
+            "err",
+          );
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Adding you…";
+        setStatus("", "");
+
+        try {
+          const res = await fetch(SIGNUP_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: email,
+              waitlist_id: WAITLIST_ID,
+              referral_link: window.location.href,
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error("Signup failed with status " + res.status);
+          }
+
+          const data = await res.json().catch(() => ({}));
+          referralLink = data && data.referral_link ? data.referral_link : "";
+
+          signupView.style.display = "none";
+          successView.style.display = "block";
+          if (referralLink) shareBlock.hidden = false;
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Request beta access";
+          setStatus(
+            "Something went wrong. Please try again in a moment.",
+            "err",
+          );
+        }
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        if (!referralLink) return;
+        try {
+          await navigator.clipboard.writeText(referralLink);
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => (copyBtn.textContent = "Copy my link"), 2000);
+        } catch {
+          copyBtn.textContent = referralLink;
+        }
+      });
+    </script>
+  </body>
+</html>
