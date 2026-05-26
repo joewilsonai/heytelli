@@ -97,6 +97,9 @@ export const ListMatchesResponseItem = zod.object({
   "hasCodeWord": zod.boolean(),
   "hasCircleNote": zod.boolean(),
   "shareLiveLocation": zod.boolean(),
+  "safeDateChecklistReady": zod.boolean(),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date().nullable()
 }),
   "lastRead": zod.union([zod.object({
@@ -287,6 +290,16 @@ export const GetMatchResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -418,7 +431,17 @@ export const UpdateMatchBody = zod.object({
   "expectedEndAt": zod.coerce.date().nullable(),
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
-  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.')
+  "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "dateHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -498,6 +521,16 @@ export const UpdateMatchResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -675,6 +708,16 @@ export const AddScreenshotResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -821,6 +864,16 @@ export const RescoreMatchResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1089,6 +1142,16 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1385,6 +1448,16 @@ export const InPersonRecordingResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1576,6 +1649,16 @@ export const VoiceDebriefResponse = zod.object({
   "codeWord": zod.string().nullable().describe('Optional word the user can share with trusted contacts.'),
   "circleNote": zod.string().nullable().describe('Optional user-authored note shown in the Date Card preview.'),
   "shareLiveLocation": zod.boolean().describe('User intent only; the app does not continuously track by default.'),
+  "safeDateChecklist": zod.object({
+  "publicPlace": zod.boolean(),
+  "ownTransport": zod.boolean(),
+  "circleHasPlan": zod.boolean(),
+  "profileReviewed": zod.boolean(),
+  "noPrivateLocationPressure": zod.boolean(),
+  "noMoneyOrPhotoPressure": zod.boolean()
+}),
+  "circleCheckStatus": zod.union([zod.enum(['planned', 'safe', 'needs_help', 'completed']),zod.null()]),
+  "lastCircleCheckAt": zod.coerce.date().nullable(),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
   "lastRead": zod.union([zod.object({
@@ -1764,6 +1847,25 @@ export const RequestUploadUrlResponse = zod.object({
   "size": zod.number().min(1),
   "contentType": zod.string().min(1)
 }).optional()
+})
+
+
+/**
+ * @summary Capture lightweight beta feedback from product moments
+ */
+export const createProductFeedbackBodyEventMax = 120;
+
+export const createProductFeedbackBodyAnswerMax = 120;
+
+export const createProductFeedbackBodyContextMaxOne = 240;
+
+
+
+export const CreateProductFeedbackBody = zod.object({
+  "event": zod.string().min(1).max(createProductFeedbackBodyEventMax),
+  "answer": zod.string().min(1).max(createProductFeedbackBodyAnswerMax),
+  "matchId": zod.number().nullish(),
+  "context": zod.record(zod.string(), zod.string().max(createProductFeedbackBodyContextMaxOne)).optional().describe('Allowlisted context only; no screenshots, phone numbers, transcripts, or notes.')
 })
 
 

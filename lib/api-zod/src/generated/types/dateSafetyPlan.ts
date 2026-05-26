@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CircleCheckStatus } from './circleCheckStatus';
+import type { SafeDateChecklist } from './safeDateChecklist';
 
 export interface DateSafetyPlan {
   /**
@@ -33,5 +35,9 @@ export interface DateSafetyPlan {
   circleNote: string | null;
   /** User intent only; the app does not continuously track by default. */
   shareLiveLocation: boolean;
+  safeDateChecklist: SafeDateChecklist;
+  circleCheckStatus: CircleCheckStatus | null;
+  /** @nullable */
+  lastCircleCheckAt: Date | null;
   updatedAt: Date;
 }

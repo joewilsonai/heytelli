@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import {
   addScreenshot,
+  createProductFeedback,
   createChatConversation,
   deleteMatch,
   generateDateBrief,
@@ -63,14 +64,21 @@ import { ResponseStatsCard } from "@/components/ResponseStatsCard";
 import { addDateToCalendar } from "@/lib/calendar";
 import {
   cancelDateDayReminder,
+  cancelDateSafetyReminders,
   scheduleDateDayReminder,
+  scheduleDateSafetyReminders,
 } from "@/lib/notifications";
 import { formatDateTime, formatTimeAgo, isPast } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
 import {
   buildDateCardMessage,
+  buildCircleCheckMessage,
   buildSoftExitMessage,
+  getDateSafetyChecklistProgress,
   getDateSafetyPlanStatus,
+  SAFE_DATE_CHECKLIST_ITEMS,
+  type CircleCheckStatus,
+  type SafeDateChecklist,
 } from "@/lib/date-safety-plan";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
@@ -175,6 +183,11 @@ export default function MatchDetailScreen() {
           <>
             <NextDateCard match={data} onChange={() => refetch()} />
             <DateSafetyPlanCard match={data} onChange={() => refetch()} />
+            <BetaFeedbackCard
+              matchId={data.id}
+              surface="date-card"
+              prompt="Would you send this Date Card to a friend?"
+            />
           </>
         )}
         {!data.nextDateAt && (
@@ -615,6 +628,73 @@ function ChatLinkCard({
         <Feather name="chevron-right" size={18} color={c.accentForeground} />
       )}
     </Pressable>
+  );
+}
+
+function BetaFeedbackCard({
+  matchId,
+  surface,
+  prompt,
+}: {
+  matchId: number;
+  surface: string;
+  prompt: string;
+}) {
+  const c = useColors();
+  const [sent, setSent] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const send = async (answer: string) => {
+    setBusy(true);
+    try {
+      await createProductFeedback({
+        event: `${surface}-feedback`,
+        answer,
+        matchId,
+        context: { surface, prompt },
+      });
+      setSent(answer);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+    } catch {
+      Alert.alert("Couldn't save feedback", "Try again later.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <View style={{ gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather name="message-square" size={15} color={c.primary} />
+          <SectionLabel>Beta check</SectionLabel>
+        </View>
+        <Text
+          style={{
+            color: c.foreground,
+            fontSize: 14,
+            fontFamily: "Inter_600SemiBold",
+          }}
+        >
+          {prompt}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {["Yes", "Maybe", "No"].map((answer) => (
+            <Button
+              key={answer}
+              label={sent === answer ? "Saved" : answer}
+              onPress={() => send(answer)}
+              disabled={busy || sent === answer}
+              variant={answer === "Yes" ? "secondary" : "ghost"}
+              small
+              style={{ flex: 1 }}
+            />
+          ))}
+        </View>
+      </View>
+    </Card>
   );
 }
 
@@ -1442,6 +1522,23 @@ function defaultPlanTime(
   return next;
 }
 
+function initialSafeDateChecklist(match: MatchDetail): SafeDateChecklist {
+  return {
+    publicPlace: match.dateSafetyPlan?.safeDateChecklist?.publicPlace ?? false,
+    ownTransport:
+      match.dateSafetyPlan?.safeDateChecklist?.ownTransport ?? false,
+    circleHasPlan:
+      match.dateSafetyPlan?.safeDateChecklist?.circleHasPlan ?? false,
+    profileReviewed:
+      match.dateSafetyPlan?.safeDateChecklist?.profileReviewed ?? false,
+    noPrivateLocationPressure:
+      match.dateSafetyPlan?.safeDateChecklist?.noPrivateLocationPressure ??
+      false,
+    noMoneyOrPhotoPressure:
+      match.dateSafetyPlan?.safeDateChecklist?.noMoneyOrPhotoPressure ?? false,
+  };
+}
+
 function DateSafetyPlanCard({
   match,
   onChange,
@@ -1468,8 +1565,12 @@ function DateSafetyPlanCard({
   const [shareLiveLocation, setShareLiveLocation] = useState(
     plan?.shareLiveLocation ?? false,
   );
+  const [safeDateChecklist, setSafeDateChecklist] = useState<SafeDateChecklist>(
+    () => initialSafeDateChecklist(match),
+  );
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [circleChecking, setCircleChecking] = useState(false);
   const [androidPickerMode, setAndroidPickerMode] = useState<
     "check-in" | "end" | null
   >(null);
@@ -1484,18 +1585,24 @@ function DateSafetyPlanCard({
       codeWord: codeWord.trim() || null,
       circleNote: circleNote.trim() || null,
       shareLiveLocation,
+      safeDateChecklist,
+      circleCheckStatus: plan?.circleCheckStatus ?? "planned",
+      lastCircleCheckAt: plan?.lastCircleCheckAt ?? null,
     },
   };
   const previewStatus = getDateSafetyPlanStatus(previewMatch);
+  const checklistProgress = getDateSafetyChecklistProgress(safeDateChecklist);
   const displayStatus = open ? previewStatus : status;
   const shareTarget = open ? previewMatch : match;
   const shareStatus = getDateSafetyPlanStatus(shareTarget);
 
-  const shareMessage = async (message: string) => {
+  const shareMessage = async (message: string): Promise<boolean> => {
     try {
-      await Share.share({ message });
+      const result = await Share.share({ message });
+      return result.action === Share.sharedAction;
     } catch (e: any) {
       Alert.alert("Couldn't share", e?.message ?? "Try again.");
+      return false;
     }
   };
 
@@ -1529,8 +1636,17 @@ function DateSafetyPlanCard({
           codeWord: codeWord.trim() || null,
           circleNote: circleNote.trim() || null,
           shareLiveLocation,
+          safeDateChecklist,
+          circleCheckStatus: plan?.circleCheckStatus ?? "planned",
+          lastCircleCheckAt: plan?.lastCircleCheckAt ?? null,
         },
       });
+      scheduleDateSafetyReminders({
+        matchId: match.id,
+        name: match.name,
+        checkInAt,
+        expectedEndAt,
+      }).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
@@ -1549,14 +1665,20 @@ function DateSafetyPlanCard({
       await updateMatch(match.id, { dateSafetyPlan: null });
       setTrustedCircleName("");
       setTransportPlan("");
-      setCheckInAt(defaultPlanTime({ ...match, dateSafetyPlan: null }, "checkInAt"));
+      setCheckInAt(
+        defaultPlanTime({ ...match, dateSafetyPlan: null }, "checkInAt"),
+      );
       setExpectedEndAt(
         defaultPlanTime({ ...match, dateSafetyPlan: null }, "expectedEndAt"),
       );
       setCodeWord("");
       setCircleNote("");
       setShareLiveLocation(false);
+      setSafeDateChecklist(
+        initialSafeDateChecklist({ ...match, dateSafetyPlan: null }),
+      );
       setOpen(true);
+      cancelDateSafetyReminders(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't clear safety plan", e?.message ?? "Try again.");
@@ -1571,6 +1693,44 @@ function DateSafetyPlanCard({
     const next = withTimeOnDate(match.nextDateAt, date);
     if (kind === "check-in") setCheckInAt(next);
     else setExpectedEndAt(next);
+  };
+
+  const toggleChecklist = (key: keyof SafeDateChecklist) => {
+    setSafeDateChecklist((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  };
+
+  const updateCircleStatus = async (
+    status: CircleCheckStatus,
+    message: string,
+  ) => {
+    setCircleChecking(true);
+    try {
+      const shared = await shareMessage(message);
+      if (!shared) return;
+      const checkedAt = new Date().toISOString();
+      await updateMatch(match.id, {
+        dateSafetyPlan: {
+          trustedCircleName: trustedCircleName.trim() || null,
+          transportPlan: transportPlan.trim() || null,
+          checkInAt: checkInAt.toISOString(),
+          expectedEndAt: expectedEndAt.toISOString(),
+          codeWord: codeWord.trim() || null,
+          circleNote: circleNote.trim() || null,
+          shareLiveLocation,
+          safeDateChecklist,
+          circleCheckStatus: status,
+          lastCircleCheckAt: checkedAt,
+        },
+      });
+      onChange();
+    } catch (e: any) {
+      Alert.alert("Couldn't update circle", e?.message ?? "Try again.");
+    } finally {
+      setCircleChecking(false);
+    }
   };
 
   const statusTone =
@@ -1620,8 +1780,9 @@ function DateSafetyPlanCard({
         </View>
       </View>
       <Body muted style={{ fontSize: 12, marginTop: 2 }}>
-        Share the plan with your circle. Only first name, where, when, transport,
-        check-in, and your note are included.
+        Share the plan with your circle. It can include first name, date time,
+        location, transport, check-in, expected end, code word, and your note.
+        No photos or screenshots are included.
       </Body>
       {displayStatus.missing.length > 0 && !open && (
         <Body muted style={{ fontSize: 12, marginTop: 8 }}>
@@ -1699,9 +1860,7 @@ function DateSafetyPlanCard({
               {androidPickerMode && (
                 <DateTimePicker
                   value={
-                    androidPickerMode === "check-in"
-                      ? checkInAt
-                      : expectedEndAt
+                    androidPickerMode === "check-in" ? checkInAt : expectedEndAt
                   }
                   mode="time"
                   display="default"
@@ -1757,6 +1916,85 @@ function DateSafetyPlanCard({
           </View>
           <View
             style={{
+              borderWidth: 1,
+              borderColor: checklistProgress.ready ? c.success : c.border,
+              borderRadius: 10,
+              padding: 12,
+              gap: 10,
+              backgroundColor: c.background,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: c.foreground,
+                  fontSize: 14,
+                  fontFamily: "Inter_600SemiBold",
+                }}
+              >
+                Safe date walkthrough
+              </Text>
+              <Text
+                style={{
+                  color: checklistProgress.ready ? c.success : c.warning,
+                  fontSize: 12,
+                  fontFamily: "Inter_600SemiBold",
+                }}
+              >
+                {checklistProgress.completed}/{checklistProgress.total}
+              </Text>
+            </View>
+            {SAFE_DATE_CHECKLIST_ITEMS.map((item) => {
+              const checked = safeDateChecklist[item.key];
+              return (
+                <Pressable
+                  key={item.key}
+                  onPress={() => toggleChecklist(item.key)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 9,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Feather
+                    name={checked ? "check-circle" : "circle"}
+                    size={18}
+                    color={checked ? c.success : c.mutedForeground}
+                  />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={{
+                        color: c.foreground,
+                        fontSize: 13,
+                        fontFamily: "Inter_600SemiBold",
+                      }}
+                    >
+                      {item.label}
+                    </Text>
+                    <Text
+                      style={{
+                        color: c.mutedForeground,
+                        fontSize: 11,
+                        lineHeight: 15,
+                      }}
+                    >
+                      {item.detail}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View
+            style={{
               padding: 12,
               backgroundColor: c.muted,
               borderRadius: 10,
@@ -1806,33 +2044,65 @@ function DateSafetyPlanCard({
           marginVertical: 12,
         }}
       />
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button
-          label="Call me"
-          icon="phone"
-          onPress={() => shareMessage(buildSoftExitMessage(shareTarget, "call"))}
-          variant="ghost"
-          style={{ flex: 1 }}
-          small
-        />
-        <Button
-          label="Pickup"
-          icon="navigation"
-          onPress={() =>
-            shareMessage(buildSoftExitMessage(shareTarget, "pickup"))
-          }
-          variant="ghost"
-          style={{ flex: 1 }}
-          small
-        />
-        <Button
-          label="Text me"
-          icon="message-circle"
-          onPress={() => shareMessage(buildSoftExitMessage(shareTarget, "text"))}
-          variant="ghost"
-          style={{ flex: 1 }}
-          small
-        />
+      <View style={{ gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button
+            label="I'm safe"
+            icon="check-circle"
+            onPress={() =>
+              updateCircleStatus(
+                "safe",
+                buildCircleCheckMessage(shareTarget, "safe"),
+              )
+            }
+            loading={circleChecking}
+            disabled={shareStatus.state !== "ready"}
+            variant="ghost"
+            style={{ flex: 1 }}
+            small
+          />
+          <Button
+            label="Need exit"
+            icon="phone"
+            onPress={() =>
+              updateCircleStatus(
+                "needs_help",
+                buildSoftExitMessage(shareTarget, "call"),
+              )
+            }
+            variant="ghost"
+            style={{ flex: 1 }}
+            small
+          />
+        </View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button
+            label="Pickup"
+            icon="navigation"
+            onPress={() =>
+              updateCircleStatus(
+                "needs_help",
+                buildSoftExitMessage(shareTarget, "pickup"),
+              )
+            }
+            variant="ghost"
+            style={{ flex: 1 }}
+            small
+          />
+          <Button
+            label="Text me"
+            icon="message-circle"
+            onPress={() =>
+              updateCircleStatus(
+                "needs_help",
+                buildSoftExitMessage(shareTarget, "text"),
+              )
+            }
+            variant="ghost"
+            style={{ flex: 1 }}
+            small
+          />
+        </View>
       </View>
     </Card>
   );
@@ -1919,6 +2189,7 @@ function NextDateCard({
         nextDateOutfit: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
+      cancelDateSafetyReminders(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't clear", e?.message ?? "Try again.");
@@ -2120,14 +2391,33 @@ function PostDateDebriefCard({
 }) {
   const c = useColors();
   const [recap, setRecap] = useState("");
+  const [feltSense, setFeltSense] = useState("");
+  const [boundarySignals, setBoundarySignals] = useState("");
+  const [mismatchSignals, setMismatchSignals] = useState("");
+  const [greenSignals, setGreenSignals] = useState("");
   const [saving, setSaving] = useState(false);
   const [skipping, setSkipping] = useState(false);
 
   const log = async () => {
-    if (!recap.trim()) {
+    const combined = [
+      recap.trim() ? `Recap: ${recap.trim()}` : null,
+      feltSense.trim()
+        ? `How did you feel in your body? ${feltSense.trim()}`
+        : null,
+      boundarySignals.trim()
+        ? `Any boundary pressure? ${boundarySignals.trim()}`
+        : null,
+      mismatchSignals.trim()
+        ? `Any mismatch between text and in-person? ${mismatchSignals.trim()}`
+        : null,
+      greenSignals.trim() ? `What went well? ${greenSignals.trim()}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    if (!combined.trim()) {
       Alert.alert(
         "How'd it go?",
-        "Add a quick recap (or tap 'Didn't happen').",
+        "Add a quick recap or answer one debrief prompt.",
       );
       return;
     }
@@ -2137,7 +2427,7 @@ function PostDateDebriefCard({
         id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
         when: match.nextDateAt!,
         location: match.nextDateLocation ?? "",
-        recap: recap.trim(),
+        recap: combined,
         createdAt: new Date().toISOString(),
       };
       await updateMatch(match.id, {
@@ -2147,11 +2437,16 @@ function PostDateDebriefCard({
         nextDateOutfit: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
+      cancelDateSafetyReminders(match.id).catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
       onChange();
       setRecap("");
+      setFeltSense("");
+      setBoundarySignals("");
+      setMismatchSignals("");
+      setGreenSignals("");
     } catch (e: any) {
       Alert.alert("Couldn't save", e?.message ?? "Try again.");
     } finally {
@@ -2168,6 +2463,7 @@ function PostDateDebriefCard({
         nextDateOutfit: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
+      cancelDateSafetyReminders(match.id).catch(() => {});
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't clear", e?.message ?? "Try again.");
@@ -2208,6 +2504,32 @@ function PostDateDebriefCard({
         onChangeText={setRecap}
         multiline
       />
+      <View style={{ gap: 8, marginTop: 8 }}>
+        <Input
+          placeholder="How did you feel in your body?"
+          value={feltSense}
+          onChangeText={setFeltSense}
+          multiline
+        />
+        <Input
+          placeholder="Any boundary pressure?"
+          value={boundarySignals}
+          onChangeText={setBoundarySignals}
+          multiline
+        />
+        <Input
+          placeholder="Any mismatch between text and in-person?"
+          value={mismatchSignals}
+          onChangeText={setMismatchSignals}
+          multiline
+        />
+        <Input
+          placeholder="What went well?"
+          value={greenSignals}
+          onChangeText={setGreenSignals}
+          multiline
+        />
+      </View>
       <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
         <Button
           label="Log it"

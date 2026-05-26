@@ -18,6 +18,7 @@ import type {
 } from "@workspace/api-client-react";
 
 import { Body, Card, SectionLabel } from "./ui";
+import { getSafetyActionChecklist } from "@/lib/safety-action-checklist";
 import { getSafetyResources } from "@/lib/safety-resources";
 
 export function RedFlagsCard({
@@ -90,7 +91,8 @@ export function RedFlagsCard({
   const hasSavedDetails = currentFlags.length > 0 || historicalFlags.length > 0;
   const greenFlags = data?.greenFlags ?? [];
   const overallRead = data?.overallRead ?? "";
-  const resources = getSafetyResources([
+  const resources = getSafetyResources([...currentFlags, ...historicalFlags]);
+  const actionChecklist = getSafetyActionChecklist([
     ...currentFlags,
     ...historicalFlags,
   ]);
@@ -247,6 +249,55 @@ export function RedFlagsCard({
             )}
           {historicalFlags.length > 0 &&
             renderFlagList("PREVIOUSLY FLAGGED", historicalFlags, true)}
+          {actionChecklist.length > 0 ? (
+            <View
+              style={{
+                gap: 8,
+                padding: 10,
+                backgroundColor: c.warningBg,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: c.warning + "33",
+              }}
+            >
+              <Text
+                style={{
+                  color: c.warning,
+                  fontSize: 12,
+                  fontFamily: "Inter_600SemiBold",
+                  letterSpacing: 0.5,
+                }}
+              >
+                SAFETY ACTIONS
+              </Text>
+              {actionChecklist.map((action) => (
+                <View
+                  key={action.label}
+                  style={{
+                    flexDirection: "row",
+                    gap: 8,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <Feather
+                    name="check-circle"
+                    size={14}
+                    color={action.tone === "danger" ? c.destructive : c.warning}
+                  />
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: c.foreground,
+                      fontSize: 12,
+                      lineHeight: 17,
+                    }}
+                  >
+                    {action.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           {resources.length > 0 ? (
             <View
               style={{

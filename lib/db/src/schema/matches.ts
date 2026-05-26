@@ -66,6 +66,17 @@ export type MatchReadSnapshot = {
   screenshotCountAt: number;
 };
 
+export type SafeDateChecklist = {
+  publicPlace: boolean;
+  ownTransport: boolean;
+  circleHasPlan: boolean;
+  profileReviewed: boolean;
+  noPrivateLocationPressure: boolean;
+  noMoneyOrPhotoPressure: boolean;
+};
+
+export type CircleCheckStatus = "planned" | "safe" | "needs_help" | "completed";
+
 export type DateSafetyPlan = {
   trustedCircleName: string | null;
   transportPlan: string | null;
@@ -74,6 +85,9 @@ export type DateSafetyPlan = {
   codeWord: string | null;
   circleNote: string | null;
   shareLiveLocation: boolean;
+  safeDateChecklist: SafeDateChecklist;
+  circleCheckStatus: CircleCheckStatus | null;
+  lastCircleCheckAt: string | null;
   updatedAt: string;
 };
 

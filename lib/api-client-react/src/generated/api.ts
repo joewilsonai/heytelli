@@ -37,6 +37,8 @@ import type {
   MatchCreateInput,
   MatchDetail,
   MatchUpdate,
+  ProductFeedback,
+  ProductFeedbackInput,
   RedFlagRadarResult,
   ResponseStats,
   Screenshot,
@@ -2386,5 +2388,76 @@ export const useRequestUploadUrl = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getRequestUploadUrlMutationOptions(options));
+    }
+
+export const getCreateProductFeedbackUrl = () => {
+
+
+
+
+  return `/api/feedback`
+}
+
+/**
+ * @summary Capture lightweight beta feedback from product moments
+ */
+export const createProductFeedback = async (productFeedbackInput: ProductFeedbackInput, options?: RequestInit): Promise<ProductFeedback> => {
+
+  return customFetch<ProductFeedback>(getCreateProductFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      productFeedbackInput,)
+  }
+);}
+
+
+
+
+export const getCreateProductFeedbackMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProductFeedback>>, TError,{data: BodyType<ProductFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProductFeedback>>, TError,{data: BodyType<ProductFeedbackInput>}, TContext> => {
+
+const mutationKey = ['createProductFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProductFeedback>>, {data: BodyType<ProductFeedbackInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProductFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProductFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof createProductFeedback>>>
+    export type CreateProductFeedbackMutationBody = BodyType<ProductFeedbackInput>
+    export type CreateProductFeedbackMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Capture lightweight beta feedback from product moments
+ */
+export const useCreateProductFeedback = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProductFeedback>>, TError,{data: BodyType<ProductFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProductFeedback>>,
+        TError,
+        {data: BodyType<ProductFeedbackInput>},
+        TContext
+      > => {
+      return useMutation(getCreateProductFeedbackMutationOptions(options));
     }
 

@@ -14,6 +14,17 @@ test("normalizes date safety plans without storing contact phone numbers", async
       codeWord: "  pineapple ",
       circleNote: "  Table near the front if possible. ",
       shareLiveLocation: true,
+      safeDateChecklist: {
+        publicPlace: true,
+        ownTransport: true,
+        circleHasPlan: false,
+        profileReviewed: true,
+        noPrivateLocationPressure: true,
+        noMoneyOrPhotoPressure: true,
+        ignoredExtra: true,
+      },
+      circleCheckStatus: "needs_help",
+      lastCircleCheckAt: "2026-06-01T03:00:00.000Z",
     },
     new Date("2026-05-26T16:00:00.000Z"),
   );
@@ -26,9 +37,20 @@ test("normalizes date safety plans without storing contact phone numbers", async
     codeWord: "pineapple",
     circleNote: "Table near the front if possible.",
     shareLiveLocation: true,
+    safeDateChecklist: {
+      publicPlace: true,
+      ownTransport: true,
+      circleHasPlan: false,
+      profileReviewed: true,
+      noPrivateLocationPressure: true,
+      noMoneyOrPhotoPressure: true,
+    },
+    circleCheckStatus: "needs_help",
+    lastCircleCheckAt: "2026-06-01T03:00:00.000Z",
     updatedAt: "2026-05-26T16:00:00.000Z",
   });
   assert.equal("trustedCirclePhone" in (plan ?? {}), false);
+  assert.equal("trustedCircleEmail" in (plan ?? {}), false);
 });
 
 test("builds a date safety plan timeline event only when the plan changes", async () => {
@@ -42,6 +64,16 @@ test("builds a date safety plan timeline event only when the plan changes", asyn
     codeWord: "pineapple",
     circleNote: null,
     shareLiveLocation: false,
+    safeDateChecklist: {
+      publicPlace: true,
+      ownTransport: true,
+      circleHasPlan: true,
+      profileReviewed: true,
+      noPrivateLocationPressure: true,
+      noMoneyOrPhotoPressure: true,
+    },
+    circleCheckStatus: "planned",
+    lastCircleCheckAt: null,
     updatedAt: "2026-05-26T16:00:00.000Z",
   };
 
@@ -77,6 +109,8 @@ test("builds a date safety plan timeline event only when the plan changes", asyn
     hasExpectedEnd: true,
     hasCodeWord: true,
     shareLiveLocation: false,
+    safeDateChecklistReady: true,
+    circleCheckStatus: "planned",
   });
 });
 
@@ -91,6 +125,16 @@ test("summarizes date safety plans for list responses without leaking secrets", 
     codeWord: "pineapple",
     circleNote: "Ask staff near the front if I need help.",
     shareLiveLocation: false,
+    safeDateChecklist: {
+      publicPlace: true,
+      ownTransport: true,
+      circleHasPlan: true,
+      profileReviewed: true,
+      noPrivateLocationPressure: true,
+      noMoneyOrPhotoPressure: true,
+    },
+    circleCheckStatus: "safe",
+    lastCircleCheckAt: "2026-06-01T02:45:00.000Z",
     updatedAt: "2026-05-26T16:00:00.000Z",
   });
 
@@ -103,6 +147,9 @@ test("summarizes date safety plans for list responses without leaking secrets", 
     hasCodeWord: true,
     hasCircleNote: true,
     shareLiveLocation: false,
+    safeDateChecklistReady: true,
+    circleCheckStatus: "safe",
+    lastCircleCheckAt: "2026-06-01T02:45:00.000Z",
     updatedAt: "2026-05-26T16:00:00.000Z",
   });
   assert.doesNotMatch(JSON.stringify(status), /pineapple|Ask staff|Maya/);

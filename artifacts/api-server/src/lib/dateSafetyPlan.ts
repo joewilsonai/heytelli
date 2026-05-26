@@ -1,4 +1,9 @@
-import type { DateSafetyPlan, InsertMatchTimelineEvent } from "@workspace/db";
+import type {
+  CircleCheckStatus,
+  DateSafetyPlan,
+  InsertMatchTimelineEvent,
+  SafeDateChecklist,
+} from "@workspace/db";
 
 type DateSafetyPlanInput = Partial<DateSafetyPlan> &
   Record<string, unknown> & {
@@ -20,7 +25,28 @@ export type DateSafetyPlanListStatus = {
   hasCodeWord: boolean;
   hasCircleNote: boolean;
   shareLiveLocation: boolean;
+  safeDateChecklistReady: boolean;
+  circleCheckStatus: CircleCheckStatus | null;
+  lastCircleCheckAt: string | null;
   updatedAt: string | null;
+};
+
+const CHECKLIST_KEYS: Array<keyof SafeDateChecklist> = [
+  "publicPlace",
+  "ownTransport",
+  "circleHasPlan",
+  "profileReviewed",
+  "noPrivateLocationPressure",
+  "noMoneyOrPhotoPressure",
+];
+
+const emptySafeDateChecklist: SafeDateChecklist = {
+  publicPlace: false,
+  ownTransport: false,
+  circleHasPlan: false,
+  profileReviewed: false,
+  noPrivateLocationPressure: false,
+  noMoneyOrPhotoPressure: false,
 };
 
 function cleanText(value: unknown): string | null {
@@ -41,6 +67,30 @@ function cleanIso(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function cleanChecklist(input: unknown): SafeDateChecklist {
+  const obj =
+    input && typeof input === "object"
+      ? (input as Record<string, unknown>)
+      : {};
+  return CHECKLIST_KEYS.reduce<SafeDateChecklist>(
+    (acc, key) => ({ ...acc, [key]: obj[key] === true }),
+    { ...emptySafeDateChecklist },
+  );
+}
+
+function checklistReady(checklist: SafeDateChecklist): boolean {
+  return CHECKLIST_KEYS.every((key) => checklist[key] === true);
+}
+
+function cleanCircleCheckStatus(value: unknown): CircleCheckStatus | null {
+  return value === "planned" ||
+    value === "safe" ||
+    value === "needs_help" ||
+    value === "completed"
+    ? value
+    : null;
+}
+
 export function normalizeDateSafetyPlan(
   input: unknown,
   observedAt = new Date(),
@@ -56,6 +106,9 @@ export function normalizeDateSafetyPlan(
     codeWord: cleanText(obj.codeWord),
     circleNote: cleanLongText(obj.circleNote),
     shareLiveLocation: obj.shareLiveLocation === true,
+    safeDateChecklist: cleanChecklist(obj.safeDateChecklist),
+    circleCheckStatus: cleanCircleCheckStatus(obj.circleCheckStatus),
+    lastCircleCheckAt: cleanIso(obj.lastCircleCheckAt),
     updatedAt: observedAt.toISOString(),
   };
 
@@ -66,9 +119,15 @@ export function normalizeDateSafetyPlan(
     plan.expectedEndAt,
     plan.codeWord,
     plan.circleNote,
+    plan.lastCircleCheckAt,
   ].some(Boolean);
 
-  return hasAnyValue || plan.shareLiveLocation ? plan : null;
+  return hasAnyValue ||
+    plan.shareLiveLocation ||
+    checklistReady(plan.safeDateChecklist) ||
+    plan.circleCheckStatus
+    ? plan
+    : null;
 }
 
 export function summarizeDateSafetyPlanForList(
@@ -84,6 +143,9 @@ export function summarizeDateSafetyPlanForList(
       hasCodeWord: false,
       hasCircleNote: false,
       shareLiveLocation: false,
+      safeDateChecklistReady: false,
+      circleCheckStatus: null,
+      lastCircleCheckAt: null,
       updatedAt: null,
     };
   }
@@ -95,14 +157,22 @@ export function summarizeDateSafetyPlanForList(
   const codeWord = cleanText(obj.codeWord);
   const circleNote = cleanLongText(obj.circleNote);
   const shareLiveLocation = obj.shareLiveLocation === true;
-  const hasPlan = [
-    trustedCircleName,
-    transportPlan,
-    checkInAt,
-    expectedEndAt,
-    codeWord,
-    circleNote,
-  ].some(Boolean) || shareLiveLocation;
+  const safeDateChecklist = cleanChecklist(obj.safeDateChecklist);
+  const circleCheckStatus = cleanCircleCheckStatus(obj.circleCheckStatus);
+  const lastCircleCheckAt = cleanIso(obj.lastCircleCheckAt);
+  const hasPlan =
+    [
+      trustedCircleName,
+      transportPlan,
+      checkInAt,
+      expectedEndAt,
+      codeWord,
+      circleNote,
+      lastCircleCheckAt,
+    ].some(Boolean) ||
+    shareLiveLocation ||
+    checklistReady(safeDateChecklist) ||
+    Boolean(circleCheckStatus);
 
   return {
     hasPlan,
@@ -113,6 +183,9 @@ export function summarizeDateSafetyPlanForList(
     hasCodeWord: Boolean(codeWord),
     hasCircleNote: Boolean(circleNote),
     shareLiveLocation,
+    safeDateChecklistReady: checklistReady(safeDateChecklist),
+    circleCheckStatus,
+    lastCircleCheckAt,
     updatedAt: cleanIso(obj.updatedAt),
   };
 }
@@ -127,6 +200,9 @@ function comparablePlan(plan: DateSafetyPlan | null) {
     codeWord: plan.codeWord,
     circleNote: plan.circleNote,
     shareLiveLocation: plan.shareLiveLocation,
+    safeDateChecklist: plan.safeDateChecklist,
+    circleCheckStatus: plan.circleCheckStatus,
+    lastCircleCheckAt: plan.lastCircleCheckAt,
   };
 }
 
@@ -180,6 +256,8 @@ export function buildDateSafetyPlanPatchPlan(input: {
           hasExpectedEnd: false,
           hasCodeWord: false,
           shareLiveLocation: false,
+          safeDateChecklistReady: false,
+          circleCheckStatus: null,
         },
         occurredAt: observedAt,
       },
@@ -210,6 +288,10 @@ export function buildDateSafetyPlanPatchPlan(input: {
         hasExpectedEnd: Boolean(dateSafetyPlan.expectedEndAt),
         hasCodeWord: Boolean(dateSafetyPlan.codeWord),
         shareLiveLocation: dateSafetyPlan.shareLiveLocation,
+        safeDateChecklistReady: checklistReady(
+          dateSafetyPlan.safeDateChecklist,
+        ),
+        circleCheckStatus: dateSafetyPlan.circleCheckStatus,
       },
       occurredAt: observedAt,
     },

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CircleCheckStatus } from './circleCheckStatus';
 
 export interface DateSafetyPlanListStatus {
   hasPlan: boolean;
@@ -15,6 +16,10 @@ export interface DateSafetyPlanListStatus {
   hasCodeWord: boolean;
   hasCircleNote: boolean;
   shareLiveLocation: boolean;
+  safeDateChecklistReady: boolean;
+  circleCheckStatus: CircleCheckStatus | null;
+  /** @nullable */
+  lastCircleCheckAt: Date | null;
   /** @nullable */
   updatedAt: Date | null;
 }

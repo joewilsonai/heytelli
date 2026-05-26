@@ -16,6 +16,8 @@ tags:
     description: Object storage upload and serving endpoints
   - name: chat
     description: HeyTelli private chat operations
+  - name: feedback
+    description: Product feedback operations
 paths:
   /healthz:
     get:
@@ -729,6 +731,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /feedback:
+    post:
+      operationId: createProductFeedback
+      tags: [feedback]
+      summary: Capture lightweight beta feedback from product moments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductFeedbackInput"
+      responses:
+        "201":
+          description: Feedback saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductFeedback"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
     HealthStatus:
@@ -741,6 +773,29 @@ components:
       required: [error]
       properties:
         error: { type: string }
+    ProductFeedbackInput:
+      type: object
+      required: [event, answer]
+      properties:
+        event: { type: string, minLength: 1, maxLength: 120 }
+        answer: { type: string, minLength: 1, maxLength: 120 }
+        matchId: { type: ["integer", "null"] }
+        context:
+          type: object
+          additionalProperties: { type: string, maxLength: 240 }
+          description: Allowlisted context only; no screenshots, phone numbers, transcripts, or notes.
+    ProductFeedback:
+      type: object
+      required: [id, matchId, event, answer, context, createdAt]
+      properties:
+        id: { type: integer }
+        matchId: { type: ["integer", "null"] }
+        event: { type: string }
+        answer: { type: string }
+        context:
+          type: object
+          additionalProperties: { type: string }
+        createdAt: { type: string, format: date-time }
     MatchScore:
       type: object
       required: [value, rationale]
@@ -827,6 +882,9 @@ components:
           codeWord,
           circleNote,
           shareLiveLocation,
+          safeDateChecklist,
+          circleCheckStatus,
+          lastCircleCheckAt,
           updatedAt,
         ]
       properties:
@@ -851,6 +909,15 @@ components:
         shareLiveLocation:
           type: boolean
           description: User intent only; the app does not continuously track by default.
+        safeDateChecklist:
+          $ref: "#/components/schemas/SafeDateChecklist"
+        circleCheckStatus:
+          oneOf:
+            - $ref: "#/components/schemas/CircleCheckStatus"
+            - type: "null"
+        lastCircleCheckAt:
+          type: ["string", "null"]
+          format: date-time
         updatedAt:
           type: string
           format: date-time
@@ -865,6 +932,9 @@ components:
           codeWord,
           circleNote,
           shareLiveLocation,
+          safeDateChecklist,
+          circleCheckStatus,
+          lastCircleCheckAt,
         ]
       properties:
         trustedCircleName:
@@ -888,6 +958,36 @@ components:
         shareLiveLocation:
           type: boolean
           description: User intent only; the app does not continuously track by default.
+        safeDateChecklist:
+          $ref: "#/components/schemas/SafeDateChecklist"
+        circleCheckStatus:
+          oneOf:
+            - $ref: "#/components/schemas/CircleCheckStatus"
+            - type: "null"
+        lastCircleCheckAt:
+          type: ["string", "null"]
+          format: date-time
+    SafeDateChecklist:
+      type: object
+      required:
+        [
+          publicPlace,
+          ownTransport,
+          circleHasPlan,
+          profileReviewed,
+          noPrivateLocationPressure,
+          noMoneyOrPhotoPressure,
+        ]
+      properties:
+        publicPlace: { type: boolean }
+        ownTransport: { type: boolean }
+        circleHasPlan: { type: boolean }
+        profileReviewed: { type: boolean }
+        noPrivateLocationPressure: { type: boolean }
+        noMoneyOrPhotoPressure: { type: boolean }
+    CircleCheckStatus:
+      type: string
+      enum: [planned, safe, needs_help, completed]
     DateSafetyPlanListStatus:
       type: object
       required:
@@ -900,6 +1000,9 @@ components:
           hasCodeWord,
           hasCircleNote,
           shareLiveLocation,
+          safeDateChecklistReady,
+          circleCheckStatus,
+          lastCircleCheckAt,
           updatedAt,
         ]
       properties:
@@ -911,6 +1014,12 @@ components:
         hasCodeWord: { type: boolean }
         hasCircleNote: { type: boolean }
         shareLiveLocation: { type: boolean }
+        safeDateChecklistReady: { type: boolean }
+        circleCheckStatus:
+          oneOf:
+            - $ref: "#/components/schemas/CircleCheckStatus"
+            - type: "null"
+        lastCircleCheckAt: { type: ["string", "null"], format: date-time }
         updatedAt: { type: ["string", "null"], format: date-time }
     MatchStatus:
       type: string

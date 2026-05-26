@@ -1,3 +1,16 @@
+export type SafeDateChecklist = {
+  publicPlace: boolean;
+  ownTransport: boolean;
+  circleHasPlan: boolean;
+  profileReviewed: boolean;
+  noPrivateLocationPressure: boolean;
+  noMoneyOrPhotoPressure: boolean;
+};
+
+export type SafeDateChecklistKey = keyof SafeDateChecklist;
+
+export type CircleCheckStatus = "planned" | "safe" | "needs_help" | "completed";
+
 export type DateSafetyPlan = {
   trustedCircleName?: string | null;
   transportPlan?: string | null;
@@ -6,6 +19,9 @@ export type DateSafetyPlan = {
   codeWord?: string | null;
   circleNote?: string | null;
   shareLiveLocation?: boolean;
+  safeDateChecklist?: Partial<SafeDateChecklist> | null;
+  circleCheckStatus?: CircleCheckStatus | null;
+  lastCircleCheckAt?: string | null;
   updatedAt?: string;
 };
 
@@ -18,6 +34,9 @@ export type DateSafetyPlanListStatus = {
   hasCodeWord: boolean;
   hasCircleNote: boolean;
   shareLiveLocation: boolean;
+  safeDateChecklistReady?: boolean;
+  circleCheckStatus?: CircleCheckStatus | null;
+  lastCircleCheckAt?: string | null;
   updatedAt: string | null;
 };
 
@@ -39,6 +58,53 @@ export type DateSafetyPlanStatus = {
 };
 
 export type SoftExitIntent = "call" | "pickup" | "text";
+
+export const SAFE_DATE_CHECKLIST_ITEMS: Array<{
+  key: SafeDateChecklistKey;
+  label: string;
+  detail: string;
+}> = [
+  {
+    key: "publicPlace",
+    label: "Public place",
+    detail: "First meetings stay in a populated public spot.",
+  },
+  {
+    key: "ownTransport",
+    label: "Own ride",
+    detail: "You control how you leave: drive, rideshare, or trusted pickup.",
+  },
+  {
+    key: "circleHasPlan",
+    label: "Circle has the Date Card",
+    detail: "A trusted person knows who, where, when, and check-in timing.",
+  },
+  {
+    key: "profileReviewed",
+    label: "Profile reviewed",
+    detail: "You have looked for basic identity consistency before meeting.",
+  },
+  {
+    key: "noPrivateLocationPressure",
+    label: "No private-location pressure",
+    detail: "No last-minute home, hotel, remote, or pickup pressure.",
+  },
+  {
+    key: "noMoneyOrPhotoPressure",
+    label: "No money/photo pressure",
+    detail:
+      "No money, gift cards, crypto, passwords, or intimate-image pressure.",
+  },
+];
+
+const EMPTY_CHECKLIST: SafeDateChecklist = {
+  publicPlace: false,
+  ownTransport: false,
+  circleHasPlan: false,
+  profileReviewed: false,
+  noPrivateLocationPressure: false,
+  noMoneyOrPhotoPressure: false,
+};
 
 function firstName(name: string): string {
   const trimmed = name.trim();
@@ -73,6 +139,30 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+function normalizeChecklist(
+  checklist: Partial<SafeDateChecklist> | null | undefined,
+): SafeDateChecklist {
+  return {
+    ...EMPTY_CHECKLIST,
+    ...(checklist ?? {}),
+  };
+}
+
+export function getDateSafetyChecklistProgress(
+  checklist: Partial<SafeDateChecklist> | null | undefined,
+) {
+  const normalized = normalizeChecklist(checklist);
+  const missingKeys = SAFE_DATE_CHECKLIST_ITEMS.filter(
+    (item) => normalized[item.key] !== true,
+  ).map((item) => item.key);
+  return {
+    completed: SAFE_DATE_CHECKLIST_ITEMS.length - missingKeys.length,
+    total: SAFE_DATE_CHECKLIST_ITEMS.length,
+    ready: missingKeys.length === 0,
+    missingKeys,
+  };
+}
+
 function getMissingFields(match: DateSafetyPlanMatch): string[] {
   const plan = match.dateSafetyPlan;
   const summary = match.dateSafetyPlanStatus;
@@ -85,12 +175,16 @@ function getMissingFields(match: DateSafetyPlanMatch): string[] {
     if (!hasValue(plan.transportPlan)) missing.push("transport");
     if (!hasValue(plan.checkInAt)) missing.push("check-in");
     if (!hasValue(plan.expectedEndAt)) missing.push("expected end");
+    if (!getDateSafetyChecklistProgress(plan.safeDateChecklist).ready) {
+      missing.push("safe date steps");
+    }
     return missing;
   }
   if (!summary?.hasTrustedCircle) missing.push("circle");
   if (!summary?.hasTransportPlan) missing.push("transport");
   if (!summary?.hasCheckIn) missing.push("check-in");
   if (!summary?.hasExpectedEnd) missing.push("expected end");
+  if (!summary?.safeDateChecklistReady) missing.push("safe date steps");
 
   return missing;
 }
@@ -144,6 +238,9 @@ export function buildDateCardMessage(match: DateSafetyPlanMatch): string {
   if (plan?.shareLiveLocation) {
     lines.push("Live location: date-only sharing if I turn it on.");
   }
+  if (getDateSafetyChecklistProgress(plan?.safeDateChecklist).ready) {
+    lines.push("Safety scan: public place, own ride, circle informed.");
+  }
   lines.push("Private by default. No images included.");
 
   return lines.join("\n");
@@ -168,4 +265,20 @@ export function buildSoftExitMessage(
   }
 
   return `Can you call me? I may need a soft exit from my date with ${name}${locationPhrase}.${codePhrase}`;
+}
+
+export function buildCircleCheckMessage(
+  match: DateSafetyPlanMatch,
+  status: Extract<CircleCheckStatus, "safe" | "completed">,
+): string {
+  const name = firstName(match.name);
+  const location = clean(match.nextDateLocation);
+  const locationPhrase = location ? ` at ${location}` : "";
+
+  if (status === "completed") {
+    const leavingPhrase = location ? ` ${location}` : "";
+    return `Date with ${name} is complete. I'm leaving${leavingPhrase} now.`;
+  }
+
+  return `I'm safe at my date with ${name}${locationPhrase}. Check-in complete.`;
 }

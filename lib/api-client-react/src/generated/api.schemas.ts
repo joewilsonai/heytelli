@@ -13,6 +13,40 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+/**
+ * Allowlisted context only; no screenshots, phone numbers, transcripts, or notes.
+ */
+export type ProductFeedbackInputContext = {[key: string]: string};
+
+export interface ProductFeedbackInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  event: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  answer: string;
+  /** @nullable */
+  matchId?: number | null;
+  /** Allowlisted context only; no screenshots, phone numbers, transcripts, or notes. */
+  context?: ProductFeedbackInputContext;
+}
+
+export type ProductFeedbackContext = {[key: string]: string};
+
+export interface ProductFeedback {
+  id: number;
+  /** @nullable */
+  matchId: number | null;
+  event: string;
+  answer: string;
+  context: ProductFeedbackContext;
+  createdAt: string;
+}
+
 export interface MatchScore {
   value: number | null;
   /** @nullable */
@@ -90,6 +124,25 @@ export const MatchReadFreshness = {
   missing: 'missing',
 } as const;
 
+export interface SafeDateChecklist {
+  publicPlace: boolean;
+  ownTransport: boolean;
+  circleHasPlan: boolean;
+  profileReviewed: boolean;
+  noPrivateLocationPressure: boolean;
+  noMoneyOrPhotoPressure: boolean;
+}
+
+export type CircleCheckStatus = typeof CircleCheckStatus[keyof typeof CircleCheckStatus];
+
+
+export const CircleCheckStatus = {
+  planned: 'planned',
+  safe: 'safe',
+  needs_help: 'needs_help',
+  completed: 'completed',
+} as const;
+
 export interface DateSafetyPlan {
   /**
      * First name or label of the trusted person/circle. Phone numbers are not stored.
@@ -117,6 +170,10 @@ export interface DateSafetyPlan {
   circleNote: string | null;
   /** User intent only; the app does not continuously track by default. */
   shareLiveLocation: boolean;
+  safeDateChecklist: SafeDateChecklist;
+  circleCheckStatus: CircleCheckStatus | null;
+  /** @nullable */
+  lastCircleCheckAt: string | null;
   updatedAt: string;
 }
 
@@ -147,6 +204,10 @@ export interface DateSafetyPlanInput {
   circleNote: string | null;
   /** User intent only; the app does not continuously track by default. */
   shareLiveLocation: boolean;
+  safeDateChecklist: SafeDateChecklist;
+  circleCheckStatus: CircleCheckStatus | null;
+  /** @nullable */
+  lastCircleCheckAt: string | null;
 }
 
 export interface DateSafetyPlanListStatus {
@@ -158,6 +219,10 @@ export interface DateSafetyPlanListStatus {
   hasCodeWord: boolean;
   hasCircleNote: boolean;
   shareLiveLocation: boolean;
+  safeDateChecklistReady: boolean;
+  circleCheckStatus: CircleCheckStatus | null;
+  /** @nullable */
+  lastCircleCheckAt: string | null;
   /** @nullable */
   updatedAt: string | null;
 }

@@ -133,6 +133,25 @@ export default function MatchesScreen() {
             </Body>
           </View>
           <View style={{ flexDirection: "row", gap: 10 }}>
+            <Link href="/trust" asChild>
+              <Pressable
+                onPress={() => Haptics.selectionAsync().catch(() => {})}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.7 : 1,
+                })}
+                accessibilityLabel="Trust Center"
+              >
+                <Feather name="shield" size={20} color={c.foreground} />
+              </Pressable>
+            </Link>
             <Link href="/analytics" asChild>
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
@@ -261,7 +280,9 @@ export default function MatchesScreen() {
         )}
 
         {/* Sort row */}
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}
+        >
           <Pressable
             onPress={() => {
               Haptics.selectionAsync().catch(() => {});
@@ -330,7 +351,9 @@ export default function MatchesScreen() {
                 >
                   {SORT_LABELS[k]}
                 </Text>
-                {sort === k && <Feather name="check" size={16} color={c.primary} />}
+                {sort === k && (
+                  <Feather name="check" size={16} color={c.primary} />
+                )}
               </Pressable>
             ))}
           </View>
@@ -380,6 +403,7 @@ export default function MatchesScreen() {
           ListHeaderComponent={
             filter === "active" ? (
               <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
+                <ShareSheetOnboardingCard />
                 <AutoArchiveBanner onChange={() => refetch()} />
                 <StaleNudgesSection />
               </View>
@@ -395,7 +419,9 @@ export default function MatchesScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="heart"
-              title={filter === "active" ? "No matches yet" : `No ${filter} matches`}
+              title={
+                filter === "active" ? "No matches yet" : `No ${filter} matches`
+              }
               hint={
                 filter === "active"
                   ? "Tap the + button to add your first match from a screenshot."
@@ -410,6 +436,87 @@ export default function MatchesScreen() {
           }
         />
       )}
+    </View>
+  );
+}
+
+function ShareSheetOnboardingCard() {
+  const c = useColors();
+  const steps = ["Open Photos", "Tap Share", "Choose HeyTelli"];
+
+  return (
+    <View
+      style={{
+        marginHorizontal: 20,
+        marginBottom: 12,
+        backgroundColor: c.card,
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: c.radius,
+        padding: 14,
+        gap: 10,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Feather name="share-2" size={16} color={c.primary} />
+        <Text
+          style={{
+            color: c.foreground,
+            fontSize: 14,
+            fontFamily: "Inter_600SemiBold",
+          }}
+        >
+          Send screenshots to HeyTelli
+        </Text>
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
+        {steps.map((step, index) => (
+          <View
+            key={step}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              paddingHorizontal: 9,
+              paddingVertical: 5,
+              borderRadius: 999,
+              backgroundColor: c.muted,
+            }}
+          >
+            <Text
+              style={{
+                color: c.mutedForeground,
+                fontSize: 11,
+                fontFamily: "Inter_700Bold",
+              }}
+            >
+              {index + 1}
+            </Text>
+            <Text style={{ color: c.foreground, fontSize: 12 }}>{step}</Text>
+          </View>
+        ))}
+      </View>
+      <Link href="/trust" asChild>
+        <Pressable
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Feather name="lock" size={13} color={c.mutedForeground} />
+          <Text
+            style={{
+              color: c.mutedForeground,
+              fontSize: 12,
+              fontFamily: "Inter_500Medium",
+            }}
+          >
+            See what HeyTelli stores
+          </Text>
+        </Pressable>
+      </Link>
     </View>
   );
 }
@@ -448,7 +555,12 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
         {photo ? (
           <Image
             source={photo}
-            style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.muted }}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: c.muted,
+            }}
             contentFit="cover"
             transition={150}
           />
@@ -481,35 +593,36 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
             }}
           />
         )}
-        {match.analysisFreshness !== "current" && match.pendingScreenshotCount + match.failedScreenshotCount > 0 && (
-          <View
-            style={{
-              position: "absolute",
-              bottom: -2,
-              right: -2,
-              minWidth: 18,
-              height: 18,
-              paddingHorizontal: 5,
-              borderRadius: 9,
-              backgroundColor: c.warning,
-              borderWidth: 2,
-              borderColor: c.card,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text
+        {match.analysisFreshness !== "current" &&
+          match.pendingScreenshotCount + match.failedScreenshotCount > 0 && (
+            <View
               style={{
-                color: "#fff",
-                fontSize: 10,
-                fontFamily: "Inter_700Bold",
-                lineHeight: 12,
+                position: "absolute",
+                bottom: -2,
+                right: -2,
+                minWidth: 18,
+                height: 18,
+                paddingHorizontal: 5,
+                borderRadius: 9,
+                backgroundColor: c.warning,
+                borderWidth: 2,
+                borderColor: c.card,
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              {match.pendingScreenshotCount + match.failedScreenshotCount}
-            </Text>
-          </View>
-        )}
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 10,
+                  fontFamily: "Inter_700Bold",
+                  lineHeight: 12,
+                }}
+              >
+                {match.pendingScreenshotCount + match.failedScreenshotCount}
+              </Text>
+            </View>
+          )}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <View
@@ -611,7 +724,14 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
             {model.read.body}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 6,
+            marginTop: 5,
+          }}
+        >
           {model.contextChips.map((chip) => (
             <ContextChip key={chip} label={chip} />
           ))}
@@ -643,7 +763,11 @@ function toneColors(
     return { bg: c.warningBg, fg: c.warning, border: c.warning + "44" };
   }
   if (tone === "danger") {
-    return { bg: c.destructive + "12", fg: c.destructive, border: c.destructive + "44" };
+    return {
+      bg: c.destructive + "12",
+      fg: c.destructive,
+      border: c.destructive + "44",
+    };
   }
   if (tone === "primary") {
     return { bg: c.secondary, fg: c.secondaryForeground, border: c.border };
@@ -651,7 +775,13 @@ function toneColors(
   return { bg: c.muted, fg: c.mutedForeground, border: c.border };
 }
 
-function DashboardPill({ label, tone }: { label: string; tone: HomeSignalTone }) {
+function DashboardPill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: HomeSignalTone;
+}) {
   const c = useColors();
   const colors = toneColors(tone, c);
   return (
