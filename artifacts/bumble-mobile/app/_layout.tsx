@@ -1,10 +1,3 @@
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
@@ -24,6 +17,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { displayFontFamily } from "@/constants/typography";
 import { getApiBaseUrl } from "@/lib/api-base";
 import {
   type AuthSession,
@@ -60,7 +54,7 @@ function RootLayoutNav() {
     <Stack
       screenOptions={{
         headerBackTitle: "Back",
-        headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
+        headerTitleStyle: { fontWeight: "600" },
         headerStyle: { backgroundColor: "#FBF8F2" },
         headerShadowVisible: false,
       }}
@@ -133,7 +127,8 @@ function BetaSignInScreen({
       <Text
         style={{
           color: c.foreground,
-          fontFamily: "Inter_700Bold",
+          fontFamily: displayFontFamily,
+          fontWeight: "700",
           fontSize: 32,
           lineHeight: 38,
           marginBottom: 8,
@@ -144,7 +139,7 @@ function BetaSignInScreen({
       <Text
         style={{
           color: c.mutedForeground,
-          fontFamily: "Inter_400Regular",
+          fontWeight: "400",
           fontSize: 15,
           lineHeight: 22,
           marginBottom: 28,
@@ -167,7 +162,7 @@ function BetaSignInScreen({
             paddingVertical: 14,
             color: c.foreground,
             backgroundColor: c.card,
-            fontFamily: "Inter_400Regular",
+            fontWeight: "400",
             fontSize: 16,
           }}
         />
@@ -187,7 +182,7 @@ function BetaSignInScreen({
             paddingVertical: 14,
             color: c.foreground,
             backgroundColor: c.card,
-            fontFamily: "Inter_400Regular",
+            fontWeight: "400",
             fontSize: 16,
           }}
         />
@@ -206,7 +201,7 @@ function BetaSignInScreen({
             paddingVertical: 14,
             color: c.foreground,
             backgroundColor: c.card,
-            fontFamily: "Inter_400Regular",
+            fontWeight: "400",
             fontSize: 16,
           }}
         />
@@ -232,7 +227,7 @@ function BetaSignInScreen({
             <Text
               style={{
                 color: c.primaryForeground,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
                 fontSize: 16,
               }}
             >
@@ -294,20 +289,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
-
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <SafeAreaProvider>

@@ -54,7 +54,7 @@ export default function TrustScreen() {
             style={{
               color: c.foreground,
               fontSize: 22,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
               marginBottom: 8,
             }}
           >
@@ -86,7 +86,7 @@ export default function TrustScreen() {
                   style={{
                     color: c.foreground,
                     fontSize: 15,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                   }}
                 >
                   {item.title}

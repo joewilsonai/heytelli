@@ -1,0 +1,23 @@
+# Keep Railway API deploys focused on server code. Mobile native builds are
+# produced by EAS, and local/generated artifacts make Railway image exports slow.
+.git
+.cache
+.local
+.superpowers
+node_modules
+**/node_modules
+*.log
+
+artifacts/bumble-mobile/.expo
+artifacts/bumble-mobile/.expo-shared
+artifacts/bumble-mobile/android
+artifacts/bumble-mobile/ios
+artifacts/bumble-mobile/build
+artifacts/bumble-mobile/dist
+artifacts/bumble-mobile/web-build
+artifacts/bumble-mobile/*.app
+artifacts/bumble-mobile/*.ipa
+artifacts/bumble-mobile/*.tar.gz
+
+artifacts/bumble-reply/dist
+artifacts/mockup-sandbox/dist

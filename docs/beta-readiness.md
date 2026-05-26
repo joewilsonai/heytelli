@@ -1,0 +1,95 @@
+# HeyTelli Beta Readiness
+
+## Current Beta Surfaces
+
+- Hosted API: `https://heytelli-api-production.up.railway.app`
+- Railway project: `heytelli`
+- Railway services: `heytelli-api`, `Postgres`
+- Railway bucket: `heytelli-uploads`
+- iOS bundle id: `ai.joewilson.heytelli`
+- Share extension id: `ai.joewilson.heytelli.ShareExtension`
+- App group: `group.ai.joewilson.heytelli`
+
+## Beta Access
+
+Beta testers sign in with their email address and the beta invite code configured
+on the API service. The current first-pass code is `heytelli-beta`.
+
+Each tester gets an isolated user record. Matches, screenshots, reads, tags,
+date cards, profile analysis, and debrief history are scoped by user id on the
+API. The API should return `401` for protected data without a bearer token.
+
+## Build And Install Paths
+
+Use TestFlight for real beta testers. The app depends on native modules and a
+share extension, so Expo Go is not a valid beta distribution path.
+
+From the mobile app directory:
+
+```bash
+cd /Users/joewilson/pythonprojects/heytelli/artifacts/bumble-mobile
+pnpm dlx eas-cli@latest build -p ios --profile beta
+```
+
+After the build finishes, submit it:
+
+```bash
+pnpm dlx eas-cli@latest submit -p ios --profile beta --latest
+```
+
+For Joe-only device testing with a dev client:
+
+```bash
+cd /Users/joewilson/pythonprojects/heytelli/artifacts/bumble-mobile
+pnpm dlx eas-cli@latest build -p ios --profile development
+```
+
+## Required Apple/Expo Setup
+
+- Expo account logged in for EAS CLI.
+- Apple Developer Program team with the app id, share extension id, and app
+  group available to EAS credentials.
+- TestFlight app record for `ai.joewilson.heytelli`.
+- Internal tester group added in App Store Connect.
+- External beta group and Beta App Review only when we go outside known testers.
+
+## Smoke Test Script
+
+Run this after every API deploy and before sending a new TestFlight build:
+
+```bash
+API_BASE=https://heytelli-api-production.up.railway.app
+curl -fsS "$API_BASE/api/healthz"
+```
+
+Then test from the app:
+
+- Fresh install opens the beta sign-in screen.
+- Valid email plus invite code signs in.
+- Dashboard loads without using a local tunnel.
+- Share sheet can send one or more screenshots to HeyTelli.
+- Upload/import creates or updates the right match.
+- A second tester account cannot see Joe's matches.
+- Date Card, Circle Check, voice debrief, chat, settings/profile analysis, and
+  delete-match history all still work.
+
+## Privacy Checks
+
+- Keep screenshots in private object storage.
+- Raw screenshots should be purged after extraction once the purge path is fully
+  verified in production.
+- Do not create hosted public share pages for user data.
+- Circle contacts should remain user-scoped and should not expose private notes
+  to the contact until an explicit send/check-in action exists.
+- Any historical red flag or saved concern remains surfaced even if the latest
+  analysis is cleaner.
+
+## Operational Notes
+
+- `railway.json` deploys the API from the monorepo root.
+- `.railwayignore` excludes mobile native artifacts and local dependencies from
+  API deploy uploads.
+- `packageManager` is pinned in the root `package.json` so Railway uses pnpm 10;
+  pnpm 9 rejects the current lockfile config.
+- `sharp` is approved in `pnpm-workspace.yaml` so image processing native
+  binaries can build in Railway.

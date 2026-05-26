@@ -135,7 +135,7 @@ export function InPersonRecordingSheet({
           }}
         >
           <View>
-            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: c.foreground }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: c.foreground }}>
               In-person recording
             </Text>
             <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
@@ -208,7 +208,7 @@ export function InPersonRecordingSheet({
                       iConsent && sheConsents && legalAck
                         ? c.primaryForeground
                         : c.mutedForeground,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                   }}
                 >
                   Continue
@@ -258,7 +258,7 @@ export function InPersonRecordingSheet({
               >
                 <Feather name="mic" size={48} color="#fff" />
               </View>
-              <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: c.foreground }}>
+              <Text style={{ fontSize: 28, fontWeight: "700", color: c.foreground }}>
                 {hh !== "00" ? `${hh}:` : ""}
                 {mm}:{ss}
               </Text>
@@ -275,7 +275,7 @@ export function InPersonRecordingSheet({
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ color: c.foreground, fontFamily: "Inter_600SemiBold" }}>
+                  <Text style={{ color: c.foreground, fontWeight: "600" }}>
                     Discard
                   </Text>
                 </Pressable>
@@ -289,7 +289,7 @@ export function InPersonRecordingSheet({
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <Text style={{ color: c.primaryForeground, fontFamily: "Inter_600SemiBold" }}>
+                  <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
                     Stop & analyze
                   </Text>
                 </Pressable>
@@ -391,7 +391,7 @@ export function InPersonRecordingSheet({
                   opacity: pressed ? 0.85 : 1,
                 })}
               >
-                <Text style={{ color: c.primaryForeground, fontFamily: "Inter_600SemiBold" }}>
+                <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
                   Done
                 </Text>
               </Pressable>
@@ -457,7 +457,7 @@ function DateHistoryToggle({
       }}
     >
       <View style={{ flex: 1, marginRight: 12 }}>
-        <Text style={{ fontFamily: "Inter_600SemiBold", color: c.foreground, fontSize: 14 }}>
+        <Text style={{ fontWeight: "600", color: c.foreground, fontSize: 14 }}>
           Log this as a date
         </Text>
         <Text style={{ color: c.mutedForeground, fontSize: 12, marginTop: 2 }}>
@@ -485,7 +485,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <Text
         style={{
           fontSize: 11,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           color: c.mutedForeground,
           letterSpacing: 1.2,
           textTransform: "uppercase",

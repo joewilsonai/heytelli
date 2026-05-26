@@ -138,7 +138,7 @@ export function VoiceDebriefSheet({
             <Text
               style={{
                 fontSize: 18,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
                 color: c.foreground,
               }}
             >
@@ -190,7 +190,7 @@ export function VoiceDebriefSheet({
               <Text
                 style={{
                   fontSize: 32,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                   color: c.foreground,
                   letterSpacing: 1,
                 }}
@@ -210,7 +210,7 @@ export function VoiceDebriefSheet({
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ color: c.foreground, fontFamily: "Inter_600SemiBold" }}>
+                  <Text style={{ color: c.foreground, fontWeight: "600" }}>
                     Cancel
                   </Text>
                 </Pressable>
@@ -231,7 +231,7 @@ export function VoiceDebriefSheet({
                   <Text
                     style={{
                       color: c.primaryForeground,
-                      fontFamily: "Inter_600SemiBold",
+                      fontWeight: "600",
                     }}
                   >
                     Done
@@ -345,7 +345,7 @@ export function VoiceDebriefSheet({
                 <Text
                   style={{
                     color: c.primaryForeground,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                   }}
                 >
                   Done
@@ -409,7 +409,7 @@ function DateHistoryToggle({
       }}
     >
       <View style={{ flex: 1, marginRight: 12 }}>
-        <Text style={{ fontFamily: "Inter_600SemiBold", color: c.foreground, fontSize: 14 }}>
+        <Text style={{ fontWeight: "600", color: c.foreground, fontSize: 14 }}>
           Log this as a date
         </Text>
         <Text style={{ color: c.mutedForeground, fontSize: 12, marginTop: 2 }}>
@@ -437,7 +437,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <Text
         style={{
           fontSize: 11,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           color: c.mutedForeground,
           letterSpacing: 1.2,
           textTransform: "uppercase",

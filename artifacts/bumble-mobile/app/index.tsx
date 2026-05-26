@@ -224,7 +224,7 @@ export default function MatchesScreen() {
                 <Feather name="plus" size={20} color={c.primaryForeground} />
                 <Text
                   style={{
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                     fontSize: 14,
                     color: c.primaryForeground,
                   }}
@@ -311,7 +311,7 @@ export default function MatchesScreen() {
               style={{
                 fontSize: 13,
                 color: c.mutedForeground,
-                fontFamily: "Inter_500Medium",
+                fontWeight: "500",
               }}
             >
               Sort: {SORT_LABELS[sort]}
@@ -356,7 +356,7 @@ export default function MatchesScreen() {
                 <Text
                   style={{
                     fontSize: 14,
-                    fontFamily: "Inter_500Medium",
+                    fontWeight: "500",
                     color: c.foreground,
                   }}
                 >
@@ -493,7 +493,7 @@ function HomeBriefCard({
             style={{
               color: c.foreground,
               fontSize: 20,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {brief.headline}
@@ -555,7 +555,7 @@ function HomeBriefCard({
             style={{
               color: trendColors.fg,
               fontSize: 12,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {trend.title}
@@ -606,7 +606,7 @@ function BriefItemRow({ item }: { item: HomeBriefItem }) {
             style={{
               color: c.foreground,
               fontSize: 13,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
               flex: 1,
             }}
             numberOfLines={1}
@@ -617,7 +617,7 @@ function BriefItemRow({ item }: { item: HomeBriefItem }) {
             style={{
               color: colors.fg,
               fontSize: 11,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
             numberOfLines={1}
           >
@@ -690,7 +690,7 @@ function ShareSheetOnboardingCard() {
             style={{
               color: c.background,
               fontSize: 18,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             Add screenshots
@@ -727,7 +727,7 @@ function ShareSheetOnboardingCard() {
                 color: c.background,
                 opacity: 0.72,
                 fontSize: 11,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
               }}
             >
               {index + 1}
@@ -758,7 +758,7 @@ function ShareSheetOnboardingCard() {
               style={{
                 color: c.foreground,
                 fontSize: 13,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
               }}
             >
               Import
@@ -787,7 +787,7 @@ function ShareSheetOnboardingCard() {
               style={{
                 color: c.background,
                 fontSize: 12,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
               }}
             >
               Privacy
@@ -848,7 +848,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
             style={{
               color: actionColors.fg,
               fontSize: 18,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {model.name.slice(0, 1).toUpperCase()}
@@ -891,7 +891,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
                 style={{
                   color: "#fff",
                   fontSize: 10,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                   lineHeight: 12,
                 }}
               >
@@ -912,7 +912,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
           <Text
             style={{
               fontSize: 17,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.foreground,
               flex: 1,
             }}
@@ -925,7 +925,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
         <Text
           style={{
             fontSize: 12,
-            fontFamily: "Inter_400Regular",
+            fontWeight: "400",
             color: c.mutedForeground,
           }}
           numberOfLines={1}
@@ -957,7 +957,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
               style={{
                 fontSize: 12,
                 color: actionColors.fg,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
               }}
               numberOfLines={1}
             >
@@ -987,7 +987,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
               style={{
                 fontSize: 11,
                 color: c.mutedForeground,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 textTransform: "uppercase",
               }}
               numberOfLines={1}
@@ -1004,7 +1004,7 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
               color: c.foreground,
               fontSize: 12,
               lineHeight: 17,
-              fontFamily: "Inter_400Regular",
+              fontWeight: "400",
             }}
             numberOfLines={2}
           >
@@ -1087,7 +1087,7 @@ function DashboardPill({
         style={{
           color: colors.fg,
           fontSize: 11,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
         }}
         numberOfLines={1}
       >

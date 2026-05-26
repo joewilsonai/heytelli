@@ -42,7 +42,7 @@ export function DatingPatternGlossaryCard({
             style={{
               color: c.foreground,
               fontSize: 17,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             Pattern slang, translated
@@ -93,7 +93,7 @@ export function DatingPatternGlossaryCard({
                 style={{
                   color: c.foreground,
                   fontSize: 13,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                 }}
               >
                 {item.term}
@@ -102,7 +102,7 @@ export function DatingPatternGlossaryCard({
                 style={{
                   color: c.mutedForeground,
                   fontSize: 10,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                   textTransform: "uppercase",
                 }}
               >

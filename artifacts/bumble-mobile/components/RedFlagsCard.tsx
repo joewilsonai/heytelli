@@ -103,7 +103,7 @@ export function RedFlagsCard({
         style={{
           fontSize: 12,
           color: muted ? c.mutedForeground : c.destructive,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           letterSpacing: 0.5,
         }}
       >
@@ -123,7 +123,7 @@ export function RedFlagsCard({
             <Text
               style={{
                 color: c.foreground,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 fontSize: 13,
               }}
             >
@@ -182,7 +182,7 @@ export function RedFlagsCard({
                 style={{
                   color: c.destructiveForeground,
                   fontSize: 10,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                 }}
               >
                 {flagCount}
@@ -264,7 +264,7 @@ export function RedFlagsCard({
                 style={{
                   color: c.warning,
                   fontSize: 12,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                   letterSpacing: 0.5,
                 }}
               >
@@ -313,7 +313,7 @@ export function RedFlagsCard({
                 style={{
                   color: c.destructive,
                   fontSize: 12,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                   letterSpacing: 0.5,
                 }}
               >
@@ -350,7 +350,7 @@ export function RedFlagsCard({
                       style={{
                         color: c.foreground,
                         fontSize: 12,
-                        fontFamily: "Inter_600SemiBold",
+                        fontWeight: "600",
                       }}
                     >
                       {resource.label}
@@ -366,7 +366,7 @@ export function RedFlagsCard({
                 style={{
                   fontSize: 12,
                   color: c.success,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                   letterSpacing: 0.5,
                 }}
               >
@@ -377,7 +377,7 @@ export function RedFlagsCard({
                   <Text
                     style={{
                       color: c.foreground,
-                      fontFamily: "Inter_600SemiBold",
+                      fontWeight: "600",
                       fontSize: 13,
                     }}
                   >
@@ -395,7 +395,7 @@ export function RedFlagsCard({
               style={{
                 color: c.primary,
                 fontSize: 12,
-                fontFamily: "Inter_500Medium",
+                fontWeight: "500",
               }}
             >
               Re-analyze

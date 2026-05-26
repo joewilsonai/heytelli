@@ -92,7 +92,7 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
                           style={{
                             color: c.foreground,
                             fontSize: 13,
-                            fontFamily: "Inter_600SemiBold",
+                            fontWeight: "600",
                           }}
                         >
                           {e.tag}
@@ -101,7 +101,7 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
                           style={{
                             color: e.source === "ai" ? c.primary : c.mutedForeground,
                             fontSize: 10,
-                            fontFamily: "Inter_500Medium",
+                            fontWeight: "500",
                             textTransform: "uppercase",
                             letterSpacing: 0.5,
                           }}

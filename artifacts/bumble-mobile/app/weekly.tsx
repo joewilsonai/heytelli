@@ -60,7 +60,7 @@ export default function WeeklyDebriefScreen() {
         ) : (
           <>
             <Card>
-              <Text style={{ fontSize: 11, color: c.primary, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              <Text style={{ fontSize: 11, color: c.primary, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 }}>
                 {data.headline}
               </Text>
               <Text style={{ color: c.foreground, fontSize: 14, marginTop: 8, lineHeight: 20 }}>
@@ -71,7 +71,7 @@ export default function WeeklyDebriefScreen() {
                   <Text style={{ fontSize: 11, color: c.mutedForeground, textTransform: "uppercase" }}>
                     Active
                   </Text>
-                  <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: c.foreground }}>
+                  <Text style={{ fontSize: 22, fontWeight: "700", color: c.foreground }}>
                     {data.totalActive}
                   </Text>
                 </View>
@@ -79,7 +79,7 @@ export default function WeeklyDebriefScreen() {
                   <Text style={{ fontSize: 11, color: c.mutedForeground, textTransform: "uppercase" }}>
                     New this week
                   </Text>
-                  <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: c.foreground }}>
+                  <Text style={{ fontSize: 22, fontWeight: "700", color: c.foreground }}>
                     {data.newThisWeek}
                   </Text>
                 </View>
@@ -92,7 +92,7 @@ export default function WeeklyDebriefScreen() {
                 <View style={{ gap: 8, marginTop: 8 }}>
                   {data.recommendations.map((r, i) => (
                     <View key={i} style={{ flexDirection: "row", gap: 8 }}>
-                      <Text style={{ color: c.primary, fontFamily: "Inter_700Bold" }}>{i + 1}.</Text>
+                      <Text style={{ color: c.primary, fontWeight: "700" }}>{i + 1}.</Text>
                       <Text style={{ color: c.foreground, fontSize: 13, flex: 1, lineHeight: 19 }}>{r}</Text>
                     </View>
                   ))}
@@ -121,11 +121,11 @@ export default function WeeklyDebriefScreen() {
                       >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <Feather name={meta.icon} size={12} color={meta.tint} />
-                          <Text style={{ color: meta.tint, fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase" }}>
+                          <Text style={{ color: meta.tint, fontSize: 11, fontWeight: "600", textTransform: "uppercase" }}>
                             {meta.label}
                           </Text>
                           <View style={{ flex: 1 }} />
-                          <Text style={{ color: c.foreground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                          <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "600" }}>
                             {m.name}
                           </Text>
                         </View>

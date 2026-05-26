@@ -117,7 +117,7 @@ export function VoiceNoteFeedbackSheet({
           }}
         >
           <View>
-            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: c.foreground }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: c.foreground }}>
               Voice note check
             </Text>
             <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
@@ -173,7 +173,7 @@ export function VoiceNoteFeedbackSheet({
               >
                 <Feather name="mic" size={48} color="#fff" />
               </View>
-              <Text style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: c.foreground }}>
+              <Text style={{ fontSize: 32, fontWeight: "700", color: c.foreground }}>
                 {mm}:{ss}
               </Text>
               <View style={{ flexDirection: "row", gap: 12 }}>
@@ -188,7 +188,7 @@ export function VoiceNoteFeedbackSheet({
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ color: c.foreground, fontFamily: "Inter_600SemiBold" }}>
+                  <Text style={{ color: c.foreground, fontWeight: "600" }}>
                     Cancel
                   </Text>
                 </Pressable>
@@ -202,7 +202,7 @@ export function VoiceNoteFeedbackSheet({
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <Text style={{ color: c.primaryForeground, fontFamily: "Inter_600SemiBold" }}>
+                  <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
                     Critique
                   </Text>
                 </Pressable>
@@ -232,7 +232,7 @@ export function VoiceNoteFeedbackSheet({
                 <Text
                   style={{
                     fontSize: 20,
-                    fontFamily: "Inter_700Bold",
+                    fontWeight: "700",
                     color: verdictColor(result.shouldSend),
                   }}
                 >
@@ -302,7 +302,7 @@ export function VoiceNoteFeedbackSheet({
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text style={{ color: c.foreground, fontFamily: "Inter_600SemiBold" }}>
+                <Text style={{ color: c.foreground, fontWeight: "600" }}>
                   Try another take
                 </Text>
               </Pressable>
@@ -318,7 +318,7 @@ function Metric({ label, value }: { label: string; value: number | null }) {
   const c = useColors();
   return (
     <View style={{ alignItems: "center" }}>
-      <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: c.foreground }}>
+      <Text style={{ fontSize: 28, fontWeight: "700", color: c.foreground }}>
         {value ?? "—"}
       </Text>
       <Text style={{ fontSize: 11, color: c.mutedForeground, letterSpacing: 1, textTransform: "uppercase" }}>
@@ -344,7 +344,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <Text
         style={{
           fontSize: 11,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           color: c.mutedForeground,
           letterSpacing: 1.2,
           textTransform: "uppercase",

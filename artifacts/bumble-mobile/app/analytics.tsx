@@ -53,7 +53,7 @@ export default function AnalyticsScreen() {
                   return (
                     <View key={s.label} style={{ gap: 4 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={{ color: c.foreground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
+                        <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "500" }}>
                           {s.label}
                         </Text>
                         <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
@@ -96,7 +96,7 @@ export default function AnalyticsScreen() {
                     <Text style={{ fontSize: 10, color: c.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
                       {label}
                     </Text>
-                    <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: c.foreground }}>
+                    <Text style={{ fontSize: 22, fontWeight: "700", color: c.foreground }}>
                       {val}
                     </Text>
                   </View>
@@ -117,7 +117,7 @@ export default function AnalyticsScreen() {
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Feather name="calendar" size={18} color={c.primaryForeground} />
-                <Text style={{ color: c.primaryForeground, fontFamily: "Inter_600SemiBold" }}>
+                <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
                   Weekly debrief
                 </Text>
               </View>

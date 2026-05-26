@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { displayFontFamily } from "@/constants/typography";
 
 type MatchStatus = "active" | "archived" | "ghosted";
 type ColorToken = Exclude<keyof ReturnType<typeof useColors>, "radius">;
@@ -48,7 +49,7 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
     <Text
       style={{
         fontSize: 11,
-        fontFamily: "Inter_600SemiBold",
+        fontWeight: "600",
         color: c.mutedForeground,
         letterSpacing: 1.2,
         textTransform: "uppercase",
@@ -138,7 +139,7 @@ export function Button({
         style={{
           color: fg,
           fontSize: small ? 13 : 15,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
         }}
       >
         {label}
@@ -226,7 +227,7 @@ export function StatusPill({
       <Text
         style={{
           fontSize: small ? 10 : 11,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           color: c[s.fg],
         }}
       >
@@ -273,7 +274,7 @@ export function Chip({
       <Text
         style={{
           fontSize: 13,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           color: active ? c.background : c.foreground,
         }}
       >
@@ -293,7 +294,7 @@ export function Chip({
           <Text
             style={{
               fontSize: 10,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: active ? c.foreground : c.mutedForeground,
             }}
           >
@@ -319,7 +320,7 @@ export function VibeTag({ label }: { label: string }) {
       <Text
         style={{
           fontSize: 11,
-          fontFamily: "Inter_500Medium",
+          fontWeight: "500",
           color: c.secondaryForeground,
         }}
       >
@@ -354,7 +355,7 @@ export function ScoreBar({
         <Text
           style={{
             fontSize: 12,
-            fontFamily: "Inter_500Medium",
+            fontWeight: "500",
             color: c.mutedForeground,
           }}
         >
@@ -363,7 +364,7 @@ export function ScoreBar({
         <Text
           style={{
             fontSize: 13,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: c.foreground,
           }}
         >
@@ -444,7 +445,7 @@ export function EmptyState({
       <Text
         style={{
           fontSize: 16,
-          fontFamily: "Inter_600SemiBold",
+          fontWeight: "600",
           color: c.foreground,
         }}
       >
@@ -454,7 +455,7 @@ export function EmptyState({
         <Text
           style={{
             fontSize: 13,
-            fontFamily: "Inter_400Regular",
+            fontWeight: "400",
             color: c.mutedForeground,
             textAlign: "center",
             maxWidth: 280,
@@ -481,7 +482,12 @@ export function H1({
   return (
     <Text
       style={[
-        { fontSize: 28, fontFamily: "Inter_700Bold", color: c.foreground },
+        {
+          fontSize: 28,
+          fontFamily: displayFontFamily,
+          fontWeight: "600",
+          color: c.foreground,
+        },
         style,
       ]}
     >
@@ -501,7 +507,12 @@ export function H2({
   return (
     <Text
       style={[
-        { fontSize: 20, fontFamily: "Inter_700Bold", color: c.foreground },
+        {
+          fontSize: 20,
+          fontFamily: displayFontFamily,
+          fontWeight: "600",
+          color: c.foreground,
+        },
         style,
       ]}
     >
@@ -525,7 +536,7 @@ export function Body({
       style={[
         {
           fontSize: 14,
-          fontFamily: "Inter_400Regular",
+          fontWeight: "400",
           color: muted ? c.mutedForeground : c.foreground,
           lineHeight: 20,
         },

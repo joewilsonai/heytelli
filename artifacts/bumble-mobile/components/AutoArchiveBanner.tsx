@@ -55,7 +55,7 @@ export function AutoArchiveBanner({ onChange }: { onChange: () => void }) {
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Feather name="archive" size={14} color={c.warning} />
-        <Text style={{ fontSize: 12, color: c.warning, fontFamily: "Inter_600SemiBold" }}>
+        <Text style={{ fontSize: 12, color: c.warning, fontWeight: "600" }}>
           AUTO-ARCHIVE SUGGESTION
         </Text>
         <View style={{ flex: 1 }} />
@@ -64,7 +64,7 @@ export function AutoArchiveBanner({ onChange }: { onChange: () => void }) {
         </Pressable>
       </View>
       <Pressable onPress={() => router.push(`/match/${first.matchId}`)}>
-        <Text style={{ color: c.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+        <Text style={{ color: c.foreground, fontSize: 14, fontWeight: "600" }}>
           {first.name}
         </Text>
         <Text style={{ color: c.mutedForeground, fontSize: 12, marginTop: 2 }}>
@@ -84,7 +84,7 @@ export function AutoArchiveBanner({ onChange }: { onChange: () => void }) {
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ color: c.foreground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
+          <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "500" }}>
             Archive
           </Text>
         </Pressable>
@@ -100,7 +100,7 @@ export function AutoArchiveBanner({ onChange }: { onChange: () => void }) {
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ color: c.foreground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
+          <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "500" }}>
             Mark ghosted
           </Text>
         </Pressable>

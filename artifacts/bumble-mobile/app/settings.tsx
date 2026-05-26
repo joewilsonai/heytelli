@@ -622,7 +622,7 @@ function OsStatusTile({
           style={{
             color: c.mutedForeground,
             fontSize: 10,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
             textTransform: "uppercase",
           }}
           numberOfLines={1}
@@ -633,7 +633,7 @@ function OsStatusTile({
           style={{
             color: c.foreground,
             fontSize: 13,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
           }}
           numberOfLines={2}
         >
@@ -661,7 +661,7 @@ function ReviewBlock({
         style={{
           color,
           fontSize: 12,
-          fontFamily: "Inter_700Bold",
+          fontWeight: "700",
           textTransform: "uppercase",
         }}
       >
@@ -729,7 +729,7 @@ function CirclePersonRow({
           <Text
             style={{
               color: selected ? c.primaryForeground : c.foreground,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {person.name.slice(0, 1).toUpperCase()}
@@ -740,7 +740,7 @@ function CirclePersonRow({
             style={{
               color: c.foreground,
               fontSize: 14,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {person.name}
@@ -802,7 +802,7 @@ function SwitchRow({
           style={{
             color: c.foreground,
             fontSize: 14,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
           }}
         >
           {label}
@@ -828,7 +828,7 @@ function Input(props: React.ComponentProps<typeof TextInput>) {
           paddingHorizontal: 12,
           paddingVertical: 10,
           fontSize: 14,
-          fontFamily: "Inter_400Regular",
+          fontWeight: "400",
           color: c.foreground,
           backgroundColor: c.background,
           minHeight: props.multiline ? 88 : undefined,

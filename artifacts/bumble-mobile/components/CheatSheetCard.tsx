@@ -129,7 +129,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                 style={{
                   color: c.destructive,
                   fontSize: 12,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                   letterSpacing: 0.5,
                 }}
               >
@@ -225,7 +225,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                     style={{
                       fontSize: 11,
                       color: meta.tint,
-                      fontFamily: "Inter_600SemiBold",
+                      fontWeight: "600",
                       textTransform: "uppercase",
                       letterSpacing: 0.5,
                     }}

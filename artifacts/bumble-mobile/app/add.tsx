@@ -371,7 +371,7 @@ export default function AddMatchScreen() {
             <Text
               style={{
                 fontSize: 16,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 color: c.primaryForeground,
               }}
             >
@@ -397,7 +397,7 @@ export default function AddMatchScreen() {
             <Text
               style={{
                 fontSize: 16,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 color: c.foreground,
               }}
             >
@@ -447,7 +447,7 @@ export default function AddMatchScreen() {
                 paddingHorizontal: 12,
                 paddingVertical: 10,
                 fontSize: 16,
-                fontFamily: "Inter_500Medium",
+                fontWeight: "500",
                 color: c.foreground,
               }}
             />
@@ -674,7 +674,7 @@ function ImportTargetOption({
           numberOfLines={1}
           style={{
             color: c.foreground,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             fontSize: 14,
           }}
         >

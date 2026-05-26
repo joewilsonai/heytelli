@@ -114,7 +114,7 @@ function Stat({ label, value, tint }: { label: string; value: string; tint?: str
       >
         {label}
       </Text>
-      <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: tint ?? c.foreground }}>
+      <Text style={{ fontSize: 16, fontWeight: "700", color: tint ?? c.foreground }}>
         {value}
       </Text>
     </View>
@@ -148,7 +148,7 @@ export function ResponseStatsCard({ matchId }: { matchId: number }) {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Feather name={pattern.icon} size={14} color={pattern.tint} />
             <Text
-              style={{ color: pattern.tint, fontSize: 13, fontFamily: "Inter_700Bold" }}
+              style={{ color: pattern.tint, fontSize: 13, fontWeight: "700" }}
             >
               {pattern.label}
             </Text>

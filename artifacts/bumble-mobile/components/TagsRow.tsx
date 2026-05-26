@@ -136,7 +136,7 @@ export function TagsRow({
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <Text style={{ color: c.primaryForeground, fontSize: 12, fontFamily: "Inter_500Medium" }}>
+            <Text style={{ color: c.primaryForeground, fontSize: 12, fontWeight: "500" }}>
               {t}
             </Text>
             <Pressable onPress={() => remove(t)} hitSlop={6}>
@@ -240,7 +240,7 @@ export function TagsRow({
                   style={{
                     color: c.foreground,
                     fontSize: 13,
-                    fontFamily: "Inter_500Medium",
+                    fontWeight: "500",
                   }}
                 >
                   {s.tag}
@@ -274,7 +274,7 @@ export function TagsRow({
                   style={{
                     color: c.primaryForeground,
                     fontSize: 12,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                   }}
                 >
                   Apply selected

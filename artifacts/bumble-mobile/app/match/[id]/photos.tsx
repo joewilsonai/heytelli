@@ -108,7 +108,7 @@ export default function PhotoGalleryScreen() {
                             style={{
                               color: c.mutedForeground,
                               fontSize: 11,
-                              fontFamily: "Inter_600SemiBold",
+                              fontWeight: "600",
                             }}
                           >
                             Analyzed
@@ -158,7 +158,7 @@ export default function PhotoGalleryScreen() {
             style={{
               color: c.primary,
               fontSize: 13,
-              fontFamily: "Inter_500Medium",
+              fontWeight: "500",
             }}
           >
             Back to match

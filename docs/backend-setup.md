@@ -1,8 +1,8 @@
 # HeyTelli Backend Setup
 
 HeyTelli Phase 1 needs one API service, Postgres, S3-compatible object storage,
-AI provider keys, and one internal/admin access token. The repo is now wired so
-the existing upload API can use either Railway Buckets or Cloudflare R2.
+AI provider keys, and beta invite auth. The current beta API is deployed at
+`https://heytelli-api-production.up.railway.app`.
 
 ## Recommended Services
 
@@ -28,12 +28,11 @@ the existing upload API can use either Railway Buckets or Cloudflare R2.
    - Required for current code paths:
      - `AI_INTEGRATIONS_OPENAI_BASE_URL`
      - `AI_INTEGRATIONS_OPENAI_API_KEY`
-     - `AI_INTEGRATIONS_OPENROUTER_BASE_URL`
-     - `AI_INTEGRATIONS_OPENROUTER_API_KEY`
 
-5. Admin/internal guard
-   - Add `ADMIN_TOKEN` before shipping the web admin console.
-   - Phase 1 web stays internal/admin only.
+5. Beta auth
+   - `HEYTELLI_AUTH_SECRET` signs bearer tokens.
+   - `HEYTELLI_BETA_INVITE_CODES` controls who can create/sign in to beta
+     accounts.
 
 ## API Env Vars
 
@@ -44,6 +43,8 @@ NODE_ENV=production
 LOG_LEVEL=info
 PORT=${{ PORT }}
 DATABASE_URL=${{ Postgres.DATABASE_URL }}
+HEYTELLI_AUTH_SECRET=<long random token>
+HEYTELLI_BETA_INVITE_CODES=<comma-separated invite codes>
 ```
 
 Storage, generic names:
@@ -86,9 +87,6 @@ AI and product safety:
 ```bash
 AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
 AI_INTEGRATIONS_OPENAI_API_KEY=<from ~/.luna/secrets/keys.env>
-AI_INTEGRATIONS_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-AI_INTEGRATIONS_OPENROUTER_API_KEY=<from ~/.luna/secrets/keys.env>
-ADMIN_TOKEN=<long random token>
 PURGE_RAW_SCREENSHOTS_AFTER_EXTRACTION=false
 ```
 
@@ -97,17 +95,15 @@ task is implemented and tested.
 
 ## Mobile Env
 
-The mobile app currently expects `EXPO_PUBLIC_DOMAIN` and calls:
-
-```ts
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
-```
-
-For a Railway API domain like `https://heytelli-api.up.railway.app`, set:
+The mobile app prefers `EXPO_PUBLIC_API_BASE_URL` and falls back to
+`EXPO_PUBLIC_DOMAIN`.
 
 ```bash
-EXPO_PUBLIC_DOMAIN=heytelli-api.up.railway.app
+EXPO_PUBLIC_API_BASE_URL=https://heytelli-api-production.up.railway.app
 ```
+
+The committed EAS profiles in `artifacts/bumble-mobile/eas.json` already point
+at the current production API.
 
 ## Verification Commands
 
@@ -129,23 +125,21 @@ curl https://<api-domain>/api/healthz
 ## Deployment Order
 
 1. Link or create the Railway project for `heytelli`.
-2. Add an API service from this GitHub repo.
+2. Add an API service from this repo.
 3. Add Postgres and set `DATABASE_URL`.
 4. Add a Railway Bucket or Cloudflare R2 credentials.
-5. Set the AI keys and `ADMIN_TOKEN`.
-6. Push DB schema.
+5. Set OpenAI and beta auth variables.
+6. Push DB schema/migrations.
 7. Deploy the API service.
 8. Point the Expo/EAS build at the deployed API domain.
 
 ## Current Production Gates
 
-- The mobile share-sheet spike still has an SDK54 vs `expo-sharing@56`
-  mismatch. Upgrade to the latest Expo SDK line before TestFlight if the
-  physical-device spike passes.
-- Private object reads are still intentionally permissive during conversion.
-  Lock `/api/storage/objects/*` behind auth/admin policy before real user data.
-- Ratings/match schema and prompts still need the HeyTelli connection-centered
-  conversion from `PLAN.md`.
+- TestFlight requires an EAS build because the app uses native modules and a
+  share extension.
+- The API is beta-auth protected and user-scoped, but raw screenshot purge
+  should remain a release gate before a large external beta.
+- App Store Connect/TestFlight setup still needs Expo and Apple credentials.
 
 ## Source Notes
 

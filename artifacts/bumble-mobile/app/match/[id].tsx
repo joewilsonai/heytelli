@@ -301,7 +301,7 @@ export default function MatchDetailScreen() {
             style={{
               color: c.foreground,
               fontSize: 13,
-              fontFamily: "Inter_500Medium",
+              fontWeight: "500",
             }}
           >
             View all {data.screenshots.length} photo
@@ -411,7 +411,7 @@ function SectionIntro({
           style={{
             color: c.foreground,
             fontSize: 18,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
           }}
         >
           {title}
@@ -509,7 +509,7 @@ function StoryOverviewCard({ match }: { match: MatchDetail }) {
             style={{
               color: c.foreground,
               fontSize: 17,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {trendTitle}
@@ -545,7 +545,7 @@ function StoryOverviewCard({ match }: { match: MatchDetail }) {
               style={{
                 color: c.mutedForeground,
                 fontSize: 10,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
                 textTransform: "uppercase",
               }}
             >
@@ -555,7 +555,7 @@ function StoryOverviewCard({ match }: { match: MatchDetail }) {
               style={{
                 color: c.foreground,
                 fontSize: 16,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -582,7 +582,7 @@ function StoryOverviewCard({ match }: { match: MatchDetail }) {
           style={{
             color: colors.fg,
             fontSize: 11,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
           }}
         >
           {freshness}
@@ -638,7 +638,7 @@ function VoiceDebriefCard({
           <Text
             style={{
               fontSize: 14,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.foreground,
             }}
           >
@@ -708,7 +708,7 @@ function ToolsRow({
           </View>
           <Text
             style={{
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.foreground,
               fontSize: 13,
             }}
@@ -749,7 +749,7 @@ function ToolsRow({
           </View>
           <Text
             style={{
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.foreground,
               fontSize: 13,
             }}
@@ -837,7 +837,7 @@ function TimelineCard({ events }: { events: MatchTimelineEvent[] }) {
                   style={{
                     flex: 1,
                     color: c.foreground,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                     fontSize: 13,
                   }}
                   numberOfLines={1}
@@ -954,7 +954,7 @@ function ChatLinkCard({
         <Text
           style={{
             fontSize: 14,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: c.accentForeground,
           }}
         >
@@ -1024,7 +1024,7 @@ function BetaFeedbackCard({
           style={{
             color: c.foreground,
             fontSize: 14,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
           }}
         >
           {prompt}
@@ -1096,7 +1096,7 @@ function NextStepCard({ match }: { match: MatchDetail }) {
             style={{
               color: c.foreground,
               fontSize: 18,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {model.title}
@@ -1206,7 +1206,7 @@ function HeaderCard({
                 style={{
                   flex: 1,
                   fontSize: 22,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                   color: c.foreground,
                   borderBottomWidth: 1,
                   borderBottomColor: c.border,
@@ -1229,7 +1229,7 @@ function HeaderCard({
               <Text
                 style={{
                   fontSize: 22,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                   color: c.foreground,
                   flex: 1,
                 }}
@@ -1309,7 +1309,7 @@ function FreshnessChip({ match }: { match: MatchDetail }) {
     >
       <Feather name={icon} size={11} color={tint} />
       <Text
-        style={{ fontSize: 11, color: tint, fontFamily: "Inter_600SemiBold" }}
+        style={{ fontSize: 11, color: tint, fontWeight: "600" }}
       >
         {label}
       </Text>
@@ -1465,7 +1465,7 @@ function ScreenshotIntakeCard({
         <Text
           style={{
             fontSize: 17,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
             color: c.primaryForeground,
           }}
           numberOfLines={1}
@@ -1475,7 +1475,7 @@ function ScreenshotIntakeCard({
         <Text
           style={{
             fontSize: 13,
-            fontFamily: "Inter_500Medium",
+            fontWeight: "500",
             color: c.primaryForeground,
             opacity: 0.82,
           }}
@@ -1505,7 +1505,7 @@ function ScreenshotIntakeCard({
           <Text
             style={{
               fontSize: 11,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.primaryForeground,
             }}
             numberOfLines={1}
@@ -1593,7 +1593,7 @@ function LatestReadCard({
             style={{
               fontSize: 11,
               color: statusColor,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
             }}
             numberOfLines={1}
           >
@@ -1647,7 +1647,7 @@ function PickerRow({
         style={{
           color: c.foreground,
           fontSize: 14,
-          fontFamily: "Inter_500Medium",
+          fontWeight: "500",
         }}
       >
         {label}
@@ -1691,7 +1691,7 @@ function PickerTriggerRow({
         style={{
           color: c.foreground,
           fontSize: 14,
-          fontFamily: "Inter_500Medium",
+          fontWeight: "500",
         }}
       >
         {label}
@@ -1701,7 +1701,7 @@ function PickerTriggerRow({
           style={{
             color: c.mutedForeground,
             fontSize: 14,
-            fontFamily: "Inter_500Medium",
+            fontWeight: "500",
           }}
         >
           {value}
@@ -2088,7 +2088,7 @@ function DateModeCoverScreen({
             style={{
               color: "#1f2933",
               fontSize: 34,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             Notes
@@ -2143,7 +2143,7 @@ function DateModeCoverScreen({
             style={{
               color: "#f7fafc",
               fontSize: 24,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             Breathe
@@ -2180,7 +2180,7 @@ function DateModeCoverScreen({
           style={{
             color: "#f7fafc",
             fontSize: 72,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
             fontVariant: ["tabular-nums"],
           }}
         >
@@ -2190,7 +2190,7 @@ function DateModeCoverScreen({
           style={{
             color: "rgba(255,255,255,0.74)",
             fontSize: 18,
-            fontFamily: "Inter_500Medium",
+            fontWeight: "500",
           }}
         >
           {date}
@@ -2258,7 +2258,7 @@ function CoverQuickActions({
           style={{
             color: foreground,
             fontSize: 16,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
           }}
         >
           Timer controls
@@ -2279,7 +2279,7 @@ function CoverQuickActions({
               style={{
                 color: foreground,
                 fontSize: 12,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
               }}
             >
               Edit
@@ -2335,7 +2335,7 @@ function CoverQuickActions({
                 style={{
                   color: foreground,
                   fontSize: 18,
-                  fontFamily: "Inter_700Bold",
+                  fontWeight: "700",
                 }}
               >
                 {action.label}
@@ -2344,7 +2344,7 @@ function CoverQuickActions({
                 style={{
                   color: muted,
                   fontSize: 12,
-                  fontFamily: "Inter_500Medium",
+                  fontWeight: "500",
                 }}
               >
                 {action.detail}
@@ -2803,7 +2803,7 @@ function DateSafetyPlanCard({
             style={{
               color: statusTone.fg,
               fontSize: 11,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
             }}
           >
             {displayStatus.label}
@@ -2833,7 +2833,7 @@ function DateSafetyPlanCard({
             style={{
               color: c.foreground,
               fontSize: 15,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             Date Card readiness
@@ -2842,7 +2842,7 @@ function DateSafetyPlanCard({
             style={{
               color: checklistProgress.ready ? c.success : c.warning,
               fontSize: 12,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
               fontVariant: ["tabular-nums"],
             }}
           >
@@ -2868,7 +2868,7 @@ function DateSafetyPlanCard({
                 style={{
                   color: c.mutedForeground,
                   fontSize: 10,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                   textTransform: "uppercase",
                 }}
               >
@@ -2878,7 +2878,7 @@ function DateSafetyPlanCard({
                 style={{
                   color: c.foreground,
                   fontSize: 12,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                 }}
                 numberOfLines={1}
               >
@@ -2940,7 +2940,7 @@ function DateSafetyPlanCard({
               style={{
                 color: c.foreground,
                 fontSize: 14,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
               }}
             >
               Date Mode
@@ -2950,7 +2950,7 @@ function DateSafetyPlanCard({
             style={{
               color: dateModeActive ? c.primary : c.mutedForeground,
               fontSize: 12,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
             }}
           >
             {dateModeLabel}
@@ -3009,7 +3009,7 @@ function DateSafetyPlanCard({
               style={{
                 color: c.foreground,
                 fontSize: 13,
-                fontFamily: "Inter_700Bold",
+                fontWeight: "700",
               }}
             >
               Plan template
@@ -3137,7 +3137,7 @@ function DateSafetyPlanCard({
                 style={{
                   color: c.foreground,
                   fontSize: 14,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                 }}
               >
                 Date-only location intent
@@ -3178,7 +3178,7 @@ function DateSafetyPlanCard({
                   style={{
                     color: c.foreground,
                     fontSize: 14,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                   }}
                 >
                   Cover Mode
@@ -3230,7 +3230,7 @@ function DateSafetyPlanCard({
                           style={{
                             color: c.foreground,
                             fontSize: 13,
-                            fontFamily: "Inter_600SemiBold",
+                            fontWeight: "600",
                           }}
                         >
                           {option.label}
@@ -3269,7 +3269,7 @@ function DateSafetyPlanCard({
                 style={{
                   color: c.foreground,
                   fontSize: 14,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                 }}
               >
                 Safe date walkthrough
@@ -3278,7 +3278,7 @@ function DateSafetyPlanCard({
                 style={{
                   color: checklistProgress.ready ? c.success : c.warning,
                   fontSize: 12,
-                  fontFamily: "Inter_600SemiBold",
+                  fontWeight: "600",
                 }}
               >
                 {checklistProgress.completed}/{checklistProgress.total}
@@ -3307,7 +3307,7 @@ function DateSafetyPlanCard({
                       style={{
                         color: c.foreground,
                         fontSize: 13,
-                        fontFamily: "Inter_600SemiBold",
+                        fontWeight: "600",
                       }}
                     >
                       {item.label}
@@ -3338,7 +3338,7 @@ function DateSafetyPlanCard({
               style={{
                 color: c.mutedForeground,
                 fontSize: 11,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
               }}
@@ -3382,7 +3382,7 @@ function DateSafetyPlanCard({
           style={{
             color: c.foreground,
             fontSize: 14,
-            fontFamily: "Inter_700Bold",
+            fontWeight: "700",
           }}
         >
           Circle Check
@@ -3564,7 +3564,7 @@ function NextDateCard({
         <Text
           style={{
             fontSize: 13,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: c.primary,
           }}
         >
@@ -3574,7 +3574,7 @@ function NextDateCard({
       <Text
         style={{
           fontSize: 18,
-          fontFamily: "Inter_700Bold",
+          fontWeight: "700",
           color: c.foreground,
         }}
       >
@@ -3622,7 +3622,7 @@ function NextDateCard({
         <Text
           style={{
             fontSize: 11,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: briefStatusColor,
           }}
         >
@@ -3665,7 +3665,7 @@ function NextDateCard({
             <Text
               style={{
                 fontSize: 11,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 color: c.mutedForeground,
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
@@ -3693,7 +3693,7 @@ function NextDateCard({
                 <Text
                   style={{
                     fontSize: 10,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                     color: c.warning ?? c.primary,
                   }}
                 >
@@ -3716,7 +3716,7 @@ function NextDateCard({
                 <Text
                   style={{
                     fontSize: 10,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                     color: c.success,
                   }}
                 >
@@ -3842,7 +3842,7 @@ function PostDateDebriefCard({
         <Text
           style={{
             fontSize: 13,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: c.accentForeground,
           }}
         >
@@ -3918,7 +3918,7 @@ function PostDateDebriefCard({
                 <Text
                   style={{
                     fontSize: 12,
-                    fontFamily: "Inter_600SemiBold",
+                    fontWeight: "600",
                     color: c.foreground,
                   }}
                 >
@@ -3965,7 +3965,7 @@ function ScreenshotsCard({
           <Text
             style={{
               fontSize: 13,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.foreground,
               letterSpacing: 1.2,
               textTransform: "uppercase",
@@ -4029,7 +4029,7 @@ function ScreenshotsCard({
                           style={{
                             color: c.mutedForeground,
                             fontSize: 12,
-                            fontFamily: "Inter_600SemiBold",
+                            fontWeight: "600",
                             textAlign: "center",
                           }}
                         >
@@ -4085,7 +4085,7 @@ function TranscriptCard({
           <Text
             style={{
               fontSize: 13,
-              fontFamily: "Inter_600SemiBold",
+              fontWeight: "600",
               color: c.foreground,
               letterSpacing: 1.2,
               textTransform: "uppercase",
@@ -4364,7 +4364,7 @@ function Input(props: React.ComponentProps<typeof TextInput>) {
           paddingHorizontal: 12,
           paddingVertical: 10,
           fontSize: 14,
-          fontFamily: "Inter_400Regular",
+          fontWeight: "400",
           color: c.foreground,
           backgroundColor: c.background,
           minHeight: props.multiline ? 80 : undefined,

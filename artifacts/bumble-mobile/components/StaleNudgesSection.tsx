@@ -26,7 +26,7 @@ export function StaleNudgesSection() {
         <Text
           style={{
             fontSize: 11,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: c.mutedForeground,
             letterSpacing: 1.2,
             textTransform: "uppercase",
@@ -83,7 +83,7 @@ export function StaleNudgesSection() {
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontFamily: "Inter_600SemiBold",
+                        fontWeight: "600",
                         color: c.foreground,
                         fontSize: 14,
                       }}

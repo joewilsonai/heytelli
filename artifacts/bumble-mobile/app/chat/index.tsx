@@ -197,7 +197,7 @@ function ConversationRow({
         <Text
           style={{
             fontSize: 15,
-            fontFamily: "Inter_600SemiBold",
+            fontWeight: "600",
             color: c.foreground,
           }}
           numberOfLines={1}
@@ -281,7 +281,7 @@ function NewChatModal({
           <Text
             style={{
               fontSize: 18,
-              fontFamily: "Inter_700Bold",
+              fontWeight: "700",
               color: c.foreground,
             }}
           >
@@ -297,7 +297,7 @@ function NewChatModal({
             <Text
               style={{
                 fontSize: 12,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 color: c.mutedForeground,
                 letterSpacing: 1.2,
                 textTransform: "uppercase",
@@ -326,7 +326,7 @@ function NewChatModal({
             <Text
               style={{
                 fontSize: 12,
-                fontFamily: "Inter_600SemiBold",
+                fontWeight: "600",
                 color: c.mutedForeground,
                 letterSpacing: 1.2,
                 textTransform: "uppercase",
@@ -393,7 +393,7 @@ function ChoiceChip({
       <Text
         style={{
           fontSize: 13,
-          fontFamily: "Inter_500Medium",
+          fontWeight: "500",
           color: active ? c.background : c.foreground,
         }}
       >

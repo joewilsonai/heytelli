@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="HeyTelli icon">
+  <rect x="0" y="0" width="1024" height="1024" rx="232" fill="#FAF7F3"/>
+
+  <circle cx="512" cy="452" r="248" fill="none" stroke="#E07A5F" stroke-width="34"/>
+  <path d="M398 660 L344 800 L476 694"
+        fill="none" stroke="#E07A5F" stroke-width="34"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="375" y="393" width="290" height="34" rx="17" fill="#2E2632"/>
+  <rect x="375" y="453" width="250" height="34" rx="17" fill="#2E2632"/>
+  <rect x="375" y="513" width="180" height="34" rx="17" fill="#2E2632"/>
+
+  <path d="M628 320
+           Q638 350 668 360
+           Q638 370 628 400
+           Q618 370 588 360
+           Q618 350 628 320 Z"
+        fill="#E07A5F"/>
+</svg>

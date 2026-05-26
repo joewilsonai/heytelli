@@ -217,7 +217,7 @@ export default function SharedImportScreen() {
       />
       <Pressable onPress={cancel} style={{ alignItems: "center", padding: 12 }}>
         <Text
-          style={{ color: c.mutedForeground, fontFamily: "Inter_600SemiBold" }}
+          style={{ color: c.mutedForeground, fontWeight: "600" }}
         >
           Cancel
         </Text>
