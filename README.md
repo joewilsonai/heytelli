@@ -46,6 +46,8 @@ pnpm --filter @workspace/bumble-mobile run dev
 pnpm --filter @workspace/bumble-reply run dev
 ```
 
+Backend deployment setup lives in `docs/backend-setup.md`.
+
 ## Required Environment
 
 Secrets live outside the repo. Load API keys from:
