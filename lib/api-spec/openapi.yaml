@@ -787,7 +787,8 @@ components:
           $ref: "#/components/schemas/MatchScore"
     ExtractedProfile:
       type: object
-      required: [job, location, interests, mentionedTopics, conversationTone, scores]
+      required:
+        [job, location, interests, mentionedTopics, conversationTone, scores]
       properties:
         job: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
@@ -805,7 +806,8 @@ components:
       required: [sexPotential, conversionAbility, chemistry, createdAt]
       properties:
         sexPotential: { type: ["integer", "null"], minimum: 0, maximum: 10 }
-        conversionAbility: { type: ["integer", "null"], minimum: 0, maximum: 10 }
+        conversionAbility:
+          { type: ["integer", "null"], minimum: 0, maximum: 10 }
         chemistry: { type: ["integer", "null"], minimum: 0, maximum: 10 }
         createdAt: { type: string, format: date-time }
     DateHistoryEntry:
@@ -863,6 +865,7 @@ components:
         - dateBriefFreshness
         - lastRead
         - readFreshness
+        - redFlagSummary
       properties:
         id: { type: integer }
         name: { type: string }
@@ -899,6 +902,8 @@ components:
             - type: "null"
         readFreshness:
           $ref: "#/components/schemas/MatchReadFreshness"
+        redFlagSummary:
+          $ref: "#/components/schemas/RedFlagSummary"
         scoreHistory:
           type: array
           items:
@@ -923,16 +928,26 @@ components:
           description: Whether stored transcript reflects all screenshots
     Screenshot:
       type: object
-      required: [id, matchId, objectPath, uploadedAt, extractionStatus, extractionError]
+      required:
+        [
+          id,
+          matchId,
+          objectPath,
+          uploadedAt,
+          extractionStatus,
+          extractionError,
+          rawImagePurgedAt,
+        ]
       properties:
         id: { type: integer }
         matchId: { type: integer }
-        objectPath: { type: string }
+        objectPath: { type: ["string", "null"] }
         uploadedAt: { type: string, format: date-time }
         extractionStatus:
           type: string
           enum: [pending, done, failed]
         extractionError: { type: ["string", "null"] }
+        rawImagePurgedAt: { type: ["string", "null"], format: date-time }
     TranscriptTurn:
       type: object
       required: [speaker, text]
@@ -966,6 +981,7 @@ components:
         - dateBriefFreshness
         - lastRead
         - readFreshness
+        - redFlagSummary
       properties:
         id: { type: integer }
         name: { type: string }
@@ -1000,6 +1016,8 @@ components:
             - type: "null"
         readFreshness:
           $ref: "#/components/schemas/MatchReadFreshness"
+        redFlagSummary:
+          $ref: "#/components/schemas/RedFlagSummary"
         transcript:
           type: array
           items:
@@ -1165,7 +1183,8 @@ components:
       type: object
       required: [brief, generatedAt]
       properties:
-        brief: { type: string, description: Markdown-formatted pre-date prep brief }
+        brief:
+          { type: string, description: Markdown-formatted pre-date prep brief }
         generatedAt: { type: string, format: date-time }
     DateBriefSnapshot:
       type: object
@@ -1195,6 +1214,12 @@ components:
           enum: [low, medium, high]
         label: { type: string }
         evidence: { type: string }
+        status:
+          type: string
+          enum: [current, previously-seen]
+        firstSeenAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        occurrenceCount: { type: integer }
     GreenFlag:
       type: object
       required: [label, evidence]
@@ -1203,15 +1228,40 @@ components:
         evidence: { type: string }
     RedFlagRadarResult:
       type: object
-      required: [redFlags, greenFlags, overallRead]
+      required:
+        - redFlags
+        - currentRedFlags
+        - historicalRedFlags
+        - greenFlags
+        - overallRead
+        - generatedAt
+        - redFlagSummary
       properties:
         redFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        currentRedFlags:
+          type: array
+          items: { $ref: "#/components/schemas/RedFlag" }
+        historicalRedFlags:
           type: array
           items: { $ref: "#/components/schemas/RedFlag" }
         greenFlags:
           type: array
           items: { $ref: "#/components/schemas/GreenFlag" }
         overallRead: { type: string }
+        generatedAt: { type: string, format: date-time }
+        redFlagSummary:
+          $ref: "#/components/schemas/RedFlagSummary"
+    RedFlagSummary:
+      type: object
+      required:
+        [currentCount, historicalCount, highSeverityCount, lastAnalyzedAt]
+      properties:
+        currentCount: { type: integer }
+        historicalCount: { type: integer }
+        highSeverityCount: { type: integer }
+        lastAnalyzedAt: { type: ["string", "null"], format: date-time }
     CheatSheetReply:
       type: object
       required: [style, text]
@@ -1257,7 +1307,8 @@ components:
         reason: { type: string }
     WeeklyDebriefResult:
       type: object
-      required: [headline, summary, totalActive, newThisWeek, matches, recommendations]
+      required:
+        [headline, summary, totalActive, newThisWeek, matches, recommendations]
       properties:
         headline: { type: string }
         summary: { type: string }
@@ -1340,7 +1391,15 @@ components:
           items: { $ref: "#/components/schemas/FunnelStage" }
         totals:
           type: object
-          required: [matches, active, archived, ghosted, withDateScheduled, withDateCompleted]
+          required:
+            [
+              matches,
+              active,
+              archived,
+              ghosted,
+              withDateScheduled,
+              withDateCompleted,
+            ]
           properties:
             matches: { type: integer }
             active: { type: integer }

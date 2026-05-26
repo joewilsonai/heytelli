@@ -1,7 +1,14 @@
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
-import { Dimensions, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Dimensions,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
@@ -56,7 +63,8 @@ export default function PhotoGalleryScreen() {
         ) : (
           <>
             <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
-              {data.screenshots.length} screenshot{data.screenshots.length === 1 ? "" : "s"}
+              {data.screenshots.length} screenshot
+              {data.screenshots.length === 1 ? "" : "s"}
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap }}>
               {data.screenshots.map((s) => {
@@ -85,9 +93,27 @@ export default function PhotoGalleryScreen() {
                           flex: 1,
                           alignItems: "center",
                           justifyContent: "center",
+                          gap: 6,
                         }}
                       >
-                        <Feather name="image" size={20} color={c.mutedForeground} />
+                        <Feather
+                          name={s.rawImagePurgedAt ? "check-circle" : "image"}
+                          size={20}
+                          color={
+                            s.rawImagePurgedAt ? c.success : c.mutedForeground
+                          }
+                        />
+                        {s.rawImagePurgedAt ? (
+                          <Text
+                            style={{
+                              color: c.mutedForeground,
+                              fontSize: 11,
+                              fontFamily: "Inter_600SemiBold",
+                            }}
+                          >
+                            Analyzed
+                          </Text>
+                        ) : null}
                       </View>
                     )}
                     {s.extractionStatus !== "done" && (
@@ -100,7 +126,9 @@ export default function PhotoGalleryScreen() {
                           paddingVertical: 2,
                           borderRadius: 6,
                           backgroundColor:
-                            s.extractionStatus === "failed" ? c.destructive : c.warning,
+                            s.extractionStatus === "failed"
+                              ? c.destructive
+                              : c.warning,
                         }}
                       >
                         <Text style={{ color: "#fff", fontSize: 9 }}>
@@ -126,7 +154,13 @@ export default function PhotoGalleryScreen() {
           })}
         >
           <Feather name="arrow-left" size={14} color={c.primary} />
-          <Text style={{ color: c.primary, fontSize: 13, fontFamily: "Inter_500Medium" }}>
+          <Text
+            style={{
+              color: c.primary,
+              fontSize: 13,
+              fontFamily: "Inter_500Medium",
+            }}
+          >
             Back to match
           </Text>
         </Pressable>

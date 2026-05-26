@@ -26,11 +26,22 @@ export type HomeMatchCardMatch = {
     screenshotCountAt: number;
   } | null;
   readFreshness: "current" | "stale" | "missing" | string;
+  redFlagSummary?: {
+    currentCount: number;
+    historicalCount: number;
+    highSeverityCount: number;
+    lastAnalyzedAt: string | null;
+  };
   tags?: string[];
   screenshotCount?: number;
 };
 
-export type HomeSignalTone = "success" | "warning" | "danger" | "muted" | "primary";
+export type HomeSignalTone =
+  | "success"
+  | "warning"
+  | "danger"
+  | "muted"
+  | "primary";
 
 export type HomeMatchCardModel = {
   name: string;
@@ -86,29 +97,54 @@ function pendingContextCount(match: HomeMatchCardMatch): number {
   return match.pendingScreenshotCount + match.failedScreenshotCount;
 }
 
-function getStatus(match: HomeMatchCardMatch, now: Date): HomeMatchCardModel["status"] {
+function savedConcernCount(match: HomeMatchCardMatch): number {
+  return (
+    (match.redFlagSummary?.currentCount ?? 0) +
+    (match.redFlagSummary?.historicalCount ?? 0)
+  );
+}
+
+function getStatus(
+  match: HomeMatchCardMatch,
+  now: Date,
+): HomeMatchCardModel["status"] {
   if (match.status === "archived") return { label: "Archived", tone: "muted" };
   if (match.status === "ghosted") return { label: "Quiet", tone: "muted" };
-  if (hasFutureDate(match, now)) return { label: "Date planned", tone: "primary" };
+  if (hasFutureDate(match, now))
+    return { label: "Date planned", tone: "primary" };
   if (isStale(match, now)) return { label: "Needs reply", tone: "warning" };
   return { label: "Active", tone: "success" };
 }
 
-function getSignal(match: HomeMatchCardMatch, now: Date): HomeMatchCardModel["signal"] {
+function getSignal(
+  match: HomeMatchCardMatch,
+  now: Date,
+): HomeMatchCardModel["signal"] {
   const connection = match.extractedProfile.scores.chemistry.value;
   const momentum = match.extractedProfile.scores.conversionAbility.value;
   const needsContext =
     match.analysisFreshness !== "current" ||
     pendingContextCount(match) > 0 ||
     (!match.lastActivityAt && connection == null && momentum == null);
+  const concerns = savedConcernCount(match);
 
   if (match.status !== "active") return { label: "Stale", tone: "muted" };
+  if ((match.redFlagSummary?.highSeverityCount ?? 0) > 0) {
+    return { label: "Saved concern", tone: "danger" };
+  }
+  if (concerns > 0) return { label: "Watch pattern", tone: "warning" };
   if (isStale(match, now)) return { label: "Stale", tone: "warning" };
   if (needsContext) return { label: "Needs more context", tone: "warning" };
-  if ((connection != null && connection <= 3) || (momentum != null && momentum <= 3)) {
+  if (
+    (connection != null && connection <= 3) ||
+    (momentum != null && momentum <= 3)
+  ) {
     return { label: "Possible concern", tone: "danger" };
   }
-  if ((connection != null && connection <= 5) || (momentum != null && momentum <= 5)) {
+  if (
+    (connection != null && connection <= 5) ||
+    (momentum != null && momentum <= 5)
+  ) {
     return { label: "Proceed slowly", tone: "warning" };
   }
   if ((connection ?? 0) >= 7 && (momentum ?? 0) >= 6) {
@@ -120,9 +156,14 @@ function getSignal(match: HomeMatchCardMatch, now: Date): HomeMatchCardModel["si
 function getNextAction(match: HomeMatchCardMatch, now: Date): string {
   if (match.status === "archived") return "Revisit only if something changed";
   if (match.status === "ghosted") return "Let it fade";
-  if (pendingContextCount(match) > 0 || match.analysisFreshness === "needs-analysis") {
+  if (
+    pendingContextCount(match) > 0 ||
+    match.analysisFreshness === "needs-analysis"
+  ) {
     return "Review new screenshots";
   }
+  if ((match.redFlagSummary?.highSeverityCount ?? 0) > 0)
+    return "Review saved concern";
   if (hasFutureDate(match, now)) return "Plan date safety";
   if (isStale(match, now)) return "Follow up or let it fade";
   if (!match.lastActivityAt) return "Upload latest chat";
@@ -131,7 +172,9 @@ function getNextAction(match: HomeMatchCardMatch, now: Date): string {
   return "Upload latest chat";
 }
 
-function firstNonEmpty(...values: Array<string | null | undefined>): string | null {
+function firstNonEmpty(
+  ...values: Array<string | null | undefined>
+): string | null {
   for (const value of values) {
     const trimmed = value?.trim();
     if (trimmed) return trimmed;
@@ -215,17 +258,24 @@ function getContextChips(match: HomeMatchCardMatch, now: Date): string[] {
     chips.push(`${count} screenshot${count === 1 ? "" : "s"}`);
   }
   if (match.lastActivityAt) chips.push(match.lastSpeaker ? "Chat" : "Activity");
-  if (match.extractedProfile.job || match.extractedProfile.location) chips.push("Profile");
+  if (match.extractedProfile.job || match.extractedProfile.location)
+    chips.push("Profile");
   if (hasFutureDate(match, now)) chips.push("Date set");
   if (match.dateHistory.length > 0) chips.push("Date history");
-  if (pendingContextCount(match) > 0) chips.push(`${pendingContextCount(match)} to analyze`);
+  if (pendingContextCount(match) > 0)
+    chips.push(`${pendingContextCount(match)} to analyze`);
+  const concerns = savedConcernCount(match);
+  if (concerns > 0)
+    chips.push(`${concerns} concern${concerns === 1 ? "" : "s"}`);
   if (chips.length === 0) chips.push("Needs screenshots");
 
   return chips.slice(0, 4);
 }
 
 function getAttentionRank(match: HomeMatchCardMatch, now: Date): number {
-  if (pendingContextCount(match) > 0 || match.analysisFreshness !== "current") return 100;
+  if (pendingContextCount(match) > 0 || match.analysisFreshness !== "current")
+    return 100;
+  if ((match.redFlagSummary?.highSeverityCount ?? 0) > 0) return 95;
   if (hasFutureDate(match, now)) return 90;
   if (isStale(match, now)) return 80;
   if (match.lastSpeaker === "her") return 70;

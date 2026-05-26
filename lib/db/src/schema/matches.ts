@@ -66,6 +66,22 @@ export type MatchReadSnapshot = {
   screenshotCountAt: number;
 };
 
+export type RedFlagRadarSnapshot = {
+  redFlags: Array<{
+    severity: "low" | "medium" | "high";
+    label: string;
+    evidence: string;
+  }>;
+  greenFlags: Array<{
+    label: string;
+    evidence: string;
+  }>;
+  overallRead: string;
+  /** ISO timestamp of when the radar was generated. */
+  generatedAt: string;
+  contextHash: string;
+};
+
 function toIsoString(v: unknown): string | null {
   if (v instanceof Date) {
     return Number.isNaN(v.getTime()) ? null : v.toISOString();
@@ -103,7 +119,8 @@ export function normalizeTranscript(input: unknown): TranscriptTurn[] {
   for (const raw of input) {
     if (!raw || typeof raw !== "object") continue;
     const obj = raw as Record<string, unknown>;
-    const speaker = obj.speaker === "her" || obj.speaker === "me" ? obj.speaker : null;
+    const speaker =
+      obj.speaker === "her" || obj.speaker === "me" ? obj.speaker : null;
     const text = typeof obj.text === "string" ? obj.text.trim() : "";
     if (!speaker || !text) continue;
     out.push({ speaker, text });
@@ -126,9 +143,7 @@ function normalizeScore(input: unknown): MatchScore {
   return { value, rationale };
 }
 
-export function normalizeExtractedProfile(
-  input: unknown,
-): ExtractedProfile {
+export function normalizeExtractedProfile(input: unknown): ExtractedProfile {
   const obj = (input ?? {}) as Record<string, unknown>;
   const incomingScores = (obj.scores ?? {}) as Record<string, unknown>;
   return {
@@ -182,6 +197,9 @@ export const matches = pgTable("matches", {
     contextHash: string;
   } | null>(),
   lastRead: jsonb("last_read").$type<MatchReadSnapshot | null>(),
+  lastRedFlagRadar: jsonb(
+    "last_red_flag_radar",
+  ).$type<RedFlagRadarSnapshot | null>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

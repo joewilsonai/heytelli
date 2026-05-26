@@ -133,7 +133,27 @@ test("shows persisted reads as up to date when API freshness is current", () => 
     readFreshness: "current",
   });
 
-  assert.equal(model.read.body, "This read was stored after the latest analyzed screenshots.");
+  assert.equal(
+    model.read.body,
+    "This read was stored after the latest analyzed screenshots.",
+  );
   assert.equal(model.read.freshnessLabel, "Up to date");
   assert.equal(model.read.tone, "success");
+});
+
+test("surfaces saved red flag history on the dashboard", () => {
+  const model = getHomeMatchCardModel({
+    ...baseMatch,
+    redFlagSummary: {
+      currentCount: 0,
+      historicalCount: 1,
+      highSeverityCount: 1,
+      lastAnalyzedAt: "2026-05-26T12:00:00.000Z",
+    },
+  });
+
+  assert.equal(model.signal.label, "Saved concern");
+  assert.equal(model.signal.tone, "danger");
+  assert.equal(model.nextAction, "Review saved concern");
+  assert.ok(model.contextChips.includes("1 concern"));
 });

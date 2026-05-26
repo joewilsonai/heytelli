@@ -6,9 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RedFlagSeverity } from './redFlagSeverity';
+import type { RedFlagStatus } from './redFlagStatus';
 
 export interface RedFlag {
   severity: RedFlagSeverity;
   label: string;
   evidence: string;
+  status?: RedFlagStatus;
+  firstSeenAt?: Date;
+  lastSeenAt?: Date;
+  occurrenceCount?: number;
 }

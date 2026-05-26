@@ -11,7 +11,7 @@ export const screenshots = pgTable("screenshots", {
   matchId: integer("match_id")
     .notNull()
     .references(() => matches.id, { onDelete: "cascade" }),
-  objectPath: text("object_path").notNull(),
+  objectPath: text("object_path"),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -20,6 +20,7 @@ export const screenshots = pgTable("screenshots", {
     .notNull()
     .default("pending"),
   extractionError: text("extraction_error"),
+  rawImagePurgedAt: timestamp("raw_image_purged_at", { withTimezone: true }),
 });
 
 export const insertScreenshotSchema = createInsertSchema(screenshots).omit({

@@ -147,6 +147,14 @@ export const DateBriefFreshness = {
   missing: 'missing',
 } as const;
 
+export interface RedFlagSummary {
+  currentCount: number;
+  historicalCount: number;
+  highSeverityCount: number;
+  /** @nullable */
+  lastAnalyzedAt: string | null;
+}
+
 export interface Match {
   id: number;
   name: string;
@@ -170,6 +178,7 @@ export interface Match {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlagSummary: RedFlagSummary;
   scoreHistory?: ScoreHistoryPoint[];
   /**
      * Speaker of the most recent transcript turn, if any
@@ -201,11 +210,14 @@ export const ScreenshotExtractionStatus = {
 export interface Screenshot {
   id: number;
   matchId: number;
-  objectPath: string;
+  /** @nullable */
+  objectPath: string | null;
   uploadedAt: string;
   extractionStatus: ScreenshotExtractionStatus;
   /** @nullable */
   extractionError: string | null;
+  /** @nullable */
+  rawImagePurgedAt: string | null;
 }
 
 export type TranscriptTurnSpeaker = typeof TranscriptTurnSpeaker[keyof typeof TranscriptTurnSpeaker];
@@ -254,6 +266,7 @@ export interface MatchDetail {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlagSummary: RedFlagSummary;
   transcript: TranscriptTurn[];
   createdAt: string;
   updatedAt: string;
@@ -384,10 +397,22 @@ export const RedFlagSeverity = {
   high: 'high',
 } as const;
 
+export type RedFlagStatus = typeof RedFlagStatus[keyof typeof RedFlagStatus];
+
+
+export const RedFlagStatus = {
+  current: 'current',
+  'previously-seen': 'previously-seen',
+} as const;
+
 export interface RedFlag {
   severity: RedFlagSeverity;
   label: string;
   evidence: string;
+  status?: RedFlagStatus;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  occurrenceCount?: number;
 }
 
 export interface GreenFlag {
@@ -397,8 +422,12 @@ export interface GreenFlag {
 
 export interface RedFlagRadarResult {
   redFlags: RedFlag[];
+  currentRedFlags: RedFlag[];
+  historicalRedFlags: RedFlag[];
   greenFlags: GreenFlag[];
   overallRead: string;
+  generatedAt: string;
+  redFlagSummary: RedFlagSummary;
 }
 
 export type CheatSheetReplyStyle = typeof CheatSheetReplyStyle[keyof typeof CheatSheetReplyStyle];

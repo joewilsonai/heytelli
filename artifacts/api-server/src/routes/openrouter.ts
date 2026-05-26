@@ -26,6 +26,7 @@ import {
 } from "@workspace/api-zod";
 import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { selectScreenshotsForVision } from "../lib/screenshotRetention";
 import { dateBriefContextHash } from "./matches";
 
 const router: IRouter = Router();
@@ -33,13 +34,20 @@ const storage = new ObjectStorageService();
 const MODEL = "x-ai/grok-4.20";
 const MAX_IMAGES_PER_TURN = 8;
 
-async function objectPathToCompressedDataUrl(objectPath: string): Promise<string | null> {
+async function objectPathToCompressedDataUrl(
+  objectPath: string,
+): Promise<string | null> {
   try {
     const file = await storage.getObjectEntityFile(objectPath);
     const [buf] = await file.download();
     const out = await sharp(buf)
       .rotate()
-      .resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true })
+      .resize({
+        width: 1024,
+        height: 1024,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
       .jpeg({ quality: 70 })
       .toBuffer();
     return `data:image/jpeg;base64,${out.toString("base64")}`;
@@ -51,7 +59,9 @@ async function objectPathToCompressedDataUrl(objectPath: string): Promise<string
 function formatTranscript(turns: TranscriptTurn[], matchName: string): string {
   if (turns.length === 0) return "";
   const her = matchName.trim() || "Her";
-  const lines = turns.map((t) => `${t.speaker === "her" ? her : "Me"}: ${t.text}`);
+  const lines = turns.map(
+    (t) => `${t.speaker === "her" ? her : "Me"}: ${t.text}`,
+  );
   return lines.join("\n");
 }
 
@@ -111,13 +121,17 @@ function profileSummary(match: {
   const p = match.extractedProfile;
   const s = p.scores;
   const fmt = (v: { value: number | null; rationale: string | null }) =>
-    v.value == null ? "n/a" : `${v.value}/10${v.rationale ? ` — ${v.rationale}` : ""}`;
+    v.value == null
+      ? "n/a"
+      : `${v.value}/10${v.rationale ? ` — ${v.rationale}` : ""}`;
   const facts = [
     `Name: ${match.name}`,
     p.job ? `Job: ${p.job}` : null,
     p.location ? `Location: ${p.location}` : null,
     p.interests.length ? `Interests: ${p.interests.join(", ")}` : null,
-    p.mentionedTopics.length ? `Topics mentioned: ${p.mentionedTopics.join(", ")}` : null,
+    p.mentionedTopics.length
+      ? `Topics mentioned: ${p.mentionedTopics.join(", ")}`
+      : null,
     p.conversationTone ? `Tone: ${p.conversationTone}` : null,
     match.vibeTags.length ? `Vibe: ${match.vibeTags.join(", ")}` : null,
     `Sex potential: ${fmt(s.sexPotential)}`,
@@ -137,7 +151,8 @@ function profileSummary(match: {
 
   let out = facts;
   if (dateInfo) out += `\n\n${dateInfo}`;
-  if (transcript) out += `\n\nFull chat transcript (chronological):\n${transcript}`;
+  if (transcript)
+    out += `\n\nFull chat transcript (chronological):\n${transcript}`;
   return out;
 }
 
@@ -224,7 +239,9 @@ async function loadPriorWingmanChats(
       minute: "2-digit",
     });
     const body = msgs
-      .map((m) => `${m.role === "user" ? "User" : "You (Wingman)"}: ${m.content}`)
+      .map(
+        (m) => `${m.role === "user" ? "User" : "You (Wingman)"}: ${m.content}`,
+      )
       .join("\n");
     blocks.push(`--- "${c.title}" (${when}) ---\n${body}`);
   }
@@ -239,7 +256,10 @@ async function buildSystemPrompt(
   const base = sections.base;
 
   if (matchId == null) {
-    const all = await db.select().from(matches).orderBy(desc(matches.updatedAt));
+    const all = await db
+      .select()
+      .from(matches)
+      .orderBy(desc(matches.updatedAt));
     if (all.length === 0) {
       return render(sections.noMatches, { BASE: base });
     }
@@ -257,7 +277,10 @@ async function buildSystemPrompt(
     return render(sections.allMatches, { BASE: base, ROSTER: roster });
   }
 
-  const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId));
   if (!match) return base;
   const norm = {
     ...match,
@@ -268,7 +291,10 @@ async function buildSystemPrompt(
 
   let summary = profileSummary(norm);
   if (currentConversationId != null) {
-    const priorChats = await loadPriorWingmanChats(matchId, currentConversationId);
+    const priorChats = await loadPriorWingmanChats(
+      matchId,
+      currentConversationId,
+    );
     if (priorChats) {
       summary += `\n\nPrevious wingman chats about ${match.name} (oldest first). The user's strategy or read on her may have evolved across these — treat the newest chat as the most current take, but consider the full arc:\n\n${priorChats}`;
     }
@@ -294,8 +320,10 @@ async function loadMatchImages(matchId: number): Promise<string[]> {
     .from(screenshots)
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
-  const recent = shots.slice(-MAX_IMAGES_PER_TURN);
-  const results = await Promise.all(recent.map((s) => objectPathToCompressedDataUrl(s.objectPath)));
+  const recent = selectScreenshotsForVision(shots).slice(-MAX_IMAGES_PER_TURN);
+  const results = await Promise.all(
+    recent.map((s) => objectPathToCompressedDataUrl(s.objectPath)),
+  );
   return results.filter((u): u is string => u !== null);
 }
 
@@ -345,147 +373,156 @@ router.get("/openrouter/conversations/:id", async (req, res): Promise<void> => {
   res.json({ ...conv, messages: msgs });
 });
 
-router.delete("/openrouter/conversations/:id", async (req, res): Promise<void> => {
-  const params = DeleteOpenrouterConversationParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const [deleted] = await db
-    .delete(conversations)
-    .where(eq(conversations.id, params.data.id))
-    .returning();
-  if (!deleted) {
-    res.status(404).json({ error: "Conversation not found" });
-    return;
-  }
-  res.sendStatus(204);
-});
+router.delete(
+  "/openrouter/conversations/:id",
+  async (req, res): Promise<void> => {
+    const params = DeleteOpenrouterConversationParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const [deleted] = await db
+      .delete(conversations)
+      .where(eq(conversations.id, params.data.id))
+      .returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+    res.sendStatus(204);
+  },
+);
 
-router.get("/openrouter/conversations/:id/messages", async (req, res): Promise<void> => {
-  const params = ListOpenrouterMessagesParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const msgs = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.conversationId, params.data.id))
-    .orderBy(asc(messages.createdAt));
-  res.json(msgs);
-});
+router.get(
+  "/openrouter/conversations/:id/messages",
+  async (req, res): Promise<void> => {
+    const params = ListOpenrouterMessagesParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const msgs = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, params.data.id))
+      .orderBy(asc(messages.createdAt));
+    res.json(msgs);
+  },
+);
 
-router.post("/openrouter/conversations/:id/messages", async (req, res): Promise<void> => {
-  const params = SendOpenrouterMessageParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const body = SendOpenrouterMessageBody.safeParse(req.body);
-  if (!body.success) {
-    res.status(400).json({ error: body.error.message });
-    return;
-  }
+router.post(
+  "/openrouter/conversations/:id/messages",
+  async (req, res): Promise<void> => {
+    const params = SendOpenrouterMessageParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const body = SendOpenrouterMessageBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.message });
+      return;
+    }
 
-  const [conv] = await db
-    .select()
-    .from(conversations)
-    .where(eq(conversations.id, params.data.id));
-  if (!conv) {
-    res.status(404).json({ error: "Conversation not found" });
-    return;
-  }
+    const [conv] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, params.data.id));
+    if (!conv) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
 
-  // Persist user message
-  await db.insert(messages).values({
-    conversationId: conv.id,
-    role: "user",
-    content: body.data.content,
-  });
-
-  const prior = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.conversationId, conv.id))
-    .orderBy(asc(messages.createdAt));
-
-  const systemPrompt = await buildSystemPrompt(conv.matchId, conv.id);
-  // We now persist the parsed chat transcript on each match (see extraction.ts),
-  // so the chat history is already inside the system prompt as text. Only fall
-  // back to attaching screenshots when no transcript exists yet (e.g. legacy
-  // matches that haven't been re-extracted).
-  const images =
-    conv.matchId != null && !(await hasTranscript(conv.matchId))
-      ? await loadMatchImages(conv.matchId)
-      : [];
-
-  // Build chat history. Most messages are plain text. The most recent user
-  // message is augmented with the current screenshots so the model can re-read
-  // them on every turn (DB only persists text).
-  const lastIdx = prior.length - 1;
-  const chatMessages = [
-    { role: "system" as const, content: systemPrompt },
-    ...prior.map((m, i) => {
-      if (i === lastIdx && m.role === "user" && images.length > 0) {
-        return {
-          role: "user" as const,
-          content: [
-            { type: "text" as const, text: m.content },
-            ...images.map((url) => ({
-              type: "image_url" as const,
-              image_url: { url },
-            })),
-          ],
-        };
-      }
-      return {
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      };
-    }),
-  ];
-
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  let fullResponse = "";
-
-  try {
-    const stream = await openrouter.chat.completions.create({
-      model: MODEL,
-      max_tokens: 8192,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      messages: chatMessages as any,
-      stream: true,
+    // Persist user message
+    await db.insert(messages).values({
+      conversationId: conv.id,
+      role: "user",
+      content: body.data.content,
     });
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullResponse += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
-    }
+    const prior = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conv.id))
+      .orderBy(asc(messages.createdAt));
 
-    if (fullResponse.trim().length > 0) {
-      await db.insert(messages).values({
-        conversationId: conv.id,
-        role: "assistant",
-        content: fullResponse,
+    const systemPrompt = await buildSystemPrompt(conv.matchId, conv.id);
+    // We now persist the parsed chat transcript on each match (see extraction.ts),
+    // so the chat history is already inside the system prompt as text. Only fall
+    // back to attaching screenshots when no transcript exists yet (e.g. legacy
+    // matches that haven't been re-extracted).
+    const images =
+      conv.matchId != null && !(await hasTranscript(conv.matchId))
+        ? await loadMatchImages(conv.matchId)
+        : [];
+
+    // Build chat history. Most messages are plain text. The most recent user
+    // message is augmented with the current screenshots so the model can re-read
+    // them on every turn (DB only persists text).
+    const lastIdx = prior.length - 1;
+    const chatMessages = [
+      { role: "system" as const, content: systemPrompt },
+      ...prior.map((m, i) => {
+        if (i === lastIdx && m.role === "user" && images.length > 0) {
+          return {
+            role: "user" as const,
+            content: [
+              { type: "text" as const, text: m.content },
+              ...images.map((url) => ({
+                type: "image_url" as const,
+                image_url: { url },
+              })),
+            ],
+          };
+        }
+        return {
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        };
+      }),
+    ];
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    let fullResponse = "";
+
+    try {
+      const stream = await openrouter.chat.completions.create({
+        model: MODEL,
+        max_tokens: 8192,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        messages: chatMessages as any,
+        stream: true,
       });
-    }
 
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
-  } catch (err) {
-    req.log.error({ err }, "Chat stream failed");
-    const message = err instanceof Error ? err.message : "Chat failed";
-    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
-    res.end();
-  }
-});
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          fullResponse += content;
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+
+      if (fullResponse.trim().length > 0) {
+        await db.insert(messages).values({
+          conversationId: conv.id,
+          role: "assistant",
+          content: fullResponse,
+        });
+      }
+
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (err) {
+      req.log.error({ err }, "Chat stream failed");
+      const message = err instanceof Error ? err.message : "Chat failed";
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      res.end();
+    }
+  },
+);
 
 router.post("/matches/:id/date-brief", async (req, res): Promise<void> => {
   const params = GenerateDateBriefParams.safeParse(req.params);
@@ -494,7 +531,10 @@ router.post("/matches/:id/date-brief", async (req, res): Promise<void> => {
     return;
   }
   const matchId = params.data.id;
-  const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -516,7 +556,10 @@ router.post("/matches/:id/date-brief", async (req, res): Promise<void> => {
     return;
   }
 
-  const hoursUntil = Math.max(1, Math.round((dateObj.getTime() - Date.now()) / 3_600_000));
+  const hoursUntil = Math.max(
+    1,
+    Math.round((dateObj.getTime() - Date.now()) / 3_600_000),
+  );
   const summary = profileSummary(norm);
 
   const systemPrompt = `You are Grok, an irreverent but tactically sharp wingman briefing your friend before a date that's roughly ${hoursUntil} hour(s) away.

@@ -94,6 +94,12 @@ export const ListMatchesResponseItem = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "scoreHistory": zod.array(zod.object({
   "sexPotential": zod.number().min(listMatchesResponseScoreHistoryItemSexPotentialMin).max(listMatchesResponseScoreHistoryItemSexPotentialMax).nullable(),
   "conversionAbility": zod.number().min(listMatchesResponseScoreHistoryItemConversionAbilityMin).max(listMatchesResponseScoreHistoryItemConversionAbilityMax).nullable(),
@@ -241,6 +247,12 @@ export const GetMatchResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -250,10 +262,11 @@ export const GetMatchResponse = zod.object({
   "screenshots": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
@@ -398,6 +411,12 @@ export const UpdateMatchResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "scoreHistory": zod.array(zod.object({
   "sexPotential": zod.number().min(updateMatchResponseScoreHistoryItemSexPotentialMin).max(updateMatchResponseScoreHistoryItemSexPotentialMax).nullable(),
   "conversionAbility": zod.number().min(updateMatchResponseScoreHistoryItemConversionAbilityMin).max(updateMatchResponseScoreHistoryItemConversionAbilityMax).nullable(),
@@ -430,10 +449,11 @@ export const ListScreenshotsParams = zod.object({
 export const ListScreenshotsResponseItem = zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })
 export const ListScreenshotsResponse = zod.array(ListScreenshotsResponseItem)
 
@@ -512,6 +532,12 @@ export const AddScreenshotResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -521,10 +547,11 @@ export const AddScreenshotResponse = zod.object({
   "screenshots": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
@@ -602,6 +629,12 @@ export const RescoreMatchResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -611,10 +644,11 @@ export const RescoreMatchResponse = zod.object({
   "screenshots": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
@@ -646,13 +680,42 @@ export const GetRedFlagRadarResponse = zod.object({
   "redFlags": zod.array(zod.object({
   "severity": zod.enum(['low', 'medium', 'high']),
   "label": zod.string(),
-  "evidence": zod.string()
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "currentRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
+})),
+  "historicalRedFlags": zod.array(zod.object({
+  "severity": zod.enum(['low', 'medium', 'high']),
+  "label": zod.string(),
+  "evidence": zod.string(),
+  "status": zod.enum(['current', 'previously-seen']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "lastSeenAt": zod.coerce.date().optional(),
+  "occurrenceCount": zod.number().optional()
 })),
   "greenFlags": zod.array(zod.object({
   "label": zod.string(),
   "evidence": zod.string()
 })),
-  "overallRead": zod.string()
+  "overallRead": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+})
 })
 
 
@@ -785,6 +848,12 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -794,10 +863,11 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "screenshots": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
@@ -1024,6 +1094,12 @@ export const InPersonRecordingResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -1033,10 +1109,11 @@ export const InPersonRecordingResponse = zod.object({
   "screenshots": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),
@@ -1158,6 +1235,12 @@ export const VoiceDebriefResponse = zod.object({
   "screenshotCountAt": zod.number().describe('Successfully analyzed screenshot count at generation time.')
 }),zod.null()]),
   "readFreshness": zod.enum(['current', 'stale', 'missing']).describe('current = the persisted read reflects all analyzed screenshots.\nstale   = newer screenshots exist or some screenshots need analysis.\nmissing = no read has ever been generated.\n'),
+  "redFlagSummary": zod.object({
+  "currentCount": zod.number(),
+  "historicalCount": zod.number(),
+  "highSeverityCount": zod.number(),
+  "lastAnalyzedAt": zod.coerce.date().nullable()
+}),
   "transcript": zod.array(zod.object({
   "speaker": zod.enum(['her', 'me']),
   "text": zod.string()
@@ -1167,10 +1250,11 @@ export const VoiceDebriefResponse = zod.object({
   "screenshots": zod.array(zod.object({
   "id": zod.number(),
   "matchId": zod.number(),
-  "objectPath": zod.string(),
+  "objectPath": zod.string().nullable(),
   "uploadedAt": zod.coerce.date(),
   "extractionStatus": zod.enum(['pending', 'done', 'failed']),
-  "extractionError": zod.string().nullable()
+  "extractionError": zod.string().nullable(),
+  "rawImagePurgedAt": zod.coerce.date().nullable()
 })),
   "pendingScreenshotCount": zod.number().describe('Screenshots awaiting analysis'),
   "failedScreenshotCount": zod.number().describe('Screenshots whose analysis failed'),

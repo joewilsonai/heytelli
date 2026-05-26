@@ -10,9 +10,12 @@ import type { ScreenshotExtractionStatus } from './screenshotExtractionStatus';
 export interface Screenshot {
   id: number;
   matchId: number;
-  objectPath: string;
+  /** @nullable */
+  objectPath: string | null;
   uploadedAt: Date;
   extractionStatus: ScreenshotExtractionStatus;
   /** @nullable */
   extractionError: string | null;
+  /** @nullable */
+  rawImagePurgedAt: Date | null;
 }

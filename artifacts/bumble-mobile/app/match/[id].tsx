@@ -78,7 +78,8 @@ export default function MatchDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Number(id);
-  const { data, isLoading, refetch, isRefetching, error } = useGetMatch(matchId);
+  const { data, isLoading, refetch, isRefetching, error } =
+    useGetMatch(matchId);
 
   if (isLoading) {
     return (
@@ -141,7 +142,11 @@ export default function MatchDetailScreen() {
         <HeaderCard match={data} onChange={() => refetch()} />
         <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
         <LatestReadCard match={data} onChange={() => refetch()} />
-        <RedFlagsCard matchId={data.id} promoted />
+        <RedFlagsCard
+          matchId={data.id}
+          promoted
+          initialSummary={data.redFlagSummary}
+        />
         <ResponseStatsCard matchId={data.id} />
         <ChatLinkCard matchId={data.id} matchName={data.name} />
         <VoiceDebriefCard
@@ -149,14 +154,20 @@ export default function MatchDetailScreen() {
           matchName={data.name}
           onApplied={() => refetch()}
         />
-        <ToolsRow matchId={data.id} matchName={data.name} onApplied={() => refetch()} />
+        <ToolsRow
+          matchId={data.id}
+          matchName={data.name}
+          onApplied={() => refetch()}
+        />
         {isPast(data.nextDateAt) && data.nextDateAt && (
           <PostDateDebriefCard match={data} onChange={() => refetch()} />
         )}
         {data.nextDateAt && !isPast(data.nextDateAt) && (
           <NextDateCard match={data} onChange={() => refetch()} />
         )}
-        {!data.nextDateAt && <ScheduleDateCard match={data} onChange={() => refetch()} />}
+        {!data.nextDateAt && (
+          <ScheduleDateCard match={data} onChange={() => refetch()} />
+        )}
         <CheatSheetCard matchId={data.id} />
         <RepliesCard matchId={data.id} />
         <ScreenshotsCard match={data} onChange={() => refetch()} />
@@ -176,12 +187,23 @@ export default function MatchDetailScreen() {
           })}
         >
           <Feather name="image" size={14} color={c.foreground} />
-          <Text style={{ color: c.foreground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
-            View all {data.screenshots.length} photo{data.screenshots.length === 1 ? "" : "s"}
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 13,
+              fontFamily: "Inter_500Medium",
+            }}
+          >
+            View all {data.screenshots.length} photo
+            {data.screenshots.length === 1 ? "" : "s"}
           </Text>
         </Pressable>
         <TranscriptCard match={data} onChange={() => refetch()} />
-        <TagsRow matchId={data.id} tags={data.tags ?? []} onChange={() => refetch()} />
+        <TagsRow
+          matchId={data.id}
+          tags={data.tags ?? []}
+          onChange={() => refetch()}
+        />
         <TagHistoryCard matchId={data.id} />
         <NotesCard match={data} onChange={() => refetch()} />
         <StatusActionsCard
@@ -249,7 +271,9 @@ function VoiceDebriefCard({
           >
             Voice debrief
           </Text>
-          <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
+          <Text
+            style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}
+          >
             Talk it out — Grok transcribes, flags, and updates scores
           </Text>
         </View>
@@ -309,7 +333,13 @@ function ToolsRow({
           >
             <Feather name="headphones" size={16} color="#fff" />
           </View>
-          <Text style={{ fontFamily: "Inter_600SemiBold", color: c.foreground, fontSize: 13 }}>
+          <Text
+            style={{
+              fontFamily: "Inter_600SemiBold",
+              color: c.foreground,
+              fontSize: 13,
+            }}
+          >
             Voice note check
           </Text>
           <Text style={{ fontSize: 11, color: c.mutedForeground }}>
@@ -344,7 +374,13 @@ function ToolsRow({
           >
             <Feather name="radio" size={16} color={c.background} />
           </View>
-          <Text style={{ fontFamily: "Inter_600SemiBold", color: c.foreground, fontSize: 13 }}>
+          <Text
+            style={{
+              fontFamily: "Inter_600SemiBold",
+              color: c.foreground,
+              fontSize: 13,
+            }}
+          >
             Record date (live)
           </Text>
           <Text style={{ fontSize: 11, color: c.mutedForeground }}>
@@ -388,7 +424,9 @@ function ChatLinkCard({
         title: `Chat about ${matchName}`,
         matchId,
       });
-      qc.invalidateQueries({ queryKey: getListOpenrouterConversationsQueryKey() });
+      qc.invalidateQueries({
+        queryKey: getListOpenrouterConversationsQueryKey(),
+      });
       router.push(`/chat/${created.id}`);
     } catch (e: any) {
       Alert.alert("Couldn't start chat", e?.message ?? "Try again.");
@@ -433,7 +471,14 @@ function ChatLinkCard({
         >
           Chat with Grok about {matchName}
         </Text>
-        <Text style={{ fontSize: 12, color: c.accentForeground, opacity: 0.7, marginTop: 2 }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: c.accentForeground,
+            opacity: 0.7,
+            marginTop: 2,
+          }}
+        >
           Brainstorm next moves, decode her vibe
         </Text>
       </View>
@@ -445,7 +490,6 @@ function ChatLinkCard({
     </Pressable>
   );
 }
-
 
 function HeaderCard({
   match,
@@ -484,7 +528,12 @@ function HeaderCard({
         {photo ? (
           <Image
             source={photo}
-            style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: c.muted }}
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: c.muted,
+            }}
             contentFit="cover"
           />
         ) : (
@@ -503,7 +552,9 @@ function HeaderCard({
         )}
         <View style={{ flex: 1, gap: 4 }}>
           {editingName ? (
-            <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+            <View
+              style={{ flexDirection: "row", gap: 6, alignItems: "center" }}
+            >
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -614,7 +665,9 @@ function FreshnessChip({ match }: { match: MatchDetail }) {
       }}
     >
       <Feather name={icon} size={11} color={tint} />
-      <Text style={{ fontSize: 11, color: tint, fontFamily: "Inter_600SemiBold" }}>
+      <Text
+        style={{ fontSize: 11, color: tint, fontFamily: "Inter_600SemiBold" }}
+      >
         {label}
       </Text>
     </View>
@@ -642,7 +695,9 @@ function useScreenshotUpload({
     try {
       const result = await attachScreenshotsToMatch(match.id, uris);
       if (result.savedCount > 0) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
       }
       onChange();
       if (result.failedCount > 0) {
@@ -671,7 +726,10 @@ function useScreenshotUpload({
 async function pickScreenshotUris(): Promise<string[]> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
-    Alert.alert("Photos access needed", "Allow photo library access to add screenshots.");
+    Alert.alert(
+      "Photos access needed",
+      "Allow photo library access to add screenshots.",
+    );
     return [];
   }
 
@@ -715,7 +773,10 @@ function ScreenshotIntakeCard({
   onChange: () => void;
 }) {
   const c = useColors();
-  const { upload, uploading, uploadCount } = useScreenshotUpload({ match, onChange });
+  const { upload, uploading, uploadCount } = useScreenshotUpload({
+    match,
+    onChange,
+  });
   const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
   const savedCount = match.screenshots.length;
   const status = uploading
@@ -792,7 +853,9 @@ function ScreenshotIntakeCard({
           }}
         >
           <Feather
-            name={pending > 0 ? "refresh-cw" : savedCount > 0 ? "check" : "plus"}
+            name={
+              pending > 0 ? "refresh-cw" : savedCount > 0 ? "check" : "plus"
+            }
             size={11}
             color={c.primaryForeground}
           />
@@ -844,7 +907,9 @@ function LatestReadCard({
     setRescoring(true);
     try {
       await rescoreMatch(match.id);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
       onChange();
     } catch (e: any) {
       Alert.alert("Couldn't reanalyze", e?.message ?? "Try again.");
@@ -928,7 +993,10 @@ function ScheduleDateCard({
 
   const save = async () => {
     if (!when.trim()) {
-      Alert.alert("When?", "Enter a date/time like 'Friday 7pm' or '2026-06-01 19:00'.");
+      Alert.alert(
+        "When?",
+        "Enter a date/time like 'Friday 7pm' or '2026-06-01 19:00'.",
+      );
       return;
     }
     const parsed = new Date(when);
@@ -947,7 +1015,9 @@ function ScheduleDateCard({
         nextDateLocation: location,
         nextDateOutfit: outfit.trim() || null,
       });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
 
       // Schedule local reminder for date day (9am local)
       scheduleDateDayReminder(match.id, match.name, parsed, location).catch(
@@ -965,7 +1035,10 @@ function ScheduleDateCard({
             onPress: () => {
               addDateToCalendar(match.name, parsed, location).then((id) => {
                 if (!id) {
-                  Alert.alert("Couldn't add", "Calendar permission denied or unavailable.");
+                  Alert.alert(
+                    "Couldn't add",
+                    "Calendar permission denied or unavailable.",
+                  );
                 }
               });
             },
@@ -1081,7 +1154,8 @@ function NextDateCard({
     if (newShots > 0) {
       return `${newShots} new screenshot${newShots === 1 ? "" : "s"} since`;
     }
-    const ageDays = (Date.now() - new Date(savedBrief.generatedAt).getTime()) / 86_400_000;
+    const ageDays =
+      (Date.now() - new Date(savedBrief.generatedAt).getTime()) / 86_400_000;
     if (ageDays > 5) return "Older than 5 days";
     return "Date details updated";
   })();
@@ -1089,7 +1163,7 @@ function NextDateCard({
   const readStatusLabel = hasUnanalyzedScreens
     ? `${pendingAnalysis} screenshot${pendingAnalysis === 1 ? "" : "s"} not analyzed`
     : freshness === "stale"
-      ? staleReason ?? "Needs refresh"
+      ? (staleReason ?? "Needs refresh")
       : "Up to date";
   const readStatusWarning = hasUnanalyzedScreens || freshness === "stale";
 
@@ -1108,13 +1182,32 @@ function NextDateCard({
 
   return (
     <Card style={{ borderColor: c.primary, borderWidth: 2 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
         <Feather name="calendar" size={16} color={c.primary} />
-        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: c.primary }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontFamily: "Inter_600SemiBold",
+            color: c.primary,
+          }}
+        >
           UPCOMING DATE
         </Text>
       </View>
-      <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: c.foreground }}>
+      <Text
+        style={{
+          fontSize: 18,
+          fontFamily: "Inter_700Bold",
+          color: c.foreground,
+        }}
+      >
         {formatDateTime(match.nextDateAt)}
       </Text>
       {match.nextDateLocation && (
@@ -1150,7 +1243,12 @@ function NextDateCard({
           loading={briefLoading}
           style={{ flex: 1 }}
         />
-        <Button label="Clear" onPress={clearDate} loading={clearing} variant="ghost" />
+        <Button
+          label="Clear"
+          onPress={clearDate}
+          loading={clearing}
+          variant="ghost"
+        />
       </View>
       {savedBrief && (
         <View
@@ -1193,7 +1291,11 @@ function NextDateCard({
                   backgroundColor: c.warningBg ?? c.muted,
                 }}
               >
-                <Feather name="refresh-cw" size={10} color={c.warning ?? c.primary} />
+                <Feather
+                  name="refresh-cw"
+                  size={10}
+                  color={c.warning ?? c.primary}
+                />
                 <Text
                   style={{
                     fontSize: 10,
@@ -1229,7 +1331,9 @@ function NextDateCard({
               </View>
             )}
           </View>
-          <Body style={{ fontSize: 13, lineHeight: 19 }}>{savedBrief.brief}</Body>
+          <Body style={{ fontSize: 13, lineHeight: 19 }}>
+            {savedBrief.brief}
+          </Body>
         </View>
       )}
     </Card>
@@ -1250,7 +1354,10 @@ function PostDateDebriefCard({
 
   const log = async () => {
     if (!recap.trim()) {
-      Alert.alert("How'd it go?", "Add a quick recap (or tap 'Didn't happen').");
+      Alert.alert(
+        "How'd it go?",
+        "Add a quick recap (or tap 'Didn't happen').",
+      );
       return;
     }
     setSaving(true);
@@ -1268,7 +1375,9 @@ function PostDateDebriefCard({
         nextDateLocation: null,
       });
       cancelDateDayReminder(match.id).catch(() => {});
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
       onChange();
       setRecap("");
     } catch (e: any) {
@@ -1292,10 +1401,25 @@ function PostDateDebriefCard({
   };
 
   return (
-    <Card style={{ backgroundColor: c.accent, borderColor: c.accentForeground }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+    <Card
+      style={{ backgroundColor: c.accent, borderColor: c.accentForeground }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
         <Feather name="check-circle" size={16} color={c.accentForeground} />
-        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: c.accentForeground }}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontFamily: "Inter_600SemiBold",
+            color: c.accentForeground,
+          }}
+        >
           HOW DID THE DATE GO?
         </Text>
       </View>
@@ -1316,10 +1440,22 @@ function PostDateDebriefCard({
           loading={saving}
           style={{ flex: 1 }}
         />
-        <Button label="Didn't happen" onPress={skip} loading={skipping} variant="ghost" />
+        <Button
+          label="Didn't happen"
+          onPress={skip}
+          loading={skipping}
+          variant="ghost"
+        />
       </View>
       {match.dateHistory.length > 0 && (
-        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.border }}>
+        <View
+          style={{
+            marginTop: 14,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: c.border,
+          }}
+        >
           <SectionLabel>Past dates</SectionLabel>
           {match.dateHistory
             .slice()
@@ -1327,7 +1463,13 @@ function PostDateDebriefCard({
             .slice(0, 3)
             .map((d) => (
               <View key={d.id} style={{ marginBottom: 8 }}>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: c.foreground }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "Inter_600SemiBold",
+                    color: c.foreground,
+                  }}
+                >
                   {formatDateTime(d.when)}
                   {d.location ? ` · ${d.location}` : ""}
                 </Text>
@@ -1352,7 +1494,9 @@ function RepliesCard({ matchId }: { matchId: number }) {
     try {
       const res: ReplyResult = await generateMatchReplies(matchId);
       setReplies(res.replies);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
     } catch (e: any) {
       Alert.alert("Couldn't generate replies", e?.message ?? "Try again.");
     } finally {
@@ -1362,12 +1506,21 @@ function RepliesCard({ matchId }: { matchId: number }) {
 
   const copy = async (text: string) => {
     await Clipboard.setStringAsync(text);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
   };
 
   return (
     <Card>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 10,
+        }}
+      >
         <SectionLabel>Reply suggestions</SectionLabel>
         <IconButton
           icon={loading ? "loader" : "refresh-cw"}
@@ -1400,9 +1553,18 @@ function RepliesCard({ matchId }: { matchId: number }) {
               })}
             >
               <Body style={{ fontSize: 13 }}>{r}</Body>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  marginTop: 6,
+                }}
+              >
                 <Feather name="copy" size={11} color={c.mutedForeground} />
-                <Text style={{ fontSize: 10, color: c.mutedForeground }}>Tap to copy</Text>
+                <Text style={{ fontSize: 10, color: c.mutedForeground }}>
+                  Tap to copy
+                </Text>
               </View>
             </Pressable>
           ))}
@@ -1430,22 +1592,43 @@ function ScreenshotsCard({
           Haptics.selectionAsync().catch(() => {});
           setOpen((v) => !v);
         }}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Feather name="image" size={16} color={c.mutedForeground} />
-          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: c.foreground, letterSpacing: 1.2, textTransform: "uppercase" }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontFamily: "Inter_600SemiBold",
+              color: c.foreground,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+            }}
+          >
             Conversation log ({match.screenshots.length})
           </Text>
         </View>
-        <Feather name={open ? "chevron-up" : "chevron-down"} size={18} color={c.mutedForeground} />
+        <Feather
+          name={open ? "chevron-up" : "chevron-down"}
+          size={18}
+          color={c.mutedForeground}
+        />
       </Pressable>
       {open && (
         <View style={{ marginTop: 14, gap: 12 }}>
           {match.screenshots.length === 0 ? (
             <Body muted>No screenshots yet.</Body>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginHorizontal: -16 }}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+            >
               {match.screenshots.map((s) => {
                 const url = objectPathToUrl(s.objectPath);
                 return (
@@ -1453,9 +1636,44 @@ function ScreenshotsCard({
                     {url && (
                       <Image
                         source={url}
-                        style={{ width: 140, height: 240, borderRadius: 12, backgroundColor: c.muted }}
+                        style={{
+                          width: 140,
+                          height: 240,
+                          borderRadius: 12,
+                          backgroundColor: c.muted,
+                        }}
                         contentFit="cover"
                       />
+                    )}
+                    {!url && (
+                      <View
+                        style={{
+                          width: 140,
+                          height: 240,
+                          borderRadius: 12,
+                          backgroundColor: c.muted,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          padding: 12,
+                        }}
+                      >
+                        <Feather
+                          name="check-circle"
+                          size={22}
+                          color={c.success}
+                        />
+                        <Text
+                          style={{
+                            color: c.mutedForeground,
+                            fontSize: 12,
+                            fontFamily: "Inter_600SemiBold",
+                            textAlign: "center",
+                          }}
+                        >
+                          Analyzed
+                        </Text>
+                      </View>
                     )}
                     <Text style={{ fontSize: 10, color: c.mutedForeground }}>
                       {formatTimeAgo(s.uploadedAt)}
@@ -1494,15 +1712,31 @@ function TranscriptCard({
           Haptics.selectionAsync().catch(() => {});
           setOpen((v) => !v);
         }}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Feather name="message-square" size={16} color={c.mutedForeground} />
-          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: c.foreground, letterSpacing: 1.2, textTransform: "uppercase" }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontFamily: "Inter_600SemiBold",
+              color: c.foreground,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+            }}
+          >
             Transcript ({match.transcript.length})
           </Text>
         </View>
-        <Feather name={open ? "chevron-up" : "chevron-down"} size={18} color={c.mutedForeground} />
+        <Feather
+          name={open ? "chevron-up" : "chevron-down"}
+          size={18}
+          color={c.mutedForeground}
+        />
       </Pressable>
       {open && (
         <View style={{ marginTop: 14, gap: 6 }}>
@@ -1526,7 +1760,8 @@ function TranscriptCard({
                 <Text
                   style={{
                     fontSize: 13,
-                    color: t.speaker === "me" ? c.primaryForeground : c.foreground,
+                    color:
+                      t.speaker === "me" ? c.primaryForeground : c.foreground,
                   }}
                 >
                   {t.text}
@@ -1567,16 +1802,40 @@ function NotesCard({
 
   return (
     <Card>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 10,
+        }}
+      >
         <SectionLabel>Notes</SectionLabel>
         {editing ? (
-          <IconButton icon={saving ? "loader" : "check"} onPress={save} color={c.primary} size={16} hint="Save notes" />
+          <IconButton
+            icon={saving ? "loader" : "check"}
+            onPress={save}
+            color={c.primary}
+            size={16}
+            hint="Save notes"
+          />
         ) : (
-          <IconButton icon="edit-2" onPress={() => setEditing(true)} color={c.mutedForeground} size={16} hint="Edit notes" />
+          <IconButton
+            icon="edit-2"
+            onPress={() => setEditing(true)}
+            color={c.mutedForeground}
+            size={16}
+            hint="Edit notes"
+          />
         )}
       </View>
       {editing ? (
-        <Input value={notes} onChangeText={setNotes} multiline placeholder="Private notes about this match..." />
+        <Input
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          placeholder="Private notes about this match..."
+        />
       ) : match.notes ? (
         <Body>{match.notes}</Body>
       ) : (
@@ -1605,7 +1864,9 @@ function StatusActionsCard({
   const set = (status: MatchStatus) => {
     Alert.alert(
       `Mark as ${status}?`,
-      status === "active" ? "Reactivate this match." : "It'll be hidden from the active list.",
+      status === "active"
+        ? "Reactivate this match."
+        : "It'll be hidden from the active list.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -1615,8 +1876,12 @@ function StatusActionsCard({
             setBusy(status);
             try {
               await updateMatch(match.id, { status });
-              await qc.invalidateQueries({ queryKey: getListMatchesQueryKey() });
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+              await qc.invalidateQueries({
+                queryKey: getListMatchesQueryKey(),
+              });
+              Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Success,
+              ).catch(() => {});
               if (status !== "active") onArchived();
               else onChange();
             } catch (e: any) {
@@ -1655,7 +1920,10 @@ function StatusActionsCard({
               ).catch(() => {});
               onDeleted();
             } catch (e: any) {
-              Alert.alert("Couldn't delete connection", e?.message ?? "Try again.");
+              Alert.alert(
+                "Couldn't delete connection",
+                e?.message ?? "Try again.",
+              );
             } finally {
               setDeleting(false);
             }

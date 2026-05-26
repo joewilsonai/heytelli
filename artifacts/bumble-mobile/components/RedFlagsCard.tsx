@@ -4,16 +4,22 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { getRedFlagRadar } from "@workspace/api-client-react";
-import type { RedFlagRadarResult } from "@workspace/api-client-react";
+import type {
+  RedFlag,
+  RedFlagRadarResult,
+  RedFlagSummary,
+} from "@workspace/api-client-react";
 
 import { Body, Card, SectionLabel } from "./ui";
 
 export function RedFlagsCard({
   matchId,
   promoted = false,
+  initialSummary,
 }: {
   matchId: number;
   promoted?: boolean;
+  initialSummary?: RedFlagSummary;
 }) {
   const c = useColors();
   const [data, setData] = useState<RedFlagRadarResult | null>(null);
@@ -34,11 +40,67 @@ export function RedFlagsCard({
   };
 
   const sevColor = (s: "low" | "medium" | "high") =>
-    s === "high" ? c.destructive : s === "medium" ? c.warning : c.mutedForeground;
+    s === "high"
+      ? c.destructive
+      : s === "medium"
+        ? c.warning
+        : c.mutedForeground;
 
-  const hasHighFlag = data?.redFlags.some((f) => f.severity === "high") ?? false;
-  const flagCount = data?.redFlags.length ?? 0;
+  const summary = data?.redFlagSummary ?? initialSummary;
+  const hasHighFlag = (summary?.highSeverityCount ?? 0) > 0;
+  const flagCount =
+    data?.redFlags.length ??
+    (summary?.currentCount ?? 0) + (summary?.historicalCount ?? 0);
   const showAlert = promoted && hasHighFlag;
+  const currentFlags = data?.currentRedFlags.length
+    ? data.currentRedFlags
+    : (data?.redFlags.filter((f) => f.status !== "previously-seen") ?? []);
+  const historicalFlags = data?.historicalRedFlags.length
+    ? data.historicalRedFlags
+    : (data?.redFlags.filter((f) => f.status === "previously-seen") ?? []);
+
+  const renderFlagList = (title: string, flags: RedFlag[], muted = false) => (
+    <View style={{ gap: 6 }}>
+      <Text
+        style={{
+          fontSize: 12,
+          color: muted ? c.mutedForeground : c.destructive,
+          fontFamily: "Inter_600SemiBold",
+          letterSpacing: 0.5,
+        }}
+      >
+        {title}
+      </Text>
+      {flags.map((f, i) => (
+        <View key={`${title}-${i}`} style={{ gap: 2 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: sevColor(f.severity),
+              }}
+            />
+            <Text
+              style={{
+                color: c.foreground,
+                fontFamily: "Inter_600SemiBold",
+                fontSize: 13,
+              }}
+            >
+              {f.label}
+            </Text>
+          </View>
+          <Text
+            style={{ color: c.mutedForeground, fontSize: 12, marginLeft: 14 }}
+          >
+            {f.evidence}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
 
   return (
     <Card
@@ -64,7 +126,9 @@ export function RedFlagsCard({
           <Feather
             name="shield"
             size={16}
-            color={showAlert ? c.destructive : promoted ? c.primary : c.foreground}
+            color={
+              showAlert ? c.destructive : promoted ? c.primary : c.foreground
+            }
           />
           <SectionLabel>The Read</SectionLabel>
           {flagCount > 0 && (
@@ -83,7 +147,7 @@ export function RedFlagsCard({
                   fontFamily: "Inter_700Bold",
                 }}
               >
-                {flagCount} 🚩
+                {flagCount}
               </Text>
             </View>
           )}
@@ -106,62 +170,38 @@ export function RedFlagsCard({
       </View>
       {!data && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
-          {promoted
-            ? "Scan chat and notes for behavioral patterns before you reply."
-            : "Scan chat, dates, and notes for behavioral patterns."}
+          {flagCount > 0
+            ? `${flagCount} saved concern${flagCount === 1 ? "" : "s"} on this match.`
+            : promoted
+              ? "Scan chat and notes for behavioral patterns before you reply."
+              : "Scan chat, dates, and notes for behavioral patterns."}
         </Body>
       )}
       {data && open && (
         <View style={{ marginTop: 10, gap: 12 }}>
           {data.overallRead ? (
-            <View style={{ padding: 10, backgroundColor: c.muted, borderRadius: 10 }}>
-              <Text style={{ color: c.foreground, fontSize: 13, fontStyle: "italic" }}>
+            <View
+              style={{
+                padding: 10,
+                backgroundColor: c.muted,
+                borderRadius: 10,
+              }}
+            >
+              <Text
+                style={{
+                  color: c.foreground,
+                  fontSize: 13,
+                  fontStyle: "italic",
+                }}
+              >
                 "{data.overallRead}"
               </Text>
             </View>
           ) : null}
-          {data.redFlags.length > 0 && (
-            <View style={{ gap: 6 }}>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: c.destructive,
-                  fontFamily: "Inter_600SemiBold",
-                  letterSpacing: 0.5,
-                }}
-              >
-                🚩 RED FLAGS
-              </Text>
-              {data.redFlags.map((f, i) => (
-                <View key={i} style={{ gap: 2 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: sevColor(f.severity),
-                      }}
-                    />
-                    <Text
-                      style={{
-                        color: c.foreground,
-                        fontFamily: "Inter_600SemiBold",
-                        fontSize: 13,
-                      }}
-                    >
-                      {f.label}
-                    </Text>
-                  </View>
-                  <Text
-                    style={{ color: c.mutedForeground, fontSize: 12, marginLeft: 14 }}
-                  >
-                    {f.evidence}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
+          {currentFlags.length > 0 &&
+            renderFlagList("CURRENT CONCERNS", currentFlags)}
+          {historicalFlags.length > 0 &&
+            renderFlagList("PREVIOUSLY FLAGGED", historicalFlags, true)}
           {data.greenFlags.length > 0 && (
             <View style={{ gap: 6 }}>
               <Text
@@ -193,7 +233,13 @@ export function RedFlagsCard({
             </View>
           )}
           <Pressable onPress={run} disabled={loading} hitSlop={8}>
-            <Text style={{ color: c.primary, fontSize: 12, fontFamily: "Inter_500Medium" }}>
+            <Text
+              style={{
+                color: c.primary,
+                fontSize: 12,
+                fontFamily: "Inter_500Medium",
+              }}
+            >
               Re-analyze
             </Text>
           </Pressable>

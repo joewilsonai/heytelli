@@ -13,6 +13,7 @@ import type { MatchDetailAnalysisFreshness } from './matchDetailAnalysisFreshnes
 import type { MatchReadFreshness } from './matchReadFreshness';
 import type { MatchReadSnapshot } from './matchReadSnapshot';
 import type { MatchStatus } from './matchStatus';
+import type { RedFlagSummary } from './redFlagSummary';
 import type { Screenshot } from './screenshot';
 import type { TranscriptTurn } from './transcriptTurn';
 
@@ -37,6 +38,7 @@ export interface MatchDetail {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlagSummary: RedFlagSummary;
   transcript: TranscriptTurn[];
   createdAt: Date;
   updatedAt: Date;

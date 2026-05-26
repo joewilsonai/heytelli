@@ -4,3 +4,4 @@ export * from "./matches";
 export * from "./matchScores";
 export * from "./screenshots";
 export * from "./matchTagEvents";
+export * from "./matchRedFlagEvents";

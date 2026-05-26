@@ -43,6 +43,8 @@ export * from './openrouterMessageInput';
 export * from './redFlag';
 export * from './redFlagRadarResult';
 export * from './redFlagSeverity';
+export * from './redFlagStatus';
+export * from './redFlagSummary';
 export * from './replyResult';
 export * from './responseStats';
 export * from './responseStatsCadenceBalance';

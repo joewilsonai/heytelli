@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import sharp from "sharp";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import type {
@@ -20,6 +20,12 @@ import {
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 import { buildMatchReadSnapshot } from "./matchRead";
+import {
+  analyzedScreenshotCountAfterSuccess,
+  mergeTranscriptTurns,
+  purgeAnalyzedScreenshotObjects,
+  selectScreenshotsForVision,
+} from "./screenshotRetention";
 
 export type ExtractionResult = {
   suggestedName: string | null;
@@ -126,10 +132,14 @@ function formatMatchContext(ctx: MatchContext | undefined): string {
       );
     }
   } else if (ctx.nextDateLocation) {
-    lines.push(`Planned date location (no time set yet): ${ctx.nextDateLocation}.`);
+    lines.push(
+      `Planned date location (no time set yet): ${ctx.nextDateLocation}.`,
+    );
   }
   if (ctx.dateHistory.length > 0) {
-    const sorted = [...ctx.dateHistory].sort((a, b) => a.when.localeCompare(b.when));
+    const sorted = [...ctx.dateHistory].sort((a, b) =>
+      a.when.localeCompare(b.when),
+    );
     lines.push(`Past dates with her (${sorted.length}):`);
     for (const entry of sorted) {
       const when = new Date(entry.when);
@@ -164,7 +174,12 @@ async function compressForVision(dataUrl: string): Promise<string> {
   try {
     const out = await sharp(buf)
       .rotate()
-      .resize({ width: 1280, height: 1280, fit: "inside", withoutEnlargement: true })
+      .resize({
+        width: 1280,
+        height: 1280,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
       .jpeg({ quality: 75 })
       .toBuffer();
     return `data:image/jpeg;base64,${out.toString("base64")}`;
@@ -199,10 +214,7 @@ export async function extractFromScreenshots(
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: [
-          ...imageParts,
-          { type: "text", text: userText },
-        ],
+        content: [...imageParts, { type: "text", text: userText }],
       },
     ],
   });
@@ -256,7 +268,10 @@ function mergeScore(existing: MatchScore, incoming: MatchScore): MatchScore {
   };
 }
 
-function mergeScores(existing: MatchScores, incoming: MatchScores): MatchScores {
+function mergeScores(
+  existing: MatchScores,
+  incoming: MatchScores,
+): MatchScores {
   return {
     sexPotential: mergeScore(existing.sexPotential, incoming.sexPotential),
     conversionAbility: mergeScore(
@@ -284,19 +299,29 @@ export function mergeExtraction(
   incoming: ExtractionResult["profile"],
 ): ExtractedProfile {
   const base: ExtractedProfile = existing
-    ? { ...emptyExtractedProfile, ...existing, scores: existing.scores ?? emptyExtractedProfile.scores }
+    ? {
+        ...emptyExtractedProfile,
+        ...existing,
+        scores: existing.scores ?? emptyExtractedProfile.scores,
+      }
     : emptyExtractedProfile;
   return {
     job: incoming.job ?? base.job,
     location: incoming.location ?? base.location,
     interests: mergeStringList(base.interests, incoming.interests),
-    mentionedTopics: mergeStringList(base.mentionedTopics, incoming.mentionedTopics),
+    mentionedTopics: mergeStringList(
+      base.mentionedTopics,
+      incoming.mentionedTopics,
+    ),
     conversationTone: incoming.conversationTone ?? base.conversationTone,
     scores: mergeScores(base.scores, incoming.scores),
   };
 }
 
-export function mergeVibeTags(existing: string[], incoming: string[]): string[] {
+export function mergeVibeTags(
+  existing: string[],
+  incoming: string[],
+): string[] {
   return mergeStringList(existing, incoming).slice(0, 8);
 }
 
@@ -308,6 +333,49 @@ async function objectPathToDataUrl(objectPath: string): Promise<string> {
   const [buf] = await file.download();
   const contentType = (meta.contentType as string) || "image/png";
   return `data:${contentType};base64,${buf.toString("base64")}`;
+}
+
+async function purgeAnalyzedRawImages(input: {
+  matchId: number;
+  matchPhotoObjectPath: string | null;
+  shots: Array<{ id: number; objectPath: string | null }>;
+}) {
+  const result = await purgeAnalyzedScreenshotObjects({
+    shots: input.shots,
+    matchPhotoObjectPath: input.matchPhotoObjectPath,
+    async deleteObject(objectPath) {
+      const file = await storage.getObjectEntityFile(objectPath);
+      await file.delete();
+    },
+    async markScreenshotPurged(id, purgedAt) {
+      await db
+        .update(screenshots)
+        .set({ objectPath: null, rawImagePurgedAt: purgedAt })
+        .where(eq(screenshots.id, id));
+    },
+    async clearMatchPhotoObjectPath(objectPath) {
+      await db
+        .update(matches)
+        .set({ photoObjectPath: null })
+        .where(eq(matches.id, input.matchId));
+      logger.info(
+        { matchId: input.matchId, objectPath },
+        "Cleared purged screenshot cover photo",
+      );
+    },
+    onError(error, shot) {
+      logger.warn(
+        { err: error, matchId: input.matchId, screenshotId: shot.id },
+        "Failed to purge analyzed screenshot object",
+      );
+    },
+  });
+  if (result.purgedCount > 0 || result.failedCount > 0) {
+    logger.info(
+      { matchId: input.matchId, ...result },
+      "Raw screenshot purge finished",
+    );
+  }
 }
 
 export async function recordScoreHistory(
@@ -339,9 +407,9 @@ export function runExtractionInBackground(
         .from(screenshots)
         .where(eq(screenshots.matchId, matchId));
       // Chronological order so the AI reads the conversation correctly.
-      allShots.sort(
-        (a, b) => a.uploadedAt.getTime() - b.uploadedAt.getTime(),
-      );
+      allShots.sort((a, b) => a.uploadedAt.getTime() - b.uploadedAt.getTime());
+      const shotsForVision = selectScreenshotsForVision(allShots);
+      if (shotsForVision.length === 0) return;
 
       const [match] = await db
         .select()
@@ -350,7 +418,7 @@ export function runExtractionInBackground(
       if (!match) return;
 
       const dataUrls = await Promise.all(
-        allShots.map((s) => objectPathToDataUrl(s.objectPath)),
+        shotsForVision.map((s) => objectPathToDataUrl(s.objectPath)),
       );
       const extraction = await extractFromScreenshots(dataUrls, {
         nextDateAt: match.nextDateAt,
@@ -358,17 +426,25 @@ export function runExtractionInBackground(
         dateHistory: Array.isArray(match.dateHistory) ? match.dateHistory : [],
       });
 
-      const mergedProfile = mergeExtraction(match.extractedProfile, extraction.profile);
+      const mergedProfile = mergeExtraction(
+        match.extractedProfile,
+        extraction.profile,
+      );
       const mergedTags = mergeVibeTags(match.vibeTags, extraction.vibeTags);
+      const existingTranscript = normalizeTranscript(match.transcript);
       const mergedTranscript =
         extraction.transcript.length > 0
-          ? extraction.transcript
-          : normalizeTranscript(match.transcript);
+          ? mergeTranscriptTurns(existingTranscript, extraction.transcript)
+          : existingTranscript;
+      const analyzedShotIds = shotsForVision.map((s) => s.id);
       const lastRead = buildMatchReadSnapshot({
         profile: mergedProfile,
         transcript: mergedTranscript,
         explicitRead: extraction.read,
-        screenshotCountAt: allShots.length,
+        screenshotCountAt: analyzedScreenshotCountAfterSuccess(
+          allShots,
+          analyzedShotIds,
+        ),
       });
       const updates: Record<string, unknown> = {
         extractedProfile: mergedProfile,
@@ -376,11 +452,10 @@ export function runExtractionInBackground(
         lastRead,
       };
       // Transcript is re-extracted from ALL screenshots each time, so replace
-      // wholesale rather than merge — but only if we actually got turns back
-      // (avoid wiping an existing transcript when a profile-only upload
-      // returns []).
+      // only if we actually got turns back (avoid wiping an existing transcript
+      // when a profile-only upload returns []).
       if (extraction.transcript.length > 0) {
-        updates.transcript = extraction.transcript;
+        updates.transcript = mergedTranscript;
       }
       if (
         options.applySuggestedName &&
@@ -395,9 +470,17 @@ export function runExtractionInBackground(
       await db
         .update(screenshots)
         .set({ extractionStatus: "done", extractionError: null })
-        .where(eq(screenshots.id, screenshotId));
+        .where(inArray(screenshots.id, analyzedShotIds));
+      await purgeAnalyzedRawImages({
+        matchId,
+        matchPhotoObjectPath: match.photoObjectPath,
+        shots: shotsForVision,
+      });
     } catch (err) {
-      logger.error({ err, matchId, screenshotId }, "Background extraction failed");
+      logger.error(
+        { err, matchId, screenshotId },
+        "Background extraction failed",
+      );
       const message =
         err instanceof Error ? err.message : "Failed to analyze screenshot";
       try {
@@ -420,17 +503,27 @@ export async function generateRepliesFromContext(
   profile: ExtractedProfile,
   matchName: string,
   userNotes: string,
+  transcript: TranscriptTurn[] = [],
 ): Promise<string[]> {
+  const recentTranscript = transcript
+    .slice(-16)
+    .map((turn) => `${turn.speaker}: ${turn.text}`)
+    .join("\n");
   const profileSummary = [
     matchName ? `Match name: ${matchName}` : null,
     profile.job ? `Job: ${profile.job}` : null,
     profile.location ? `Location: ${profile.location}` : null,
-    profile.interests.length ? `Interests: ${profile.interests.join(", ")}` : null,
+    profile.interests.length
+      ? `Interests: ${profile.interests.join(", ")}`
+      : null,
     profile.mentionedTopics.length
       ? `Things they've mentioned: ${profile.mentionedTopics.join(", ")}`
       : null,
-    profile.conversationTone ? `Conversation tone: ${profile.conversationTone}` : null,
+    profile.conversationTone
+      ? `Conversation tone: ${profile.conversationTone}`
+      : null,
     userNotes.trim() ? `User's private notes: ${userNotes.trim()}` : null,
+    recentTranscript ? `Recent chat transcript:\n${recentTranscript}` : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -451,15 +544,15 @@ export async function generateRepliesFromContext(
     messages: [
       {
         role: "system",
-        content: `You are a witty, charming dating coach helping someone craft great replies to a match they're talking to.
+        content: `You are HeyTelli, a private dating clarity app for women. Help the user craft grounded replies to a match they're talking to.
 
-You will receive the full conversation history as one or more screenshots in chronological order. These may be from a dating app (Bumble, Hinge, Tinder, etc.) or from text messages (iMessage, SMS, WhatsApp, Instagram DMs) once the chat has moved off the app — treat them all as part of the same conversation. Use the screenshots plus the extracted profile summary to craft 3 distinct reply options the user could send next.
+You may receive fresh screenshots, a persisted chat transcript, or both. These may be from a dating app (Bumble, Hinge, Tinder, etc.) or from text messages (iMessage, SMS, WhatsApp, Instagram DMs) once the chat has moved off the app — treat them all as part of the same conversation. Use the context to craft 3 distinct reply options the user could send next.
 
 Each reply should:
 - Be natural and conversational
 - Match the tone already established
 - Reference things the match has shared when natural
-- Vary in style: one playful/flirty, one genuine/warm, one clever/witty
+- Vary in style: one playful/light, one genuine/warm, one clear/direct
 - Be concise — typically 1-3 sentences
 
 Respond ONLY with a JSON array of exactly 3 strings, no extra text.
@@ -489,13 +582,13 @@ Example: ["Reply 1", "Reply 2", "Reply 3"]`,
     replies = JSON.parse(jsonText);
   } catch {
     const matches = jsonText.match(/"([^"]+)"/g);
-    replies = matches ? matches.map((m) => m.replace(/"/g, "")).slice(0, 3) : [];
+    replies = matches
+      ? matches.map((m) => m.replace(/"/g, "")).slice(0, 3)
+      : [];
   }
 
   if (!Array.isArray(replies) || replies.length === 0) {
     return ["Couldn't generate replies — try adding a clearer screenshot."];
   }
-  return replies
-    .filter((r): r is string => typeof r === "string")
-    .slice(0, 3);
+  return replies.filter((r): r is string => typeof r === "string").slice(0, 3);
 }

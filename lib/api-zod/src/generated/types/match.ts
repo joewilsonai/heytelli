@@ -14,6 +14,7 @@ import type { MatchLastSpeaker } from './matchLastSpeaker';
 import type { MatchReadFreshness } from './matchReadFreshness';
 import type { MatchReadSnapshot } from './matchReadSnapshot';
 import type { MatchStatus } from './matchStatus';
+import type { RedFlagSummary } from './redFlagSummary';
 import type { ScoreHistoryPoint } from './scoreHistoryPoint';
 
 export interface Match {
@@ -39,6 +40,7 @@ export interface Match {
   dateBriefFreshness: DateBriefFreshness;
   lastRead: MatchReadSnapshot | null;
   readFreshness: MatchReadFreshness;
+  redFlagSummary: RedFlagSummary;
   scoreHistory?: ScoreHistoryPoint[];
   /**
      * Speaker of the most recent transcript turn, if any

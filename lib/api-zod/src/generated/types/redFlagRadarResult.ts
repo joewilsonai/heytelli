@@ -7,9 +7,14 @@
  */
 import type { GreenFlag } from './greenFlag';
 import type { RedFlag } from './redFlag';
+import type { RedFlagSummary } from './redFlagSummary';
 
 export interface RedFlagRadarResult {
   redFlags: RedFlag[];
+  currentRedFlags: RedFlag[];
+  historicalRedFlags: RedFlag[];
   greenFlags: GreenFlag[];
   overallRead: string;
+  generatedAt: Date;
+  redFlagSummary: RedFlagSummary;
 }

@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, asc, inArray } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   db,
   conversations,
   matches,
   matchScoreHistory,
+  matchRedFlagEvents,
   matchTagEvents,
   screenshots,
   emptyExtractedProfile,
@@ -13,6 +14,7 @@ import {
   normalizeDateHistory,
   normalizeTranscript,
   type TagEventSource,
+  type RedFlagEventSource,
 } from "@workspace/db";
 import {
   CreateMatchBody,
@@ -57,6 +59,21 @@ import {
   computeMatchReadFreshness,
   normalizeMatchReadSnapshot,
 } from "../lib/matchRead";
+import {
+  analyzedScreenshotCountAfterSuccess,
+  mergeTranscriptTurns,
+  purgeAnalyzedScreenshotObjects,
+  selectScreenshotsForVision,
+} from "../lib/screenshotRetention";
+import {
+  buildRedFlagEventRows,
+  buildRedFlagSnapshot,
+  redFlagFingerprint,
+  summarizeRedFlagHistory,
+  type RedFlagRadarHistoryResult,
+  type RedFlagSummary,
+} from "../lib/redFlagHistory";
+import type { RedFlag, RedFlagRadarResult } from "../lib/redFlagRadar";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -130,6 +147,49 @@ async function objectPathToDataUrl(objectPath: string): Promise<string> {
   return `data:${contentType};base64,${buf.toString("base64")}`;
 }
 
+async function purgeAnalyzedRawImages(input: {
+  matchId: number;
+  matchPhotoObjectPath: string | null;
+  shots: Array<{ id: number; objectPath: string | null }>;
+}) {
+  const result = await purgeAnalyzedScreenshotObjects({
+    shots: input.shots,
+    matchPhotoObjectPath: input.matchPhotoObjectPath,
+    async deleteObject(objectPath) {
+      const file = await storage.getObjectEntityFile(objectPath);
+      await file.delete();
+    },
+    async markScreenshotPurged(id, purgedAt) {
+      await db
+        .update(screenshots)
+        .set({ objectPath: null, rawImagePurgedAt: purgedAt })
+        .where(eq(screenshots.id, id));
+    },
+    async clearMatchPhotoObjectPath(objectPath) {
+      await db
+        .update(matches)
+        .set({ photoObjectPath: null })
+        .where(eq(matches.id, input.matchId));
+      logger.info(
+        { matchId: input.matchId, objectPath },
+        "Cleared purged screenshot cover photo",
+      );
+    },
+    onError(error, shot) {
+      logger.warn(
+        { err: error, matchId: input.matchId, screenshotId: shot.id },
+        "Failed to purge analyzed screenshot object",
+      );
+    },
+  });
+  if (result.purgedCount > 0 || result.failedCount > 0) {
+    logger.info(
+      { matchId: input.matchId, ...result },
+      "Raw screenshot purge finished",
+    );
+  }
+}
+
 function withNormalizedProfile<
   T extends { extractedProfile: unknown; dateHistory?: unknown },
 >(m: T) {
@@ -198,9 +258,7 @@ export function dateBriefContextHash(input: {
     .slice(0, 16);
 }
 
-function normalizeDateBriefSnapshot(
-  raw: unknown,
-): {
+function normalizeDateBriefSnapshot(raw: unknown): {
   brief: string;
   generatedAt: string;
   screenshotCountAt: number;
@@ -232,15 +290,172 @@ function computeDateBriefFreshness(
   currentContextHash: string,
 ): "current" | "stale" | "missing" {
   if (!lastDateBrief) return "missing";
-  if (currentDoneScreenshotCount > lastDateBrief.screenshotCountAt) return "stale";
+  if (currentDoneScreenshotCount > lastDateBrief.screenshotCountAt)
+    return "stale";
   if (lastDateBrief.contextHash !== currentContextHash) return "stale";
   const ageMs = Date.now() - new Date(lastDateBrief.generatedAt).getTime();
   if (Number.isNaN(ageMs) || ageMs > DATE_BRIEF_STALE_MS) return "stale";
   return "current";
 }
 
+function redFlagContextHash(input: {
+  extractedProfile: unknown;
+  transcript: unknown;
+  dateHistory: unknown;
+  notes: string | null;
+}): string {
+  const normalized = {
+    extractedProfile: normalizeExtractedProfile(input.extractedProfile),
+    transcript: normalizeTranscript(input.transcript).slice(-50),
+    dateHistory: normalizeDateHistory(input.dateHistory).slice(-10),
+    notes: input.notes ?? "",
+  };
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+}
+
+function redFlagSummaryFromRows(
+  events: Array<{
+    severity: "low" | "medium" | "high";
+    label: string;
+    evidence: string;
+    fingerprint: string;
+    observedAt: Date;
+  }>,
+  lastRedFlagRadar: {
+    redFlags?: RedFlag[];
+    generatedAt?: string;
+  } | null,
+): RedFlagSummary {
+  const generatedAt = lastRedFlagRadar?.generatedAt
+    ? new Date(lastRedFlagRadar.generatedAt)
+    : undefined;
+  const summary = summarizeRedFlagHistory({
+    events,
+    currentRedFlags: Array.isArray(lastRedFlagRadar?.redFlags)
+      ? lastRedFlagRadar.redFlags
+      : [],
+    generatedAt:
+      generatedAt && !Number.isNaN(generatedAt.getTime())
+        ? generatedAt
+        : undefined,
+  });
+  return {
+    currentCount: summary.currentCount,
+    historicalCount: summary.historicalCount,
+    highSeverityCount: summary.highSeverityCount,
+    lastAnalyzedAt: summary.lastAnalyzedAt,
+  };
+}
+
+async function loadRedFlagEvents(matchId: number) {
+  return db
+    .select()
+    .from(matchRedFlagEvents)
+    .where(eq(matchRedFlagEvents.matchId, matchId))
+    .orderBy(asc(matchRedFlagEvents.observedAt));
+}
+
+function redFlagSummaryFromResult(
+  result: ReturnType<typeof summarizeRedFlagHistory>,
+): RedFlagSummary {
+  return {
+    currentCount: result.currentCount,
+    historicalCount: result.historicalCount,
+    highSeverityCount: result.highSeverityCount,
+    lastAnalyzedAt: result.lastAnalyzedAt,
+  };
+}
+
+async function persistRedFlagRadar(input: {
+  matchId: number;
+  result: RedFlagRadarResult;
+  contextHash: string;
+}): Promise<RedFlagRadarHistoryResult> {
+  const generatedAt = new Date();
+  const runId = randomUUID();
+  const snapshot = buildRedFlagSnapshot({
+    result: input.result,
+    generatedAt,
+    contextHash: input.contextHash,
+  });
+  const existingEvents = await loadRedFlagEvents(input.matchId);
+  const existingContextFingerprints = new Set(
+    existingEvents.map((event) => `${event.contextHash}:${event.fingerprint}`),
+  );
+  const rows = buildRedFlagEventRows({
+    matchId: input.matchId,
+    source: "radar",
+    runId,
+    contextHash: input.contextHash,
+    observedAt: generatedAt,
+    redFlags: snapshot.redFlags,
+  }).filter(
+    (row) =>
+      !existingContextFingerprints.has(`${row.contextHash}:${row.fingerprint}`),
+  );
+
+  if (rows.length > 0) {
+    await db.insert(matchRedFlagEvents).values(rows);
+  }
+  await db
+    .update(matches)
+    .set({ lastRedFlagRadar: snapshot })
+    .where(eq(matches.id, input.matchId));
+
+  const summary = summarizeRedFlagHistory({
+    events: [...existingEvents, ...rows],
+    currentRedFlags: snapshot.redFlags,
+    generatedAt,
+  });
+
+  return {
+    redFlags: summary.redFlags,
+    currentRedFlags: summary.currentRedFlags,
+    historicalRedFlags: summary.historicalRedFlags,
+    greenFlags: snapshot.greenFlags,
+    overallRead: snapshot.overallRead,
+    generatedAt: snapshot.generatedAt,
+    redFlagSummary: redFlagSummaryFromResult(summary),
+  };
+}
+
+async function recordRedFlagMentions(input: {
+  matchId: number;
+  source: RedFlagEventSource;
+  labels: string[];
+}) {
+  const redFlags = input.labels
+    .map((label) => label.trim())
+    .filter(Boolean)
+    .map(
+      (label): RedFlag => ({
+        severity: "medium",
+        label,
+        evidence: `Mentioned during ${input.source.replace(/-/g, " ")}.`,
+      }),
+    );
+  if (redFlags.length === 0) return;
+  const observedAt = new Date();
+  const rows = buildRedFlagEventRows({
+    matchId: input.matchId,
+    source: input.source,
+    runId: randomUUID(),
+    contextHash: createHash("sha256")
+      .update(
+        `${input.source}:${observedAt.toISOString()}:${redFlags.map(redFlagFingerprint).join(",")}`,
+      )
+      .digest("hex"),
+    observedAt,
+    redFlags,
+  });
+  if (rows.length > 0) await db.insert(matchRedFlagEvents).values(rows);
+}
+
 async function loadMatchDetail(matchId: number) {
-  const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId));
   if (!match) return null;
   const shots = await db
     .select()
@@ -248,6 +463,7 @@ async function loadMatchDetail(matchId: number) {
     .where(eq(screenshots.matchId, matchId))
     .orderBy(asc(screenshots.uploadedAt));
   const transcript = normalizeTranscript(match.transcript);
+  const redFlagEvents = await loadRedFlagEvents(matchId);
   const lastDateBrief = normalizeDateBriefSnapshot(match.lastDateBrief);
   const lastRead = normalizeMatchReadSnapshot(match.lastRead);
   const doneShots = shots.filter((s) => s.extractionStatus === "done").length;
@@ -277,6 +493,10 @@ async function loadMatchDetail(matchId: number) {
       pendingScreenshotCount: freshnessCounts.pendingScreenshotCount,
       failedScreenshotCount: freshnessCounts.failedScreenshotCount,
     }),
+    redFlagSummary: redFlagSummaryFromRows(
+      redFlagEvents,
+      match.lastRedFlagRadar,
+    ),
   };
 }
 
@@ -362,7 +582,10 @@ router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, params.data.id));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -375,7 +598,17 @@ router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
       normalizeDateHistory(match.dateHistory),
       match.notes ?? "",
     );
-    res.json(result);
+    const historyResult = await persistRedFlagRadar({
+      matchId: match.id,
+      result,
+      contextHash: redFlagContextHash({
+        extractedProfile: match.extractedProfile,
+        transcript: match.transcript,
+        dateHistory: match.dateHistory,
+        notes: match.notes,
+      }),
+    });
+    res.json(historyResult);
   } catch (err) {
     req.log.error({ err }, "Red flag radar failed");
     res.status(500).json({ error: "Failed to analyze red flags" });
@@ -388,7 +621,10 @@ router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, params.data.id));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -412,7 +648,10 @@ router.get("/matches/:id/tag-suggestions", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, params.data.id));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -463,7 +702,11 @@ router.post("/matches/:id/tags/apply", async (req, res): Promise<void> => {
     return;
   }
   const body = req.body as {
-    suggestions?: Array<{ tag: string; action: "add" | "remove"; reason?: string }>;
+    suggestions?: Array<{
+      tag: string;
+      action: "add" | "remove";
+      reason?: string;
+    }>;
   };
   const suggestions = Array.isArray(body?.suggestions) ? body.suggestions : [];
   if (suggestions.length === 0) {
@@ -537,7 +780,10 @@ router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [match] = await db.select().from(matches).where(eq(matches.id, params.data.id));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, params.data.id));
   if (!match) {
     res.status(404).json({ error: "Match not found" });
     return;
@@ -555,7 +801,8 @@ router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
   const gaps: number[] = [];
   for (let i = 1; i < shots.length; i++) {
     gaps.push(
-      (shots[i].uploadedAt.getTime() - shots[i - 1].uploadedAt.getTime()) / 3_600_000,
+      (shots[i].uploadedAt.getTime() - shots[i - 1].uploadedAt.getTime()) /
+        3_600_000,
     );
   }
   const avgGap =
@@ -565,14 +812,23 @@ router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
   // Heuristic split: alternate her/me on gaps assuming roughly equal share.
   const herAvg =
     avgGap != null && herCount > 0
-      ? Number(((avgGap * (meCount + 1)) / Math.max(herCount + meCount, 1)).toFixed(1))
+      ? Number(
+          ((avgGap * (meCount + 1)) / Math.max(herCount + meCount, 1)).toFixed(
+            1,
+          ),
+        )
       : null;
   const meAvg =
     avgGap != null && meCount > 0
-      ? Number(((avgGap * (herCount + 1)) / Math.max(herCount + meCount, 1)).toFixed(1))
+      ? Number(
+          ((avgGap * (herCount + 1)) / Math.max(herCount + meCount, 1)).toFixed(
+            1,
+          ),
+        )
       : null;
 
-  let cadence: "you_chasing" | "balanced" | "she_chasing" | "unknown" = "unknown";
+  let cadence: "you_chasing" | "balanced" | "she_chasing" | "unknown" =
+    "unknown";
   if (herCount + meCount >= 4) {
     const ratio = meCount / Math.max(herCount, 1);
     if (ratio > 1.5) cadence = "you_chasing";
@@ -585,7 +841,8 @@ router.get("/matches/:id/response-stats", async (req, res): Promise<void> => {
     meAvgReplyHours: meAvg,
     herMessageCount: herCount,
     meMessageCount: meCount,
-    longestHerSilenceHours: longestGap != null ? Number(longestGap.toFixed(1)) : null,
+    longestHerSilenceHours:
+      longestGap != null ? Number(longestGap.toFixed(1)) : null,
     cadenceBalance: cadence,
   });
 });
@@ -612,7 +869,8 @@ router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
     const lastActivity = new Map<number, Date>();
     for (const s of shotRows) {
       const prev = lastActivity.get(s.matchId);
-      if (!prev || s.uploadedAt > prev) lastActivity.set(s.matchId, s.uploadedAt);
+      if (!prev || s.uploadedAt > prev)
+        lastActivity.set(s.matchId, s.uploadedAt);
     }
     const scoreRows = ids.length
       ? await db
@@ -647,8 +905,7 @@ router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
       return {
         matchId: m.id,
         name: m.name,
-        scores:
-          latestScores.get(m.id) ?? { sex: null, conv: null, chem: null },
+        scores: latestScores.get(m.id) ?? { sex: null, conv: null, chem: null },
         hoursSinceLastActivity: last
           ? (now - last.getTime()) / 3_600_000
           : null,
@@ -691,7 +948,8 @@ router.get(
       const lastActivity = new Map<number, Date>();
       for (const s of shotRows) {
         const prev = lastActivity.get(s.matchId);
-        if (!prev || s.uploadedAt > prev) lastActivity.set(s.matchId, s.uploadedAt);
+        if (!prev || s.uploadedAt > prev)
+          lastActivity.set(s.matchId, s.uploadedAt);
       }
       const now = Date.now();
       const COLD_HOURS = 14 * 24; // 14 days
@@ -786,6 +1044,19 @@ router.get("/matches", async (_req, res): Promise<void> => {
     arr.push(h);
     byMatch.set(h.matchId, arr);
   }
+  const redFlagRows = ids.length
+    ? await db
+        .select()
+        .from(matchRedFlagEvents)
+        .where(inArray(matchRedFlagEvents.matchId, ids))
+        .orderBy(asc(matchRedFlagEvents.observedAt))
+    : [];
+  const redFlagsByMatch = new Map<number, typeof redFlagRows>();
+  for (const event of redFlagRows) {
+    const arr = redFlagsByMatch.get(event.matchId) ?? [];
+    arr.push(event);
+    redFlagsByMatch.set(event.matchId, arr);
+  }
 
   const shotRows = ids.length
     ? await db
@@ -850,6 +1121,10 @@ router.get("/matches", async (_req, res): Promise<void> => {
           pendingScreenshotCount: freshnessCounts.pendingScreenshotCount,
           failedScreenshotCount: freshnessCounts.failedScreenshotCount,
         }),
+        redFlagSummary: redFlagSummaryFromRows(
+          redFlagsByMatch.get(r.id) ?? [],
+          r.lastRedFlagRadar,
+        ),
       };
     }),
   );
@@ -868,7 +1143,10 @@ router.post("/matches/preview", async (req, res): Promise<void> => {
     res.json({
       suggestedName: extraction.suggestedName,
       vibeTags: extraction.vibeTags,
-      extractedProfile: mergeExtraction(emptyExtractedProfile, extraction.profile),
+      extractedProfile: mergeExtraction(
+        emptyExtractedProfile,
+        extraction.profile,
+      ),
     });
   } catch (err) {
     req.log.error({ err }, "Extraction preview failed");
@@ -1121,21 +1399,37 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
 
   // Skip re-OCR if everything's already been analyzed. Saves the model call,
   // the storage round-trip, and a chunk of latency for a no-op.
-  if (
-    detail.analysisFreshness === "current" &&
-    detail.lastRead
-  ) {
+  if (detail.analysisFreshness === "current" && detail.lastRead) {
+    const retainedAnalyzedShots = selectScreenshotsForVision(
+      detail.screenshots.filter((s) => s.extractionStatus === "done"),
+    );
+    if (retainedAnalyzedShots.length > 0) {
+      await purgeAnalyzedRawImages({
+        matchId: detail.id,
+        matchPhotoObjectPath: detail.photoObjectPath,
+        shots: retainedAnalyzedShots,
+      });
+      const refreshed = await loadMatchDetail(detail.id);
+      res.json(refreshed);
+      return;
+    }
     res.json(detail);
     return;
   }
 
-  // Snapshot the screenshot IDs we're about to analyze. Anything added
-  // mid-flight must remain pending so the next /rescore picks it up.
-  const analyzedShotIds = detail.screenshots.map((s) => s.id);
+  // Snapshot the retained raw screenshots we're about to analyze. Anything
+  // added mid-flight stays pending so the next /rescore catches it, while
+  // already-purged rows continue to count through persisted transcript/read.
+  const shotsForVision = selectScreenshotsForVision(detail.screenshots);
+  if (shotsForVision.length === 0) {
+    res.status(400).json({ error: "No retained screenshots need analysis" });
+    return;
+  }
+  const analyzedShotIds = shotsForVision.map((s) => s.id);
 
   try {
     const dataUrls = await Promise.all(
-      detail.screenshots.map((s) => objectPathToDataUrl(s.objectPath)),
+      shotsForVision.map((s) => objectPathToDataUrl(s.objectPath)),
     );
     const extraction = await extractFromScreenshots(dataUrls, {
       nextDateAt: detail.nextDateAt,
@@ -1148,12 +1442,17 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
     );
     const mergedTags = mergeVibeTags(detail.vibeTags, extraction.vibeTags);
     const mergedTranscript =
-      extraction.transcript.length > 0 ? extraction.transcript : detail.transcript;
+      extraction.transcript.length > 0
+        ? mergeTranscriptTurns(detail.transcript, extraction.transcript)
+        : detail.transcript;
     const lastRead = buildMatchReadSnapshot({
       profile: mergedProfile,
       transcript: mergedTranscript,
       explicitRead: extraction.read,
-      screenshotCountAt: analyzedShotIds.length,
+      screenshotCountAt: analyzedScreenshotCountAfterSuccess(
+        detail.screenshots,
+        analyzedShotIds,
+      ),
     });
     const updates: Record<string, unknown> = {
       extractedProfile: mergedProfile,
@@ -1161,12 +1460,9 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       lastRead,
     };
     if (extraction.transcript.length > 0) {
-      updates.transcript = extraction.transcript;
+      updates.transcript = mergedTranscript;
     }
-    await db
-      .update(matches)
-      .set(updates)
-      .where(eq(matches.id, detail.id));
+    await db.update(matches).set(updates).where(eq(matches.id, detail.id));
     await recordScoreHistory(detail.id, mergedProfile.scores);
     // Only flip the snapshot we actually analyzed — screenshots added
     // mid-flight stay pending so the next rescore catches them.
@@ -1176,6 +1472,11 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
         .set({ extractionStatus: "done", extractionError: null })
         .where(inArray(screenshots.id, analyzedShotIds));
     }
+    await purgeAnalyzedRawImages({
+      matchId: detail.id,
+      matchPhotoObjectPath: detail.photoObjectPath,
+      shots: shotsForVision,
+    });
     const refreshed = await loadMatchDetail(detail.id);
     res.json(refreshed);
   } catch (err) {
@@ -1203,14 +1504,16 @@ router.post("/matches/:id/replies", async (req, res): Promise<void> => {
   }
 
   try {
+    const shotsForVision = selectScreenshotsForVision(detail.screenshots);
     const dataUrls = await Promise.all(
-      detail.screenshots.map((s) => objectPathToDataUrl(s.objectPath)),
+      shotsForVision.map((s) => objectPathToDataUrl(s.objectPath)),
     );
     const replies = await generateRepliesFromContext(
       dataUrls,
       detail.extractedProfile,
       detail.name,
       detail.notes,
+      detail.transcript,
     );
     res.json({ replies });
   } catch (err) {
@@ -1273,7 +1576,8 @@ router.post(
     }
     if (!body.data.bothPartiesConsented) {
       res.status(400).json({
-        error: "Both parties must consent to recording. Set bothPartiesConsented=true.",
+        error:
+          "Both parties must consent to recording. Set bothPartiesConsented=true.",
       });
       return;
     }
@@ -1297,21 +1601,36 @@ router.post(
       });
 
       const mergedScores = { ...detail.extractedProfile.scores };
-      for (const key of ["sexPotential", "conversionAbility", "chemistry"] as const) {
+      for (const key of [
+        "sexPotential",
+        "conversionAbility",
+        "chemistry",
+      ] as const) {
         const s = analysis.scoreSuggestions[key];
         if (s.value != null) mergedScores[key] = s;
       }
-      const mergedProfile = { ...detail.extractedProfile, scores: mergedScores };
+      const mergedProfile = {
+        ...detail.extractedProfile,
+        scores: mergedScores,
+      };
 
       const noteHeader = `\n\n— In-person recording (${new Date().toLocaleDateString()}) [consent confirmed] —\n`;
       const noteBody = [
         `Summary: ${analysis.summary}`,
         analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-        analysis.greenFlags.length ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}` : null,
-        analysis.redFlags.length ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}` : null,
-        analysis.nextMoveSuggestion ? `Next move: ${analysis.nextMoveSuggestion}` : null,
+        analysis.greenFlags.length
+          ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}`
+          : null,
+        analysis.redFlags.length
+          ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}`
+          : null,
+        analysis.nextMoveSuggestion
+          ? `Next move: ${analysis.nextMoveSuggestion}`
+          : null,
         `\nTranscript:\n"${transcript}"`,
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
       const updatedNotes = (detail.notes || "").trim() + noteHeader + noteBody;
 
       const updates: Record<string, unknown> = {
@@ -1324,13 +1643,17 @@ router.post(
         const recap = [
           analysis.summary,
           analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-          analysis.nextMoveSuggestion ? `Next: ${analysis.nextMoveSuggestion}` : null,
+          analysis.nextMoveSuggestion
+            ? `Next: ${analysis.nextMoveSuggestion}`
+            : null,
         ]
           .filter(Boolean)
           .join(" — ");
         const newEntry = {
           id: `inp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          when: detail.nextDateAt ? new Date(detail.nextDateAt).toISOString() : nowIso,
+          when: detail.nextDateAt
+            ? new Date(detail.nextDateAt).toISOString()
+            : nowIso,
           location: detail.nextDateLocation ?? "",
           recap,
           createdAt: nowIso,
@@ -1344,6 +1667,11 @@ router.post(
 
       await db.update(matches).set(updates).where(eq(matches.id, detail.id));
       await recordScoreHistory(detail.id, mergedScores);
+      await recordRedFlagMentions({
+        matchId: detail.id,
+        source: "in-person-recording",
+        labels: analysis.redFlags,
+      });
 
       const refreshed = await loadMatchDetail(detail.id);
       res.json({ transcript, analysis, match: refreshed });
@@ -1388,7 +1716,11 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     // Persist: update scores (only fields where suggestion has a value),
     // append the debrief to notes, optionally add a date history entry.
     const mergedScores = { ...detail.extractedProfile.scores };
-    for (const key of ["sexPotential", "conversionAbility", "chemistry"] as const) {
+    for (const key of [
+      "sexPotential",
+      "conversionAbility",
+      "chemistry",
+    ] as const) {
       const s = analysis.scoreSuggestions[key];
       if (s.value != null) mergedScores[key] = s;
     }
@@ -1401,9 +1733,15 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     const noteBody = [
       `Summary: ${analysis.summary}`,
       analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-      analysis.greenFlags.length ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}` : null,
-      analysis.redFlags.length ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}` : null,
-      analysis.nextMoveSuggestion ? `Next move: ${analysis.nextMoveSuggestion}` : null,
+      analysis.greenFlags.length
+        ? `Green flags:\n${analysis.greenFlags.map((f) => `  • ${f}`).join("\n")}`
+        : null,
+      analysis.redFlags.length
+        ? `Red flags:\n${analysis.redFlags.map((f) => `  • ${f}`).join("\n")}`
+        : null,
+      analysis.nextMoveSuggestion
+        ? `Next move: ${analysis.nextMoveSuggestion}`
+        : null,
       `\nTranscript:\n"${transcript}"`,
     ]
       .filter(Boolean)
@@ -1420,13 +1758,17 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
       const recap = [
         analysis.summary,
         analysis.vibe ? `Vibe: ${analysis.vibe}` : null,
-        analysis.nextMoveSuggestion ? `Next: ${analysis.nextMoveSuggestion}` : null,
+        analysis.nextMoveSuggestion
+          ? `Next: ${analysis.nextMoveSuggestion}`
+          : null,
       ]
         .filter(Boolean)
         .join(" — ");
       const newEntry = {
         id: `vd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        when: detail.nextDateAt ? new Date(detail.nextDateAt).toISOString() : nowIso,
+        when: detail.nextDateAt
+          ? new Date(detail.nextDateAt).toISOString()
+          : nowIso,
         location: detail.nextDateLocation ?? "",
         recap,
         createdAt: nowIso,
@@ -1442,6 +1784,11 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
 
     await db.update(matches).set(updates).where(eq(matches.id, detail.id));
     await recordScoreHistory(detail.id, mergedScores);
+    await recordRedFlagMentions({
+      matchId: detail.id,
+      source: "voice-debrief",
+      labels: analysis.redFlags,
+    });
 
     const refreshed = await loadMatchDetail(detail.id);
     res.json({ transcript, analysis, match: refreshed });
