@@ -163,6 +163,15 @@ export function getDateSafetyChecklistProgress(
   };
 }
 
+function getDateCardReadinessChecklistProgress(
+  checklist: Partial<SafeDateChecklist> | null | undefined,
+) {
+  return getDateSafetyChecklistProgress({
+    ...checklist,
+    circleHasPlan: true,
+  });
+}
+
 function getMissingFields(match: DateSafetyPlanMatch): string[] {
   const plan = match.dateSafetyPlan;
   const summary = match.dateSafetyPlanStatus;
@@ -175,7 +184,7 @@ function getMissingFields(match: DateSafetyPlanMatch): string[] {
     if (!hasValue(plan.transportPlan)) missing.push("transport");
     if (!hasValue(plan.checkInAt)) missing.push("check-in");
     if (!hasValue(plan.expectedEndAt)) missing.push("expected end");
-    if (!getDateSafetyChecklistProgress(plan.safeDateChecklist).ready) {
+    if (!getDateCardReadinessChecklistProgress(plan.safeDateChecklist).ready) {
       missing.push("safe date steps");
     }
     return missing;
@@ -221,15 +230,16 @@ export function getDateSafetyPlanStatus(
 
 export function buildDateCardMessage(match: DateSafetyPlanMatch): string {
   const plan = match.dateSafetyPlan;
-  const lines = [
-    `HeyTelli Date Card`,
-    `Date with: ${firstName(match.name)}`,
+  const lines = [`HeyTelli Date Card`, `Date with: ${firstName(match.name)}`];
+  const circleName = clean(plan?.trustedCircleName);
+  if (circleName) lines.push(`Circle contact: ${firstName(circleName)}`);
+  lines.push(
     `Time: ${formatDateTime(match.nextDateAt)}`,
     `Location: ${clean(match.nextDateLocation) ?? "Not set"}`,
     `Transport: ${clean(plan?.transportPlan) ?? "Not set"}`,
     `Check-in: ${formatDateTime(plan?.checkInAt)}`,
     `Expected end: ${formatDateTime(plan?.expectedEndAt)}`,
-  ];
+  );
   const codeWord = clean(plan?.codeWord);
   const circleNote = clean(plan?.circleNote);
 

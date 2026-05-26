@@ -129,6 +129,29 @@ test("requires the safe date walkthrough before marking the plan ready", () => {
   assert.deepEqual(status.missing, ["safe date steps"]);
 });
 
+test("allows sharing before the circle-has-card step is completed", () => {
+  const status = getDateSafetyPlanStatus(
+    {
+      ...baseMatch,
+      dateSafetyPlan: {
+        ...baseMatch.dateSafetyPlan,
+        safeDateChecklist: {
+          publicPlace: true,
+          ownTransport: true,
+          circleHasPlan: false,
+          profileReviewed: true,
+          noPrivateLocationPressure: true,
+          noMoneyOrPhotoPressure: true,
+        },
+      },
+    },
+    new Date("2026-05-31T20:00:00.000Z"),
+  );
+
+  assert.equal(status.state, "ready");
+  assert.deepEqual(status.missing, []);
+});
+
 test("summarizes safe date checklist progress", () => {
   const progress = getDateSafetyChecklistProgress({
     publicPlace: true,
@@ -163,6 +186,7 @@ test("builds a privacy-first date card message from allowed fields only", () => 
   const message = buildDateCardMessage(baseMatch);
 
   assert.match(message, /Date with: Maya/);
+  assert.match(message, /Circle contact: Claire/);
   assert.match(
     message,
     /Time: Sun, May 31, 7:30 PM|Time: Mon, Jun 1, 12:30 AM/,

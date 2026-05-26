@@ -74,7 +74,7 @@ test("uses selected primary circle person when building a new date card", () => 
   assert.equal(plan.shareLiveLocation, true);
   assert.equal(plan.checkInAt, "2026-06-01T00:45:00.000Z");
   assert.equal(plan.expectedEndAt, "2026-06-01T02:30:00.000Z");
-  assert.equal(plan.safeDateChecklist?.circleHasPlan, true);
+  assert.equal(plan.safeDateChecklist?.circleHasPlan, false);
   assert.equal(plan.safeDateChecklist?.ownTransport, true);
   assert.equal(plan.safeDateChecklist?.profileReviewed, false);
 });

@@ -16,7 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body, Button, Card, H1, H2, SectionLabel } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
-import { saveProfileScreenshotUris } from "@/lib/local-profile-screenshots";
+import {
+  MAX_PROFILE_SCREENSHOTS,
+  saveProfileScreenshotUris,
+} from "@/lib/local-profile-screenshots";
+import { analyzeDatingProfileScreenshots } from "@/lib/profile-analysis";
 import { pickTrustedCircleContact } from "@/lib/trusted-circle-contacts";
 import { useUserSettings } from "@/lib/use-user-settings";
 import {
@@ -34,6 +38,7 @@ export default function SettingsScreen() {
   const [draft, setDraft] = useState<HeyTelliSettings>(settings);
   const [draftDirty, setDraftDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [analyzingProfile, setAnalyzingProfile] = useState(false);
   const [manualName, setManualName] = useState("");
   const [manualRelationship, setManualRelationship] = useState("");
 
@@ -172,6 +177,16 @@ export default function SettingsScreen() {
   };
 
   const pickProfileScreenshots = async () => {
+    const remainingProfileScreenshotSlots =
+      MAX_PROFILE_SCREENSHOTS -
+      draft.datingProfile.profileScreenshotUris.length;
+    if (remainingProfileScreenshotSlots <= 0) {
+      Alert.alert(
+        "Profile screenshots full",
+        `You can keep up to ${MAX_PROFILE_SCREENSHOTS} profile screenshots.`,
+      );
+      return;
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("Photos access needed", "Allow photo library access.");
@@ -179,9 +194,9 @@ export default function SettingsScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.85,
+      quality: 0.7,
       allowsMultipleSelection: true,
-      selectionLimit: 5,
+      selectionLimit: remainingProfileScreenshotSlots,
       orderedSelection: true,
     });
     if (result.canceled) return;
@@ -192,13 +207,43 @@ export default function SettingsScreen() {
           .filter((uri): uri is string => Boolean(uri)),
       );
       updateProfile({
-        profileScreenshotUris: localUris,
+        profileScreenshotUris: [
+          ...draft.datingProfile.profileScreenshotUris,
+          ...localUris,
+        ].slice(0, MAX_PROFILE_SCREENSHOTS),
       });
     } catch (error: any) {
       Alert.alert(
         "Couldn't save screenshots",
         error?.message ?? "Try picking them again.",
       );
+    }
+  };
+
+  const analyzeProfile = async () => {
+    if (draft.datingProfile.profileScreenshotUris.length === 0) {
+      Alert.alert("Add screenshots first", "Upload profile screenshots first.");
+      return;
+    }
+    setAnalyzingProfile(true);
+    try {
+      const analysis = await analyzeDatingProfileScreenshots(
+        draft.datingProfile.profileScreenshotUris,
+      );
+      updateProfile({
+        profileText: analysis.profileText,
+        lookingFor: analysis.lookingFor,
+        boundaries: analysis.boundaries,
+        photoNotes: analysis.photoNotes,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      Alert.alert("Profile analyzed", "HeyTelli filled your profile fields.");
+    } catch (error: any) {
+      Alert.alert("Couldn't analyze profile", error?.message ?? "Try again.");
+    } finally {
+      setAnalyzingProfile(false);
     }
   };
 
@@ -257,12 +302,22 @@ export default function SettingsScreen() {
           <Button
             label={
               draft.datingProfile.profileScreenshotUris.length
-                ? `${draft.datingProfile.profileScreenshotUris.length} profile screenshots selected`
+                ? `${draft.datingProfile.profileScreenshotUris.length}/${MAX_PROFILE_SCREENSHOTS} profile screenshots selected`
                 : "Upload profile screenshots"
             }
             icon="image"
             variant="secondary"
             onPress={pickProfileScreenshots}
+          />
+          <Button
+            label="Analyze Profile"
+            icon="zap"
+            onPress={analyzeProfile}
+            loading={analyzingProfile}
+            disabled={
+              analyzingProfile ||
+              draft.datingProfile.profileScreenshotUris.length === 0
+            }
           />
         </View>
         <ReviewBlock

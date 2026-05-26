@@ -1,7 +1,7 @@
 import { Directory, File, Paths } from "expo-file-system";
 
 const PROFILE_SCREENSHOT_DIR = "heytelli-profile-screenshots";
-const MAX_PROFILE_SCREENSHOTS = 5;
+export const MAX_PROFILE_SCREENSHOTS = 10;
 
 function imageExtension(uri: string): string {
   const withoutQuery = uri.split(/[?#]/)[0] ?? "";

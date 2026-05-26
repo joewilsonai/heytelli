@@ -22,6 +22,9 @@ test("match screen walks through safe date planning after a date is entered", ()
   assert.match(matchScreen, /Date Card readiness/);
   assert.match(matchScreen, /Safe date walkthrough/);
   assert.match(matchScreen, /SAFE_DATE_CHECKLIST_ITEMS/);
+  assert.match(matchScreen, /DATE_PLAN_TEMPLATES/);
+  assert.match(matchScreen, /applyDatePlanTemplate/);
+  assert.match(matchScreen, /Custom plan/);
   assert.match(matchScreen, /item\.label/);
   assert.match(matchScreen, /Circle Check/);
   assert.match(matchScreen, /useUserSettings/);

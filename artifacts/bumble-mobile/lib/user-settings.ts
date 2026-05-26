@@ -147,7 +147,7 @@ export function buildDateSafetyPlanFromSettings(
     safeDateChecklist: {
       publicPlace: false,
       ownTransport: Boolean(nullable(defaults.transportPlan)),
-      circleHasPlan: Boolean(primary),
+      circleHasPlan: false,
       profileReviewed: false,
       noPrivateLocationPressure: false,
       noMoneyOrPhotoPressure: false,

@@ -82,6 +82,12 @@ function checklistReady(checklist: SafeDateChecklist): boolean {
   return CHECKLIST_KEYS.every((key) => checklist[key] === true);
 }
 
+function checklistReadyForDateCard(checklist: SafeDateChecklist): boolean {
+  return CHECKLIST_KEYS.filter((key) => key !== "circleHasPlan").every(
+    (key) => checklist[key] === true,
+  );
+}
+
 function cleanCircleCheckStatus(value: unknown): CircleCheckStatus | null {
   return value === "planned" ||
     value === "safe" ||
@@ -183,7 +189,7 @@ export function summarizeDateSafetyPlanForList(
     hasCodeWord: Boolean(codeWord),
     hasCircleNote: Boolean(circleNote),
     shareLiveLocation,
-    safeDateChecklistReady: checklistReady(safeDateChecklist),
+    safeDateChecklistReady: checklistReadyForDateCard(safeDateChecklist),
     circleCheckStatus,
     lastCircleCheckAt,
     updatedAt: cleanIso(obj.updatedAt),

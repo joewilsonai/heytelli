@@ -82,6 +82,11 @@ import {
   type DateSafetyPlan,
   type SafeDateChecklist,
 } from "@/lib/date-safety-plan";
+import {
+  DATE_PLAN_TEMPLATES,
+  buildDatePlanFromTemplate,
+  type DatePlanTemplate,
+} from "@/lib/date-plan-templates";
 import { getMatchDetailHeroModel } from "@/lib/match-detail-hero";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
@@ -1719,7 +1724,7 @@ function DateSafetyPlanCard({
   const previewStatus = getDateSafetyPlanStatus(previewMatch);
   const checklistProgress = getDateSafetyChecklistProgress(safeDateChecklist);
   const displayStatus = open ? previewStatus : status;
-  const shareTarget = open ? previewMatch : match;
+  const shareTarget = previewMatch;
   const shareStatus = getDateSafetyPlanStatus(shareTarget);
 
   const shareMessage = async (message: string): Promise<boolean> => {
@@ -1730,6 +1735,53 @@ function DateSafetyPlanCard({
       Alert.alert("Couldn't share", e?.message ?? "Try again.");
       return false;
     }
+  };
+
+  const currentPlanInput = (nextChecklist = safeDateChecklist) => ({
+    trustedCircleName: trustedCircleName.trim() || null,
+    transportPlan: transportPlan.trim() || null,
+    checkInAt: checkInAt.toISOString(),
+    expectedEndAt: expectedEndAt.toISOString(),
+    codeWord: codeWord.trim() || null,
+    circleNote: circleNote.trim() || null,
+    shareLiveLocation,
+    safeDateChecklist: nextChecklist,
+    circleCheckStatus: plan?.circleCheckStatus ?? "planned",
+    lastCircleCheckAt: plan?.lastCircleCheckAt ?? null,
+  });
+
+  const handleShareDateCard = async () => {
+    if (shareStatus.state !== "ready") {
+      Alert.alert(
+        "Finish the Date Card",
+        `Add ${shareStatus.missing.join(", ")} before sharing.`,
+      );
+      return;
+    }
+    const shared = await shareMessage(buildDateCardMessage(shareTarget));
+    if (!shared) return;
+    const sharedChecklist = { ...safeDateChecklist, circleHasPlan: true };
+    setSafeDateChecklist(sharedChecklist);
+    try {
+      await updateMatch(match.id, {
+        dateSafetyPlan: currentPlanInput(sharedChecklist),
+      });
+      setPlanDirty(false);
+      setOpen(false);
+      onChange();
+    } catch (e: any) {
+      Alert.alert("Shared, but not saved", e?.message ?? "Try saving again.");
+    }
+  };
+
+  const applyDatePlanTemplate = (template: DatePlanTemplate) => {
+    const next = buildDatePlanFromTemplate(template, match.nextDateAt);
+    setPlanDirty(true);
+    setTransportPlan(next.transportPlan ?? "");
+    setCircleNote(next.circleNote ?? "");
+    setSafeDateChecklist(next.safeDateChecklist);
+    if (next.checkInAt) setCheckInAt(new Date(next.checkInAt));
+    if (next.expectedEndAt) setExpectedEndAt(new Date(next.expectedEndAt));
   };
 
   const save = async () => {
@@ -1754,18 +1806,7 @@ function DateSafetyPlanCard({
     setSaving(true);
     try {
       await updateMatch(match.id, {
-        dateSafetyPlan: {
-          trustedCircleName: trustedCircleName.trim() || null,
-          transportPlan: transportPlan.trim() || null,
-          checkInAt: checkInAt.toISOString(),
-          expectedEndAt: expectedEndAt.toISOString(),
-          codeWord: codeWord.trim() || null,
-          circleNote: circleNote.trim() || null,
-          shareLiveLocation,
-          safeDateChecklist,
-          circleCheckStatus: plan?.circleCheckStatus ?? "planned",
-          lastCircleCheckAt: plan?.lastCircleCheckAt ?? null,
-        },
+        dateSafetyPlan: currentPlanInput(),
       });
       scheduleDateSafetyReminders({
         matchId: match.id,
@@ -2046,7 +2087,7 @@ function DateSafetyPlanCard({
         <Button
           label="Share Date Card"
           icon="share"
-          onPress={() => shareMessage(buildDateCardMessage(shareTarget))}
+          onPress={handleShareDateCard}
           disabled={shareStatus.state !== "ready"}
           variant="ghost"
           style={{ flex: 1 }}
@@ -2054,6 +2095,36 @@ function DateSafetyPlanCard({
       </View>
       {open && (
         <View style={{ gap: 10, marginTop: 12 }}>
+          <View style={{ gap: 8 }}>
+            <Text
+              style={{
+                color: c.foreground,
+                fontSize: 13,
+                fontFamily: "Inter_700Bold",
+              }}
+            >
+              Plan template
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {DATE_PLAN_TEMPLATES.map((template) => (
+                <Button
+                  key={template.id}
+                  label={template.label}
+                  icon="calendar"
+                  onPress={() => applyDatePlanTemplate(template)}
+                  variant="ghost"
+                  small
+                />
+              ))}
+              <Button
+                label="Custom plan"
+                icon="edit-3"
+                onPress={() => setPlanDirty(true)}
+                variant="secondary"
+                small
+              />
+            </View>
+          </View>
           <Input
             placeholder="Circle first name (not a phone number)"
             value={trustedCircleName}
