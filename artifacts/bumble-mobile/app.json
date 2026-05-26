@@ -15,10 +15,21 @@
     },
     "ios": {
       "bundleIdentifier": "ai.joewilson.heytelli",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "ai.joewilson.heytelli"
+      "package": "ai.joewilson.heytelli",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -70,8 +81,12 @@
           },
           "android": {
             "enabled": true,
-            "singleShareMimeTypes": ["image/*"],
-            "multipleShareMimeTypes": ["image/*"]
+            "singleShareMimeTypes": [
+              "image/*"
+            ],
+            "multipleShareMimeTypes": [
+              "image/*"
+            ]
           }
         }
       ],
@@ -80,6 +95,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "229dc69b-2d7c-4310-bfc6-1e56a891b5a1"
+      }
+    },
+    "owner": "thenelseif"
   }
 }
