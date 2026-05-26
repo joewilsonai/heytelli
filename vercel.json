@@ -1,0 +1,7 @@
+{
+  "framework": null,
+  "installCommand": "echo skip-install",
+  "buildCommand": "echo skip-build",
+  "outputDirectory": "landing",
+  "cleanUrls": true
+}
