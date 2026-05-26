@@ -1114,9 +1114,9 @@ function NextStepCard({ match }: { match: MatchDetail }) {
           marginTop: 12,
         }}
       >
-        {model.chips.map((chip) => (
+        {model.chips.map((chip, index) => (
           <View
-            key={chip}
+            key={`${chip}-${index}`}
             style={{
               backgroundColor: c.muted,
               borderRadius: 999,

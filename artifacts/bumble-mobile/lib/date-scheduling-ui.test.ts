@@ -63,6 +63,11 @@ test("match screen exposes per-date date mode and clock cover controls", () => {
   assert.match(matchScreen, /Hide as clock/);
 });
 
+test("match hero chip row uses stable keys even if labels repeat", () => {
+  assert.match(matchScreen, /model\.chips\.map\(\(chip, index\)/);
+  assert.match(matchScreen, /key=\{`\$\{chip\}-\$\{index\}`\}/);
+});
+
 test("match screen includes the dating pattern glossary near the radar", () => {
   assert.match(matchScreen, /DatingPatternGlossaryCard/);
   assert.match(matchScreen, /compact/);
