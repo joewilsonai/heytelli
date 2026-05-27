@@ -43,6 +43,51 @@ export async function loadAuthSession(): Promise<AuthSession | null> {
   }
 }
 
+export async function loadAndValidateAuthSession(): Promise<AuthSession | null> {
+  const stored = await loadAuthSession();
+  if (!stored) return null;
+
+  const apiBaseUrl = getApiBaseUrl();
+  if (!apiBaseUrl) return stored;
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${stored.token}` },
+    });
+
+    if (response.status === 401) {
+      await clearAuthSession();
+      return null;
+    }
+
+    if (!response.ok) return stored;
+
+    const body = await response.json().catch(() => null);
+    const user = body?.user;
+    if (
+      user &&
+      typeof user === "object" &&
+      typeof user.email === "string"
+    ) {
+      const session = {
+        token: stored.token,
+        user: {
+          ...stored.user,
+          ...user,
+        },
+      };
+      if (isAuthSession(session)) {
+        await saveAuthSession(session);
+        return session;
+      }
+    }
+  } catch {
+    return stored;
+  }
+
+  return stored;
+}
+
 export async function saveAuthSession(session: AuthSession): Promise<void> {
   cachedSession = session;
   await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));

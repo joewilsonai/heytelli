@@ -20,6 +20,13 @@ test("app boot wires bearer auth before rendering private routes", () => {
   assert.match(layout, /queryClient\.clear\(\)/);
 });
 
+test("app boot validates stored beta sessions before showing private routes", () => {
+  assert.match(authSession, /loadAndValidateAuthSession/);
+  assert.match(authSession, new RegExp("/api/auth/me"));
+  assert.match(authSession, /clearAuthSession/);
+  assert.match(layout, /loadAndValidateAuthSession/);
+});
+
 test("beta sign-in persists a session and exposes auth headers for manual fetches", () => {
   assert.match(authSession, /AUTH_STORAGE_KEY/);
   assert.match(authSession, /loginBetaUser/);

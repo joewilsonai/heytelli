@@ -22,7 +22,7 @@ import { getApiBaseUrl } from "@/lib/api-base";
 import {
   type AuthSession,
   getAuthToken,
-  loadAuthSession,
+  loadAndValidateAuthSession,
   loginBetaUser,
 } from "@/lib/auth-session";
 import { useColors } from "@/hooks/useColors";
@@ -247,7 +247,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    loadAuthSession()
+    loadAndValidateAuthSession()
       .then((stored) => {
         if (mounted) setSession(stored);
       })
