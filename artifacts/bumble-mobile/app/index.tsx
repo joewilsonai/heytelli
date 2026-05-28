@@ -876,7 +876,7 @@ function MatchRow({
             </View>
           )}
       </View>
-      <View style={{ flex: 1, gap: 4 }}>
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <View
           style={{
             flexDirection: "row",
@@ -903,8 +903,11 @@ function MatchRow({
             fontSize: 12,
             fontWeight: "400",
             color: c.mutedForeground,
+            flexShrink: 1,
+            minWidth: 0,
           }}
           numberOfLines={1}
+          ellipsizeMode="tail"
         >
           {profileLine || formatTimeAgo(match.lastActivityAt)}
         </Text>
