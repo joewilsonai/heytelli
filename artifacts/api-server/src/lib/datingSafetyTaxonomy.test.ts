@@ -111,6 +111,25 @@ test("detects boundary pressure, stalking or harassment, digital privacy, threat
   assert.ok(flags.every((flag) => flag.evidence.includes("Pattern detected:")));
 });
 
+test("does not turn ordinary photo sharing or reassurance into safety flags", () => {
+  const flags = detectDatingSafetyRedFlags({
+    name: "Gretchen",
+    profile,
+    transcript: [
+      turn("her", "Send me photos of your deck lights when you get them up."),
+      turn(
+        "her",
+        "No worries, I just want you to know I'm not ignoring you tonight.",
+      ),
+      turn("me", "Sorry to trauma dump, it felt safe to share with you."),
+    ],
+    dateHistory: [],
+    notes: "",
+  });
+
+  assert.deepEqual(flags, []);
+});
+
 test("merges deterministic safety flags with AI flags and dedupes by normalized label", () => {
   const aiFlags: RedFlag[] = [
     {

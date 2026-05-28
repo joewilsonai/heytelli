@@ -387,6 +387,11 @@ export interface RedFlag {
   occurrenceCount?: number;
 }
 
+export interface GreenFlag {
+  label: string;
+  evidence: string;
+}
+
 export interface RedFlagSummary {
   currentCount: number;
   historicalCount: number;
@@ -422,6 +427,8 @@ export interface Match {
   redFlags: RedFlag[];
   currentRedFlags: RedFlag[];
   historicalRedFlags: RedFlag[];
+  greenFlags: GreenFlag[];
+  overallRead: string;
   redFlagSummary: RedFlagSummary;
   scoreHistory?: ScoreHistoryPoint[];
   /**
@@ -560,6 +567,8 @@ export interface MatchDetail {
   redFlags: RedFlag[];
   currentRedFlags: RedFlag[];
   historicalRedFlags: RedFlag[];
+  greenFlags: GreenFlag[];
+  overallRead: string;
   redFlagSummary: RedFlagSummary;
   transcript: TranscriptTurn[];
   createdAt: string;
@@ -700,11 +709,6 @@ export interface DateBriefResult {
   /** Markdown-formatted pre-date prep brief */
   brief: string;
   generatedAt: string;
-}
-
-export interface GreenFlag {
-  label: string;
-  evidence: string;
 }
 
 export interface RedFlagRadarResult {

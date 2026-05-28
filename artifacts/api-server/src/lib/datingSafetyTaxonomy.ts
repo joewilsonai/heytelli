@@ -38,7 +38,7 @@ const rules: SafetyRule[] = [
     evidence:
       "Pattern detected: pressures for intimate images, secrecy, or sexual content that could be used coercively.",
     patterns: [
-      /\b(send|show|give me)\b.{0,40}\b(nudes?|pics?|photos?|videos?)\b/i,
+      /\b(send|show|give me)\b.{0,40}\b(nudes?|naked|explicit|sexy|intimate)\b/i,
       /\b(keep|this stays|don't tell|do not tell)\b.{0,40}\b(secret|between us|private)\b/i,
       /\b(intimate|explicit|sexy)\b.{0,30}\b(photo|image|pic|video)\b/i,
     ],
@@ -51,7 +51,7 @@ const rules: SafetyRule[] = [
     patterns: [
       /\b(stop saying no|don't say no|why not|come on)\b/i,
       /\b(if you liked me|if you cared|prove it)\b.{0,60}\b(come over|meet|send|do it)\b/i,
-      /\b(no|not comfortable|slow down|not ready)\b.{0,80}\b(please|come on|just|you should|you would)\b/i,
+      /\b(no|not comfortable|slow down|not ready)\b.{0,80}\b(please|come on|you should|you would)\b/i,
     ],
   },
   {

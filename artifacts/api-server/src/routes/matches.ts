@@ -83,7 +83,11 @@ import {
   type RedFlagSummary,
 } from "../lib/redFlagHistory";
 import { requireAuth, requireUserId } from "../lib/auth";
-import type { RedFlag, RedFlagRadarResult } from "../lib/redFlagRadar";
+import type {
+  GreenFlag,
+  RedFlag,
+  RedFlagRadarResult,
+} from "../lib/redFlagRadar";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -376,6 +380,8 @@ function redFlagHistoryFromRows(
   }>,
   lastRedFlagRadar: {
     redFlags?: RedFlag[];
+    greenFlags?: GreenFlag[];
+    overallRead?: string;
     generatedAt?: string;
   } | null,
 ) {
@@ -396,6 +402,13 @@ function redFlagHistoryFromRows(
     redFlags: result.redFlags,
     currentRedFlags: result.currentRedFlags,
     historicalRedFlags: result.historicalRedFlags,
+    greenFlags: Array.isArray(lastRedFlagRadar?.greenFlags)
+      ? lastRedFlagRadar.greenFlags
+      : [],
+    overallRead:
+      typeof lastRedFlagRadar?.overallRead === "string"
+        ? lastRedFlagRadar.overallRead
+        : "",
     redFlagSummary: redFlagSummaryFromResult(result),
   };
 }
@@ -1684,6 +1697,22 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       updates.transcript = mergedTranscript;
     }
     await db.update(matches).set(updates).where(eq(matches.id, detail.id));
+    await db.insert(matchTimelineEvents).values({
+      matchId: detail.id,
+      type: "screenshot_import",
+      source: "ai",
+      title: "Screenshots analyzed",
+      summary: lastRead.body,
+      body: null,
+      metadata: {
+        screenshotIds: analyzedShotIds,
+        screenshotCount: analyzedShotIds.length,
+        readGeneratedAt: lastRead.generatedAt,
+        mentionedTopics: extraction.profile.mentionedTopics.slice(0, 8),
+        vibeTags: extraction.vibeTags,
+      },
+      occurredAt: new Date(lastRead.generatedAt),
+    });
     await recordScoreHistory(detail.id, mergedProfile.scores);
     // Only flip the snapshot we actually analyzed — screenshots added
     // mid-flight stay pending so the next rescore catches them.

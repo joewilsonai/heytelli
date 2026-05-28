@@ -12,6 +12,7 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { getRedFlagRadar } from "@workspace/api-client-react";
 import type {
+  GreenFlag,
   RedFlag,
   RedFlagRadarResult,
   RedFlagSummary,
@@ -34,13 +35,18 @@ export function RedFlagsCard({
     redFlags: RedFlag[];
     currentRedFlags: RedFlag[];
     historicalRedFlags: RedFlag[];
+    greenFlags: GreenFlag[];
+    overallRead: string;
   };
 }) {
   const c = useColors();
   const [data, setData] = useState<RedFlagRadarResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(
-    () => (initialRedFlags?.redFlags.length ?? 0) > 0,
+    () =>
+      (initialRedFlags?.redFlags.length ?? 0) > 0 ||
+      (initialRedFlags?.greenFlags.length ?? 0) > 0 ||
+      Boolean(initialRedFlags?.overallRead.trim()),
   );
 
   const run = async () => {
@@ -88,9 +94,13 @@ export function RedFlagsCard({
           (f) => f.status === "previously-seen",
         ) ??
         []);
-  const hasSavedDetails = currentFlags.length > 0 || historicalFlags.length > 0;
-  const greenFlags = data?.greenFlags ?? [];
-  const overallRead = data?.overallRead ?? "";
+  const greenFlags = data?.greenFlags ?? initialRedFlags?.greenFlags ?? [];
+  const overallRead = data?.overallRead ?? initialRedFlags?.overallRead ?? "";
+  const hasSavedDetails =
+    currentFlags.length > 0 ||
+    historicalFlags.length > 0 ||
+    greenFlags.length > 0 ||
+    Boolean(overallRead.trim());
   const resources = getSafetyResources([...currentFlags, ...historicalFlags]);
   const actionChecklist = getSafetyActionChecklist([
     ...currentFlags,

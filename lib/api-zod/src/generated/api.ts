@@ -178,6 +178,11 @@ export const ListMatchesResponseItem = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -383,6 +388,11 @@ export const GetMatchResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -624,6 +634,11 @@ export const UpdateMatchResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -816,6 +831,11 @@ export const AddScreenshotResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -977,6 +997,11 @@ export const RescoreMatchResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -1260,6 +1285,11 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -1571,6 +1601,11 @@ export const InPersonRecordingResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),
@@ -1777,6 +1812,11 @@ export const VoiceDebriefResponse = zod.object({
   "lastSeenAt": zod.coerce.date().optional(),
   "occurrenceCount": zod.number().optional()
 })),
+  "greenFlags": zod.array(zod.object({
+  "label": zod.string(),
+  "evidence": zod.string()
+})),
+  "overallRead": zod.string(),
   "redFlagSummary": zod.object({
   "currentCount": zod.number(),
   "historicalCount": zod.number(),

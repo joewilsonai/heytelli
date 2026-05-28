@@ -10,6 +10,7 @@ import type { DateBriefSnapshot } from './dateBriefSnapshot';
 import type { DateHistoryEntry } from './dateHistoryEntry';
 import type { DateSafetyPlanListStatus } from './dateSafetyPlanListStatus';
 import type { ExtractedProfile } from './extractedProfile';
+import type { GreenFlag } from './greenFlag';
 import type { MatchAnalysisFreshness } from './matchAnalysisFreshness';
 import type { MatchLastSpeaker } from './matchLastSpeaker';
 import type { MatchReadFreshness } from './matchReadFreshness';
@@ -46,6 +47,8 @@ export interface Match {
   redFlags: RedFlag[];
   currentRedFlags: RedFlag[];
   historicalRedFlags: RedFlag[];
+  greenFlags: GreenFlag[];
+  overallRead: string;
   redFlagSummary: RedFlagSummary;
   scoreHistory?: ScoreHistoryPoint[];
   /**

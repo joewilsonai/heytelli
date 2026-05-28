@@ -270,6 +270,8 @@ export default function MatchDetailScreen() {
             redFlags: data.redFlags ?? [],
             currentRedFlags: data.currentRedFlags ?? [],
             historicalRedFlags: data.historicalRedFlags ?? [],
+            greenFlags: data.greenFlags ?? [],
+            overallRead: data.overallRead ?? "",
           }}
         />
         <SectionIntro
@@ -788,6 +790,7 @@ function TimelineCard({ events }: { events: MatchTimelineEvent[] }) {
         "date_debrief",
         "in_person_recording",
         "manual_note",
+        "screenshot_import",
         "chat_insight",
       ].includes(event.type),
     )
@@ -877,6 +880,7 @@ function timelineIcon(
   if (type === "date_scheduled") return "calendar";
   if (type === "date_debrief") return "calendar";
   if (type === "in_person_recording") return "radio";
+  if (type === "screenshot_import") return "image";
   if (type === "chat_insight") return "message-circle";
   if (type === "manual_note") return "edit-3";
   return "mic";
@@ -889,6 +893,7 @@ function timelineColor(
   if (type === "date_scheduled") return c.primary;
   if (type === "date_debrief") return c.accentForeground;
   if (type === "in_person_recording") return c.foreground;
+  if (type === "screenshot_import") return c.success;
   if (type === "chat_insight") return c.primary;
   if (type === "manual_note") return c.warning;
   return c.success;
@@ -1308,9 +1313,7 @@ function FreshnessChip({ match }: { match: MatchDetail }) {
       }}
     >
       <Feather name={icon} size={11} color={tint} />
-      <Text
-        style={{ fontSize: 11, color: tint, fontWeight: "600" }}
-      >
+      <Text style={{ fontSize: 11, color: tint, fontWeight: "600" }}>
         {label}
       </Text>
     </View>

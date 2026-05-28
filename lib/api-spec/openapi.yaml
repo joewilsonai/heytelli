@@ -1205,6 +1205,8 @@ components:
         - redFlags
         - currentRedFlags
         - historicalRedFlags
+        - greenFlags
+        - overallRead
         - redFlagSummary
       properties:
         id: { type: integer }
@@ -1253,6 +1255,10 @@ components:
         historicalRedFlags:
           type: array
           items: { $ref: "#/components/schemas/RedFlag" }
+        greenFlags:
+          type: array
+          items: { $ref: "#/components/schemas/GreenFlag" }
+        overallRead: { type: string }
         redFlagSummary:
           $ref: "#/components/schemas/RedFlagSummary"
         scoreHistory:
@@ -1337,6 +1343,8 @@ components:
         - redFlags
         - currentRedFlags
         - historicalRedFlags
+        - greenFlags
+        - overallRead
         - redFlagSummary
       properties:
         id: { type: integer }
@@ -1385,6 +1393,10 @@ components:
         historicalRedFlags:
           type: array
           items: { $ref: "#/components/schemas/RedFlag" }
+        greenFlags:
+          type: array
+          items: { $ref: "#/components/schemas/GreenFlag" }
+        overallRead: { type: string }
         redFlagSummary:
           $ref: "#/components/schemas/RedFlagSummary"
         transcript:
