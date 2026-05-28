@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body, Button, Card, H1, H2, SectionLabel } from "@/components/ui";
+import { FeedbackSheet } from "@/components/FeedbackSheet";
 import { useColors } from "@/hooks/useColors";
 import {
   MAX_PROFILE_SCREENSHOTS,
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
   const [draftDirty, setDraftDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [analyzingProfile, setAnalyzingProfile] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [manualName, setManualName] = useState("");
   const [manualRelationship, setManualRelationship] = useState("");
 
@@ -562,11 +564,31 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
+      <Card>
+        <SectionLabel>Beta feedback</SectionLabel>
+        <H2 style={{ fontSize: 18 }}>Help shape HeyTelli</H2>
+        <Body muted style={{ marginTop: 4 }}>
+          Send a note about what felt wrong, missing, or surprisingly helpful.
+        </Body>
+        <Button
+          label="Send feedback"
+          icon="send"
+          variant="secondary"
+          onPress={() => setFeedbackOpen(true)}
+          style={{ marginTop: 12 }}
+        />
+      </Card>
+
       <Button
         label={loading ? "Loading" : "Save Settings"}
         icon="save"
         onPress={save}
         loading={saving || loading}
+      />
+      <FeedbackSheet
+        visible={feedbackOpen}
+        surface="settings"
+        onClose={() => setFeedbackOpen(false)}
       />
     </ScrollView>
   );

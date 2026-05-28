@@ -24,7 +24,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import {
   addScreenshot,
-  createProductFeedback,
   createChatConversation,
   deleteMatch,
   generateDateBrief,
@@ -54,6 +53,7 @@ import {
   StatusPill,
   VibeTag,
 } from "@/components/ui";
+import { FeedbackSheet } from "@/components/FeedbackSheet";
 import { VoiceDebriefSheet } from "@/components/VoiceDebriefSheet";
 import { VoiceNoteFeedbackSheet } from "@/components/VoiceNoteFeedbackSheet";
 import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
@@ -72,6 +72,10 @@ import {
 } from "@/lib/notifications";
 import { formatDateTime, formatTimeAgo, isPast } from "@/lib/format";
 import { objectPathToUrl } from "@/lib/image";
+import {
+  submitImprovementFeedback,
+  type FeedbackType,
+} from "@/lib/improvement-feedback";
 import {
   buildDateCardMessage,
   buildCircleCheckMessage,
@@ -112,6 +116,7 @@ export default function MatchDetailScreen() {
   const [dateCoverRevealed, setDateCoverRevealed] = useState(false);
   const [coverActionBusy, setCoverActionBusy] =
     useState<CoverQuickActionId | null>(null);
+  const [errorFeedbackOpen, setErrorFeedbackOpen] = useState(false);
   const { data, isLoading, refetch, isRefetching, error } =
     useGetMatch(matchId);
   const activeDateMode = Boolean(
@@ -217,6 +222,19 @@ export default function MatchDetailScreen() {
           icon="alert-triangle"
           title="Match not found"
           action={{ label: "Go back", onPress: () => router.back() }}
+        />
+        <View style={{ paddingHorizontal: 20 }}>
+          <Button
+            label="Tell us what happened"
+            icon="message-circle"
+            variant="ghost"
+            onPress={() => setErrorFeedbackOpen(true)}
+          />
+        </View>
+        <FeedbackSheet
+          visible={errorFeedbackOpen}
+          surface="match-error"
+          onClose={() => setErrorFeedbackOpen(false)}
         />
       </View>
     );
@@ -997,15 +1015,24 @@ function BetaFeedbackCard({
   const c = useColors();
   const [sent, setSent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  const typeForAnswer = (answer: string): FeedbackType => {
+    if (answer === "Yes") return "Love this";
+    if (answer === "Maybe") return "Confusing";
+    return "Bug";
+  };
 
   const send = async (answer: string) => {
     setBusy(true);
     try {
-      await createProductFeedback({
-        event: `${surface}-feedback`,
-        answer,
+      await submitImprovementFeedback({
+        type: typeForAnswer(answer),
+        message: `${prompt}: ${answer}`,
         matchId,
-        context: { surface, prompt },
+        surface,
+        technicalContextConsent: true,
+        context: { prompt, answer },
       });
       setSent(answer);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
@@ -1019,36 +1046,51 @@ function BetaFeedbackCard({
   };
 
   return (
-    <Card>
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Feather name="message-square" size={15} color={c.primary} />
-          <SectionLabel>Beta check</SectionLabel>
+    <>
+      <Card>
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Feather name="message-square" size={15} color={c.primary} />
+            <SectionLabel>Beta check</SectionLabel>
+          </View>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 14,
+              fontWeight: "600",
+            }}
+          >
+            {prompt}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {["Yes", "Maybe", "No"].map((answer) => (
+              <Button
+                key={answer}
+                label={sent === answer ? "Saved" : answer}
+                onPress={() => send(answer)}
+                disabled={busy || sent === answer}
+                variant={answer === "Yes" ? "secondary" : "ghost"}
+                small
+                style={{ flex: 1 }}
+              />
+            ))}
+          </View>
+          <Button
+            label="Tell us more"
+            icon="message-circle"
+            variant="ghost"
+            small
+            onPress={() => setFeedbackOpen(true)}
+          />
         </View>
-        <Text
-          style={{
-            color: c.foreground,
-            fontSize: 14,
-            fontWeight: "600",
-          }}
-        >
-          {prompt}
-        </Text>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {["Yes", "Maybe", "No"].map((answer) => (
-            <Button
-              key={answer}
-              label={sent === answer ? "Saved" : answer}
-              onPress={() => send(answer)}
-              disabled={busy || sent === answer}
-              variant={answer === "Yes" ? "secondary" : "ghost"}
-              small
-              style={{ flex: 1 }}
-            />
-          ))}
-        </View>
-      </View>
-    </Card>
+      </Card>
+      <FeedbackSheet
+        visible={feedbackOpen}
+        surface={surface}
+        matchId={matchId}
+        onClose={() => setFeedbackOpen(false)}
+      />
+    </>
   );
 }
 
