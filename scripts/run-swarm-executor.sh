@@ -47,8 +47,13 @@ case " $* " in
   *) repo_root_args=(--repo-root "$ROOT_DIR") ;;
 esac
 
+execute_args=()
 if (( ${#mode_args[@]} > 0 )); then
-  pnpm --filter @workspace/scripts run improvement:execute -- "${mode_args[@]}" "${repo_root_args[@]}" "$@"
-else
-  pnpm --filter @workspace/scripts run improvement:execute -- "${repo_root_args[@]}" "$@"
+  execute_args+=("${mode_args[@]}")
 fi
+if (( ${#repo_root_args[@]} > 0 )); then
+  execute_args+=("${repo_root_args[@]}")
+fi
+execute_args+=("$@")
+
+pnpm --filter @workspace/scripts run improvement:execute -- "${execute_args[@]}"
