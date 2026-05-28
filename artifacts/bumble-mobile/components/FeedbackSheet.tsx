@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -22,6 +23,13 @@ import {
   submitImprovementFeedback,
   type FeedbackType,
 } from "@/lib/improvement-feedback";
+import { uploadFeedbackAttachment } from "@/lib/upload";
+
+type FeedbackAttachmentDraft = {
+  uri: string;
+  contentType?: string | null;
+  size?: number | null;
+};
 
 export function FeedbackSheet({
   visible,
@@ -41,6 +49,9 @@ export function FeedbackSheet({
   const [type, setType] = useState<FeedbackType>("Bug");
   const [message, setMessage] = useState("");
   const [includeContext, setIncludeContext] = useState(true);
+  const [attachment, setAttachment] = useState<FeedbackAttachmentDraft | null>(
+    null,
+  );
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -48,18 +59,45 @@ export function FeedbackSheet({
     setType("Bug");
     setMessage("");
     setIncludeContext(true);
+    setAttachment(null);
   }, [visible]);
+
+  const pickAttachment = async () => {
+    if (sending) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Photos access needed", "Allow photo library access.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.75,
+      allowsMultipleSelection: false,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.uri) return;
+    setAttachment({
+      uri: asset.uri,
+      contentType: asset.mimeType,
+      size: asset.fileSize,
+    });
+  };
 
   const send = async () => {
     if (!message.trim() || sending) return;
     setSending(true);
     try {
+      const feedbackAttachment = attachment
+        ? await uploadFeedbackAttachment(attachment)
+        : null;
       const created = await submitImprovementFeedback({
         type,
         message,
         surface,
         matchId,
         technicalContextConsent: includeContext,
+        feedbackAttachment,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
@@ -136,9 +174,7 @@ export function FeedbackSheet({
             conversations in engineering issues.
           </Body>
           <Body muted>
-            If a screenshot would help, keep it on your phone for now and
-            describe the screen in words. Feedback screenshot uploads are
-            staying off until redaction, consent, and auto-delete are ready.
+            Attachments stay private and are not copied into GitHub issues.
           </Body>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -194,6 +230,27 @@ export function FeedbackSheet({
               fontSize: 15,
             }}
           />
+
+          <View style={{ gap: 8 }}>
+            <Button
+              label={
+                attachment ? "Private image attached" : "Attach private image"
+              }
+              icon="image"
+              variant="secondary"
+              disabled={sending}
+              onPress={pickAttachment}
+            />
+            {attachment ? (
+              <Button
+                label="Remove attachment"
+                icon="x"
+                variant="ghost"
+                disabled={sending}
+                onPress={() => setAttachment(null)}
+              />
+            ) : null}
+          </View>
 
           <View
             style={{
