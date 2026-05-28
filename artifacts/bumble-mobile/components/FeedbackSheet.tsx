@@ -135,6 +135,11 @@ export function FeedbackSheet({
             Send a quick note. We do not include screenshots or private
             conversations in engineering issues.
           </Body>
+          <Body muted>
+            If a screenshot would help, keep it on your phone for now and
+            describe the screen in words. Feedback screenshot uploads are
+            staying off until redaction, consent, and auto-delete are ready.
+          </Body>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {feedbackTypes.map((option) => {

@@ -34,6 +34,8 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
     sheet,
     /We do not include screenshots or private\s+conversations in engineering issues\./,
   );
+  assert.match(sheet, /keep it on your phone for now/);
+  assert.match(sheet, /redaction, consent, and auto-delete/);
   assert.match(helper, /createImprovementSignal/);
   assert.doesNotMatch(
     helper,

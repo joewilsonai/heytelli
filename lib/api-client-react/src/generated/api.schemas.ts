@@ -330,6 +330,34 @@ export interface MatchScores {
   chemistry: MatchScore;
 }
 
+export type ExtractedProfileVisibleMediaItemSource = typeof ExtractedProfileVisibleMediaItemSource[keyof typeof ExtractedProfileVisibleMediaItemSource];
+
+
+export const ExtractedProfileVisibleMediaItemSource = {
+  profile: 'profile',
+  chat: 'chat',
+  text_thread: 'text_thread',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ExtractedProfileVisibleMediaItemSpeaker = typeof ExtractedProfileVisibleMediaItemSpeaker[keyof typeof ExtractedProfileVisibleMediaItemSpeaker] | null;
+
+
+export const ExtractedProfileVisibleMediaItemSpeaker = {
+  her: 'her',
+  me: 'me',
+} as const;
+
+export type ExtractedProfileVisibleMediaItem = {
+  kind: string;
+  description: string;
+  source: ExtractedProfileVisibleMediaItemSource;
+  /** @nullable */
+  speaker: ExtractedProfileVisibleMediaItemSpeaker;
+};
+
 export interface ExtractedProfile {
   /** @nullable */
   job: string | null;
@@ -339,6 +367,7 @@ export interface ExtractedProfile {
   mentionedTopics: string[];
   /** @nullable */
   conversationTone: string | null;
+  visibleMedia: ExtractedProfileVisibleMediaItem[];
   scores: MatchScores;
 }
 

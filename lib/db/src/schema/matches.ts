@@ -22,6 +22,13 @@ export type MatchScores = {
   chemistry: MatchScore;
 };
 
+export type VisibleMediaObservation = {
+  kind: string;
+  description: string;
+  source: "profile" | "chat" | "text_thread";
+  speaker: "her" | "me" | null;
+};
+
 export const emptyScore: MatchScore = { value: null, rationale: null };
 
 export const emptyScores: MatchScores = {
@@ -36,6 +43,7 @@ export type ExtractedProfile = {
   interests: string[];
   mentionedTopics: string[];
   conversationTone: string | null;
+  visibleMedia: VisibleMediaObservation[];
   scores: MatchScores;
 };
 
@@ -45,6 +53,7 @@ export const emptyExtractedProfile: ExtractedProfile = {
   interests: [],
   mentionedTopics: [],
   conversationTone: null,
+  visibleMedia: [],
   scores: emptyScores,
 };
 
@@ -194,6 +203,34 @@ function normalizeScore(input: unknown): MatchScore {
   return { value, rationale };
 }
 
+function normalizeVisibleMedia(input: unknown): VisibleMediaObservation[] {
+  if (!Array.isArray(input)) return [];
+  const out: VisibleMediaObservation[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") continue;
+    const obj = raw as Record<string, unknown>;
+    const kind = typeof obj.kind === "string" ? obj.kind.trim() : "";
+    const description =
+      typeof obj.description === "string" ? obj.description.trim() : "";
+    const source =
+      obj.source === "profile" ||
+      obj.source === "chat" ||
+      obj.source === "text_thread"
+        ? obj.source
+        : null;
+    const speaker =
+      obj.speaker === "her" || obj.speaker === "me" ? obj.speaker : null;
+    if (!kind || !description || !source) continue;
+    out.push({
+      kind,
+      description,
+      source,
+      speaker,
+    });
+  }
+  return out.slice(0, 12);
+}
+
 export function normalizeExtractedProfile(input: unknown): ExtractedProfile {
   const obj = (input ?? {}) as Record<string, unknown>;
   const incomingScores = (obj.scores ?? {}) as Record<string, unknown>;
@@ -208,6 +245,7 @@ export function normalizeExtractedProfile(input: unknown): ExtractedProfile {
       : [],
     conversationTone:
       typeof obj.conversationTone === "string" ? obj.conversationTone : null,
+    visibleMedia: normalizeVisibleMedia(obj.visibleMedia),
     scores: {
       sexPotential: normalizeScore(incomingScores.sexPotential),
       conversionAbility: normalizeScore(incomingScores.conversionAbility),

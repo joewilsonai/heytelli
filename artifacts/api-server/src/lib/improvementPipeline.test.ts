@@ -26,6 +26,23 @@ test("rejects forbidden client context before raw payload is persisted", () => {
   );
 });
 
+test("rejects feedback attachment metadata before raw payload is persisted", () => {
+  assert.equal(
+    normalizeImprovementSignalInput({
+      source: "in_app_feedback",
+      type: "Bug",
+      message: "The feedback screen needs screenshot attachments.",
+      surface: "settings-feedback",
+      clientContext: {
+        platform: "ios",
+        attachmentObjectPath: "feedback/private-image.png",
+      },
+      technicalContextConsent: true,
+    }),
+    null,
+  );
+});
+
 test("keeps raw payload limited to allowlisted technical context", () => {
   const normalized = normalizeImprovementSignalInput({
     source: "in_app_feedback",

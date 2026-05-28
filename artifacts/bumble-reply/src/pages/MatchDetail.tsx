@@ -272,6 +272,7 @@ function ProfileEditor({ match }: { match: MatchDetailType }) {
       conversationTone: draft.conversationTone?.trim() || null,
       interests: interestsText.split(",").map((s) => s.trim()).filter(Boolean),
       mentionedTopics: topicsText.split(",").map((s) => s.trim()).filter(Boolean),
+      visibleMedia: draft.visibleMedia ?? [],
       scores: draft.scores,
     };
     updateMatch.mutate({ id: match.id, data: { extractedProfile: parsed } });

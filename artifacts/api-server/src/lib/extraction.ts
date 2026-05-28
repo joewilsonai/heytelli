@@ -7,6 +7,7 @@ import type {
   MatchScore,
   MatchScores,
   TranscriptTurn,
+  VisibleMediaObservation,
 } from "@workspace/db";
 import {
   db,
@@ -50,6 +51,16 @@ If a screenshot is ONLY a dating-app profile (no chat bubbles), there is no tran
 
 Do not guess. If a bubble's side or color is genuinely ambiguous, omit it from the transcript rather than mis-attributing it.
 
+## Visible media inside screenshots
+
+Do not ignore images that appear inside the uploaded screenshot. If the dating profile, chat, or text thread shows an embedded photo, profile image, image card, screenshot-within-a-screenshot, meme, shared post, link preview, or other visible media, describe the visible content briefly when it adds context.
+
+- In the transcript, represent non-text media at the point it appears using bracketed text such as "[photo: person hiking in a red jacket]", "[profile photo: person at a concert]", "[shared screenshot: restaurant reservation]", "[link preview: article about climbing]", or "[voice note]".
+- Also return those observations in visibleMedia so the app can preserve visual context separately from things the person explicitly said.
+- Do not put profile-only visual observations into interests or mentionedTopics unless profile text explicitly says the interest/topic. A photo that appears to show skiing is visible media; it is not an interest unless text says they ski.
+- Keep descriptions factual and uncertainty-aware. Do not infer identity, attractiveness, intent, safety, or private facts that are not visible.
+- Do not include full names, handles, phone numbers, addresses, license plates, bystander identities, children, intimate imagery, or other visible PII in media descriptions. Use generic wording instead, e.g. "person with friends" rather than names.
+
 ## Guardrails
 
 - Do not call anyone safe, unsafe, dangerous, toxic, narcissistic, abusive, or manipulative.
@@ -68,12 +79,20 @@ Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
   "interests": string[],                 // Hobbies / interests they've mentioned (concise nouns/phrases)
   "mentionedTopics": string[],           // Specific things they brought up (e.g. "their dog Milo", "trip to Lisbon", "coffee snob")
   "conversationTone": string | null,     // Brief description of overall tone (e.g. "warm and playful", "dry witty banter") - null if no chat visible
+  "visibleMedia": [
+    {
+      "kind": string,                     // photo | profile_photo | shared_screenshot | link_preview | gif | voice_note | other
+      "description": string,              // concise factual description with no names, handles, phone numbers, addresses, license plates, bystander identities, children, or intimate details
+      "source": "profile" | "chat" | "text_thread",
+      "speaker": "her" | "me" | null      // null for profile-only or unclear ownership
+    }
+  ],
   "read": string | null,                 // 1-2 sentence private read of the current dynamic. Preserve uncertainty. Do not diagnose, score, or make safety claims.
 
   // Full chat transcript across ALL screenshots, in chronological order (top-to-bottom within each screenshot, earliest screenshot first).
   // Each turn is { "speaker": "her" | "me", "text": "<exact message text>" }.
   // Combine consecutive bubbles from the same speaker into one turn separated by " / " ONLY when they're clearly the same message broken across bubbles; otherwise keep them as separate turns.
-  // Strip timestamps, reactions, and read receipts. Keep emojis. Use [photo], [voice note], [gif], [link] inline for non-text content.
+  // Strip timestamps, reactions, and read receipts. Keep emojis. Use concise media descriptions inline for non-text content, e.g. [photo: dog on a patio], [profile photo: person skiing], [shared screenshot: concert tickets], [voice note], [gif: dancing].
   // Return [] if no chat bubbles are visible (e.g. profile-only screenshot).
   "transcript": [{ "speaker": "her" | "me", "text": string }],
 
@@ -106,6 +125,41 @@ function toScore(v: unknown): MatchScore {
     value = Math.max(0, Math.min(10, Math.round(obj.value)));
   }
   return { value, rationale: toStringOrNull(obj.rationale) };
+}
+
+const VISIBLE_MEDIA_PII_RE =
+  /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b|\b\d{2,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,4}\s+(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard)\b|@[A-Za-z0-9_.-]+|\b[A-Z0-9]{2,8}\s?(?:plate|license plate)\b)/gi;
+
+function cleanVisibleMediaText(v: unknown): string | null {
+  const text = toStringOrNull(v);
+  if (!text) return null;
+  return text.replace(VISIBLE_MEDIA_PII_RE, "[private detail]").slice(0, 160);
+}
+
+function normalizeVisibleMedia(v: unknown): VisibleMediaObservation[] {
+  if (!Array.isArray(v)) return [];
+  const out: VisibleMediaObservation[] = [];
+  const seen = new Set<string>();
+  for (const raw of v) {
+    if (!raw || typeof raw !== "object") continue;
+    const obj = raw as Record<string, unknown>;
+    const kind = cleanVisibleMediaText(obj.kind);
+    const description = cleanVisibleMediaText(obj.description);
+    const source =
+      obj.source === "profile" ||
+      obj.source === "chat" ||
+      obj.source === "text_thread"
+        ? obj.source
+        : null;
+    const speaker =
+      obj.speaker === "her" || obj.speaker === "me" ? obj.speaker : null;
+    if (!kind || !description || !source) continue;
+    const key = `${kind}:${source}:${speaker ?? "none"}:${description.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ kind, description, source, speaker });
+  }
+  return out.slice(0, 12);
 }
 
 export type MatchContext = {
@@ -250,6 +304,7 @@ export async function extractFromScreenshots(
       interests: toStringArray(parsed.interests),
       mentionedTopics: toStringArray(parsed.mentionedTopics),
       conversationTone: toStringOrNull(parsed.conversationTone),
+      visibleMedia: normalizeVisibleMedia(parsed.visibleMedia),
       scores: {
         sexPotential: toScore(parsed.sexPotentialScore),
         conversionAbility: toScore(parsed.conversionAbilityScore),
@@ -282,6 +337,21 @@ function mergeStringList(existing: string[], incoming: string[]): string[] {
   return out;
 }
 
+function mergeVisibleMedia(
+  existing: VisibleMediaObservation[],
+  incoming: VisibleMediaObservation[],
+): VisibleMediaObservation[] {
+  const seen = new Set<string>();
+  const out: VisibleMediaObservation[] = [];
+  for (const item of [...existing, ...incoming]) {
+    const key = `${item.kind}:${item.source}:${item.speaker ?? "none"}:${item.description.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out.slice(-12);
+}
+
 export function mergeExtraction(
   existing: ExtractedProfile | null | undefined,
   incoming: ExtractionResult["profile"],
@@ -302,6 +372,10 @@ export function mergeExtraction(
       incoming.mentionedTopics,
     ),
     conversationTone: incoming.conversationTone ?? base.conversationTone,
+    visibleMedia: mergeVisibleMedia(
+      base.visibleMedia ?? [],
+      incoming.visibleMedia ?? [],
+    ),
     scores: mergeScores(base.scores, incoming.scores),
   };
 }

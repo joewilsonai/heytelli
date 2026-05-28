@@ -18,6 +18,7 @@ const profile: ExtractedProfile = {
   interests: [],
   mentionedTopics: [],
   conversationTone: null,
+  visibleMedia: [],
   scores: {
     sexPotential: { value: null, rationale: null },
     conversionAbility: { value: null, rationale: null },

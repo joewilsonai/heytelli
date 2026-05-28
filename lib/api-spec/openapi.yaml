@@ -1082,7 +1082,17 @@ components:
         - closed
     ImprovementRunType:
       type: string
-      enum: [triage, research, implementation, review, merge, deploy, monitor, rollback]
+      enum:
+        [
+          triage,
+          research,
+          implementation,
+          review,
+          merge,
+          deploy,
+          monitor,
+          rollback,
+        ]
     ImprovementRunStatus:
       type: string
       enum: [started, succeeded, failed, blocked]
@@ -1242,7 +1252,15 @@ components:
     ExtractedProfile:
       type: object
       required:
-        [job, location, interests, mentionedTopics, conversationTone, scores]
+        [
+          job,
+          location,
+          interests,
+          mentionedTopics,
+          conversationTone,
+          visibleMedia,
+          scores,
+        ]
       properties:
         job: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
@@ -1253,6 +1271,20 @@ components:
           type: array
           items: { type: string }
         conversationTone: { type: ["string", "null"] }
+        visibleMedia:
+          type: array
+          items:
+            type: object
+            required: [kind, description, source, speaker]
+            properties:
+              kind: { type: string }
+              description: { type: string }
+              source:
+                type: string
+                enum: [profile, chat, text_thread]
+              speaker:
+                type: ["string", "null"]
+                enum: [her, me, null]
         scores:
           $ref: "#/components/schemas/MatchScores"
     ScoreHistoryPoint:

@@ -91,6 +91,12 @@ export const ListMatchesResponseItem = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(listMatchesResponseExtractedProfileScoresSexPotentialValueOneMin).max(listMatchesResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -248,6 +254,12 @@ export const PreviewMatchExtractionResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(previewMatchExtractionResponseExtractedProfileScoresSexPotentialValueOneMin).max(previewMatchExtractionResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -297,6 +309,12 @@ export const GetMatchResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(getMatchResponseExtractedProfileScoresSexPotentialValueOneMin).max(getMatchResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -463,6 +481,12 @@ export const UpdateMatchBody = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(updateMatchBodyExtractedProfileScoresSexPotentialValueOneMin).max(updateMatchBodyExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -543,6 +567,12 @@ export const UpdateMatchResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(updateMatchResponseExtractedProfileScoresSexPotentialValueOneMin).max(updateMatchResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -740,6 +770,12 @@ export const AddScreenshotResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(addScreenshotResponseExtractedProfileScoresSexPotentialValueOneMin).max(addScreenshotResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -906,6 +942,12 @@ export const RescoreMatchResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(rescoreMatchResponseExtractedProfileScoresSexPotentialValueOneMin).max(rescoreMatchResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -1194,6 +1236,12 @@ export const ApplyTagSuggestionsResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(applyTagSuggestionsResponseExtractedProfileScoresSexPotentialValueOneMin).max(applyTagSuggestionsResponseExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -1510,6 +1558,12 @@ export const InPersonRecordingResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMin).max(inPersonRecordingResponseMatchExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),
@@ -1721,6 +1775,12 @@ export const VoiceDebriefResponse = zod.object({
   "interests": zod.array(zod.string()),
   "mentionedTopics": zod.array(zod.string()),
   "conversationTone": zod.string().nullable(),
+  "visibleMedia": zod.array(zod.object({
+  "kind": zod.string(),
+  "description": zod.string(),
+  "source": zod.enum(['profile', 'chat', 'text_thread']),
+  "speaker": zod.union([zod.literal('her'),zod.literal('me'),zod.literal(null)]).nullable()
+})),
   "scores": zod.object({
   "sexPotential": zod.object({
   "value": zod.union([zod.number().min(voiceDebriefResponseMatchExtractedProfileScoresSexPotentialValueOneMin).max(voiceDebriefResponseMatchExtractedProfileScoresSexPotentialValueOneMax),zod.null()]),

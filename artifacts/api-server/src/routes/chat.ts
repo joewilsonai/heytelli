@@ -122,6 +122,9 @@ function profileSummary(match: {
   dateHistory: DateHistoryEntry[];
 }): string {
   const p = match.extractedProfile;
+  const visibleMedia = p.visibleMedia
+    .slice(-6)
+    .map((item) => `${item.kind}: ${item.description}`);
   const facts = [
     `Name: ${match.name}`,
     p.job ? `Job: ${p.job}` : null,
@@ -129,6 +132,9 @@ function profileSummary(match: {
     p.interests.length ? `Interests: ${p.interests.join(", ")}` : null,
     p.mentionedTopics.length
       ? `Topics mentioned: ${p.mentionedTopics.join(", ")}`
+      : null,
+    visibleMedia.length
+      ? `Visible media context: ${visibleMedia.join("; ")}`
       : null,
     p.conversationTone ? `Tone: ${p.conversationTone}` : null,
     match.vibeTags.length ? `Vibe: ${match.vibeTags.join(", ")}` : null,

@@ -35,6 +35,12 @@ export function buildMatchReadBody(input: {
     profile.mentionedTopics.length > 0
       ? `Recent topics: ${profile.mentionedTopics.slice(0, 3).join(", ")}.`
       : null,
+    profile.visibleMedia?.length > 0
+      ? `Visible media context: ${profile.visibleMedia
+          .slice(-2)
+          .map((item) => item.description)
+          .join(", ")}.`
+      : null,
   ]);
 
   const body = joinParts([profile.conversationTone, profileDetails]);
