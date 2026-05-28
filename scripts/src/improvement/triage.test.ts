@@ -1,0 +1,117 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { buildImprovementDigest } from "./digest";
+import { createGitHubIssue } from "./github";
+import {
+  mergeDuplicateWorkItem,
+  planSignalTriage,
+  shouldCreateGithubIssue,
+} from "./triage";
+
+test("plans actionable signal as sanitized github-ready work", () => {
+  const plan = planSignalTriage({
+    id: 7,
+    fingerprint: "profile-failed",
+    rawPayload: {
+      source: "in_app_feedback",
+      type: "Bug",
+      message: "Profile analysis failed on iOS build 3.",
+      surface: "settings-profile",
+      clientContext: { platform: "ios", buildNumber: "3" },
+    },
+    sanitizedSummary: "Profile analysis failed on iOS build 3.",
+    sanitizedPayload: {
+      type: "Bug",
+      message: "Profile analysis failed on iOS build 3.",
+      surface: "settings-profile",
+      platform: "ios",
+      buildNumber: "3",
+    },
+    privacyRisk: "low",
+  });
+
+  assert.equal(plan.signalStatus, "triaged");
+  assert.equal(plan.workItem.category, "bug");
+  assert.equal(plan.issueDraft?.labels.includes("agent-ready"), true);
+  assert.doesNotMatch(plan.issueDraft?.body ?? "", /rawPayload|signalIds/);
+});
+
+test("blocked privacy risk never creates a github issue", () => {
+  const plan = planSignalTriage({
+    id: 8,
+    fingerprint: "raw-private-content",
+    rawPayload: {
+      source: "in_app_feedback",
+      type: "Bug",
+      message: "The app sent a screenshot data:image/png;base64,abc",
+      screenshot: "data:image/png;base64,abc",
+    },
+    sanitizedSummary: "The app sent a [private content] [image omitted]",
+    sanitizedPayload: {
+      type: "Bug",
+      message: "The app sent a [private content] [image omitted]",
+    },
+    privacyRisk: "blocked",
+  });
+
+  assert.equal(plan.signalStatus, "blocked");
+  assert.equal(plan.issueDraft, null);
+  assert.equal(shouldCreateGithubIssue(plan), false);
+});
+
+test("duplicate signal increments frequency and retains source ids", () => {
+  const merged = mergeDuplicateWorkItem(
+    {
+      frequencyCount: 2,
+      signalIds: [1, 2],
+    },
+    2,
+  );
+  const mergedAgain = mergeDuplicateWorkItem(merged, 3);
+
+  assert.deepEqual(merged.signalIds, [1, 2]);
+  assert.equal(merged.frequencyCount, 3);
+  assert.deepEqual(mergedAgain.signalIds, [1, 2, 3]);
+  assert.equal(mergedAgain.frequencyCount, 4);
+});
+
+test("github client dry-run does not call fetch", async () => {
+  let called = false;
+  const result = await createGitHubIssue({
+    owner: "joewilsonai",
+    repo: "heytelli",
+    token: null,
+    dryRun: true,
+    draft: {
+      title: "Feedback: dry run",
+      body: "No private screenshots/transcripts included.",
+      labels: ["feedback", "bug", "priority:p2", "risk:safe_auto_merge"],
+    },
+    fetchImpl: async () => {
+      called = true;
+      throw new Error("should not call fetch in dry run");
+    },
+  });
+
+  assert.equal(called, false);
+  assert.equal(result.mode, "dry-run");
+  assert.equal(result.url, null);
+});
+
+test("digest summarizes counts without private payload fields", () => {
+  const digest = buildImprovementDigest({
+    read: 4,
+    workItemsCreated: 2,
+    duplicatesGrouped: 1,
+    issuesCreated: 1,
+    blocked: 1,
+    waitingForSignal: 0,
+    dryRun: false,
+    rolledBack: 0,
+  });
+
+  assert.match(digest, /Work items created: 2/);
+  assert.match(digest, /Issues opened: 1/);
+  assert.doesNotMatch(digest, /rawPayload|screenshot|transcript|phone/);
+});

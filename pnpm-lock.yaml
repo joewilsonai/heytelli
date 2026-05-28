@@ -899,6 +899,16 @@ importers:
         version: 19.1.0
 
   scripts:
+    dependencies:
+      '@workspace/api-server':
+        specifier: workspace:*
+        version: link:../artifacts/api-server
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
