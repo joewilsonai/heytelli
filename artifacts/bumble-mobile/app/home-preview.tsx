@@ -646,7 +646,7 @@ function ConnectionRow({ match, onPress }: { match: Match; onPress: () => void }
       <View>
         {photo ? (
           <Image
-            source={{ uri: photo }}
+            source={photo}
             style={{
               width: 52,
               height: 52,
