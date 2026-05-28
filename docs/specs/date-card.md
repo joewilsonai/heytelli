@@ -54,7 +54,7 @@ It is *not* a profile, dossier, or message thread about the match. It is a piece
 
 ### A. Sender view — in the HeyTelli iOS app
 
-Mockup: [`docs/mockups/date-card-sender.html`](../mockups/date-card-sender.html)
+Mockup: [`landing/mockups/date-card-sender.html`](../../landing/mockups/date-card-sender.html) (also live at `heytelli.com/mockups/date-card-sender.html`)
 
 Top-level affordances:
 - Title: "Date Card"
@@ -77,7 +77,7 @@ State transitions visible to sender:
 
 ### B. Recipient view — web at `card.heytelli.com/<token>`
 
-Mockup: [`docs/mockups/date-card-received.html`](../mockups/date-card-received.html)
+Mockup: [`landing/mockups/date-card-received.html`](../../landing/mockups/date-card-received.html) (also live at `heytelli.com/mockups/date-card-received.html`)
 
 Top-level affordances:
 - HeyTelli mark + wordmark (small, top)
