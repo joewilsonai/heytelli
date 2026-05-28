@@ -36,6 +36,11 @@ export type ExtractionResult = {
   transcript: TranscriptTurn[];
 };
 
+type VisionImagePart = {
+  type: "image_url";
+  image_url: { url: string; detail: "high" };
+};
+
 export const EXTRACTION_SYSTEM_PROMPT = `You are HeyTelli, a private dating clarity app for women. Help the user make sense of dating screenshots without ranking, diagnosing, or making safety claims about another person.
 
 You'll be given screenshots from a dating app profile/chat (Bumble, Hinge, Tinder, etc.) OR a text-message thread (iMessage, SMS, WhatsApp, Instagram DMs) once the conversation has moved off the app. Treat all of these as private context for the user's connection.
@@ -162,6 +167,243 @@ function normalizeVisibleMedia(v: unknown): VisibleMediaObservation[] {
   return out.slice(0, 12);
 }
 
+const UNDESCRIBED_MEDIA_PLACEHOLDER_RE =
+  /[\[(]\s*(photo|image|picture|pic|gif|video|sticker|meme|shared\s+(?:post|screenshot)|link\s+preview|attachment)\s*[\])]/gi;
+const DESCRIBED_MEDIA_PLACEHOLDER_RE =
+  /[\[(]\s*(photo|image|picture|pic|gif|video|sticker|meme|shared\s+(?:post|screenshot)|link\s+preview|attachment)\s*:\s*[^\])]+[\])]/i;
+
+const MEDIA_KIND_LABELS: Record<string, string> = {
+  attachment: "attachment",
+  gif: "gif",
+  image: "photo",
+  "link preview": "link preview",
+  meme: "meme",
+  photo: "photo",
+  pic: "photo",
+  picture: "photo",
+  "shared post": "shared post",
+  "shared screenshot": "shared screenshot",
+  sticker: "sticker",
+  video: "video",
+};
+
+function mediaKindLabel(kind: string): string {
+  const normalized = kind.toLowerCase().replace(/\s+/g, " ").trim();
+  return MEDIA_KIND_LABELS[normalized] ?? normalized;
+}
+
+export function hasUndescribedMediaPlaceholders(
+  transcript: TranscriptTurn[],
+): boolean {
+  return transcript.some((turn) => turnHasUndescribedMediaPlaceholder(turn));
+}
+
+function turnHasUndescribedMediaPlaceholder(turn: TranscriptTurn): boolean {
+  UNDESCRIBED_MEDIA_PLACEHOLDER_RE.lastIndex = 0;
+  return UNDESCRIBED_MEDIA_PLACEHOLDER_RE.test(turn.text);
+}
+
+function hasDescribedMediaPlaceholder(text: string): boolean {
+  return DESCRIBED_MEDIA_PLACEHOLDER_RE.test(text);
+}
+
+function canUseRepairedMediaTurn(
+  original: TranscriptTurn,
+  repaired: TranscriptTurn | undefined,
+): repaired is TranscriptTurn {
+  return (
+    !!repaired &&
+    repaired.speaker === original.speaker &&
+    !turnHasUndescribedMediaPlaceholder(repaired) &&
+    hasDescribedMediaPlaceholder(repaired.text)
+  );
+}
+
+function mergeRepairedMediaTranscript(
+  initial: TranscriptTurn[],
+  repaired: TranscriptTurn[],
+): TranscriptTurn[] {
+  if (repaired.length === 0) {
+    return ensureMediaPlaceholdersAreDescribed(initial);
+  }
+  const usedRepairIndexes = new Set<number>();
+  const merged = initial.map((turn, index) => {
+    if (!turnHasUndescribedMediaPlaceholder(turn)) return turn;
+    const sameIndex = repaired[index];
+    if (canUseRepairedMediaTurn(turn, sameIndex)) {
+      usedRepairIndexes.add(index);
+      return sameIndex;
+    }
+    const laterIndex = repaired.findIndex((candidate, candidateIndex) => {
+      if (usedRepairIndexes.has(candidateIndex)) return false;
+      return canUseRepairedMediaTurn(turn, candidate);
+    });
+    if (laterIndex >= 0) {
+      usedRepairIndexes.add(laterIndex);
+      return repaired[laterIndex];
+    }
+    return turn;
+  });
+  return ensureMediaPlaceholdersAreDescribed(merged);
+}
+
+function hasAnyUndescribedMediaPlaceholder(texts: string[]): boolean {
+  return texts.some((text) => {
+    UNDESCRIBED_MEDIA_PLACEHOLDER_RE.lastIndex = 0;
+    return UNDESCRIBED_MEDIA_PLACEHOLDER_RE.test(text);
+  });
+}
+
+function describeUnclearMediaPlaceholders(text: string): string {
+  UNDESCRIBED_MEDIA_PLACEHOLDER_RE.lastIndex = 0;
+  return text.replace(
+    UNDESCRIBED_MEDIA_PLACEHOLDER_RE,
+    (_match, kind: string) =>
+      `[${mediaKindLabel(kind)}: visible content unclear]`,
+  );
+}
+
+function ensureMediaPlaceholdersAreDescribed(
+  transcript: TranscriptTurn[],
+): TranscriptTurn[] {
+  if (!hasAnyUndescribedMediaPlaceholder(transcript.map((turn) => turn.text))) {
+    return transcript;
+  }
+  return transcript.map((turn) => ({
+    ...turn,
+    text: describeUnclearMediaPlaceholders(turn.text),
+  }));
+}
+
+function parseJsonObject(content: string): Record<string, unknown> {
+  const jsonText = content
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(jsonText) as Record<string, unknown>;
+  } catch {
+    const match = jsonText.match(/\{[\s\S]*\}/);
+    if (!match) return {};
+    try {
+      return JSON.parse(match[0]) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+}
+
+function normalizeExtractionResult(
+  parsed: Record<string, unknown>,
+): ExtractionResult {
+  return {
+    suggestedName: toStringOrNull(parsed.suggestedName),
+    vibeTags: toStringArray(parsed.vibeTags),
+    read: toStringOrNull(parsed.read),
+    transcript: normalizeTranscript(parsed.transcript),
+    profile: {
+      job: toStringOrNull(parsed.job),
+      location: toStringOrNull(parsed.location),
+      interests: toStringArray(parsed.interests),
+      mentionedTopics: toStringArray(parsed.mentionedTopics),
+      conversationTone: toStringOrNull(parsed.conversationTone),
+      visibleMedia: normalizeVisibleMedia(parsed.visibleMedia),
+      scores: {
+        sexPotential: toScore(parsed.sexPotentialScore),
+        conversionAbility: toScore(parsed.conversionAbilityScore),
+        chemistry: toScore(parsed.chemistryScore),
+      },
+    },
+  };
+}
+
+const MEDIA_REPAIR_SYSTEM_PROMPT = `You repair HeyTelli screenshot extraction output when the first pass lost visual context.
+
+The first pass returned generic media placeholders such as "[photo]", "(photo)", "[gif]", or "[image]". Those are not good enough because they remove context from the saved transcript.
+
+Re-read the screenshots and return ONLY a JSON object with this shape:
+{
+  "transcript": [{ "speaker": "her" | "me", "text": string }],
+  "visibleMedia": [
+    {
+      "kind": string,
+      "description": string,
+      "source": "profile" | "chat" | "text_thread",
+      "speaker": "her" | "me" | null
+    }
+  ]
+}
+
+Rules:
+- Preserve the existing transcript order, speaker labels, and normal message text.
+- Only replace generic media placeholders with concise factual descriptions at the point they appear, e.g. "[photo: dog on a patio]" or "[gif: person dancing]".
+- If visible details are unclear, use "[photo: visible content unclear]" or "[gif: visible content unclear]" rather than a bare placeholder.
+- Do not add names, handles, phone numbers, addresses, license plates, bystander identities, children, intimate details, or speculative intent.
+- Do not infer identity, attractiveness, relationship safety, or private facts.`;
+
+async function repairGenericMediaPlaceholders(
+  imageParts: VisionImagePart[],
+  initial: ExtractionResult,
+): Promise<ExtractionResult> {
+  if (!hasUndescribedMediaPlaceholders(initial.transcript)) return initial;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 2048,
+      messages: [
+        { role: "system", content: MEDIA_REPAIR_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            ...imageParts,
+            {
+              type: "text" as const,
+              text:
+                "Repair these generic media placeholders so the transcript keeps the photo/GIF context. Current extracted JSON:\n" +
+                JSON.stringify(
+                  {
+                    transcript: initial.transcript,
+                    visibleMedia: initial.profile.visibleMedia,
+                  },
+                  null,
+                  2,
+                ),
+            },
+          ],
+        },
+      ],
+    });
+
+    const parsed = parseJsonObject(
+      completion.choices[0]?.message?.content ?? "{}",
+    );
+    const repairedTranscript = normalizeTranscript(parsed.transcript);
+    const repairedVisibleMedia = normalizeVisibleMedia(parsed.visibleMedia);
+    return {
+      ...initial,
+      transcript: mergeRepairedMediaTranscript(
+        initial.transcript,
+        repairedTranscript,
+      ),
+      profile: {
+        ...initial.profile,
+        visibleMedia: mergeVisibleMedia(
+          initial.profile.visibleMedia,
+          repairedVisibleMedia,
+        ),
+      },
+    };
+  } catch (err) {
+    logger.warn({ err }, "Failed to repair generic transcript media context");
+    return {
+      ...initial,
+      transcript: ensureMediaPlaceholdersAreDescribed(initial.transcript),
+    };
+  }
+}
+
 export type MatchContext = {
   nextDateAt: Date | string | null;
   nextDateLocation: string | null;
@@ -249,7 +491,7 @@ export async function extractFromScreenshots(
   // Cap to most-recent 12 to keep the request shape sane even for very long threads.
   const capped = imageDataUrls.slice(-12);
   const compressed = await Promise.all(capped.map(compressForVision));
-  const imageParts = compressed.map(
+  const imageParts: VisionImagePart[] = compressed.map(
     (url) =>
       ({
         type: "image_url" as const,
@@ -273,45 +515,11 @@ export async function extractFromScreenshots(
     ],
   });
 
-  const content = completion.choices[0]?.message?.content ?? "{}";
-  const jsonText = content
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-  let parsed: Record<string, unknown> = {};
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    const match = jsonText.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        parsed = JSON.parse(match[0]);
-      } catch {
-        parsed = {};
-      }
-    }
-  }
-
-  return {
-    suggestedName: toStringOrNull(parsed.suggestedName),
-    vibeTags: toStringArray(parsed.vibeTags),
-    read: toStringOrNull(parsed.read),
-    transcript: normalizeTranscript(parsed.transcript),
-    profile: {
-      job: toStringOrNull(parsed.job),
-      location: toStringOrNull(parsed.location),
-      interests: toStringArray(parsed.interests),
-      mentionedTopics: toStringArray(parsed.mentionedTopics),
-      conversationTone: toStringOrNull(parsed.conversationTone),
-      visibleMedia: normalizeVisibleMedia(parsed.visibleMedia),
-      scores: {
-        sexPotential: toScore(parsed.sexPotentialScore),
-        conversionAbility: toScore(parsed.conversionAbilityScore),
-        chemistry: toScore(parsed.chemistryScore),
-      },
-    },
-  };
+  const parsed = parseJsonObject(
+    completion.choices[0]?.message?.content ?? "{}",
+  );
+  const initial = normalizeExtractionResult(parsed);
+  return repairGenericMediaPlaceholders(imageParts, initial);
 }
 
 function mergeScores(
