@@ -184,6 +184,12 @@ deterministic markers, so retries should not duplicate plan comments.
 Normal beta builds do not need a Mac. The mobile package still lives at
 `artifacts/bumble-mobile` while the Expo scaffold is becoming HeyTelli:
 
+The GitHub Actions workflow `.github/workflows/ios-beta-build.yml` starts an
+EAS iOS beta build automatically on `main` pushes that touch mobile or shared
+client files. It auto-submits by default when the `EXPO_TOKEN` repository secret
+is configured. Without that secret, the workflow logs a notice and skips the EAS
+build instead of failing unrelated merges.
+
 ```bash
 cd artifacts/bumble-mobile
 pnpm dlx eas-cli@latest build -p ios --profile beta --non-interactive

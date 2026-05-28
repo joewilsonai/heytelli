@@ -1,0 +1,105 @@
+name: iOS Beta Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile to use.
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - development
+          - production
+      submit:
+        description: Submit the completed build with the matching EAS submit profile.
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      message:
+        description: Optional EAS build message.
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - "artifacts/bumble-mobile/**"
+      - "lib/api-client-react/**"
+      - "lib/api-spec/**"
+      - "lib/api-zod/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-beta-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build iOS beta with EAS
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: true
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_NO_VCS_STATUS: 1
+      EAS_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'beta' }}
+      EAS_SUBMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.submit || 'true' }}
+      EAS_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.message || format('Auto beta build for {0}', github.sha) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck mobile dependencies
+        run: pnpm --filter @workspace/bumble-mobile run typecheck
+
+      - name: Check Expo token
+        id: expo-token
+        run: |
+          if [[ -z "${EXPO_TOKEN}" ]]; then
+            echo "::notice::EXPO_TOKEN is not configured. Skipping EAS build. Create an Expo access token and add it as the EXPO_TOKEN repository secret."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Start EAS iOS build
+        if: steps.expo-token.outputs.configured == 'true'
+        working-directory: artifacts/bumble-mobile
+        run: |
+          args=(
+            build
+            --platform ios
+            --profile "${EAS_PROFILE}"
+            --non-interactive
+            --message "${EAS_MESSAGE}"
+          )
+
+          if [[ "${EAS_SUBMIT}" == "true" ]]; then
+            args+=(--auto-submit)
+          fi
+
+          pnpm dlx eas-cli@latest "${args[@]}"
