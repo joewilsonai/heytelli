@@ -121,6 +121,7 @@ test("previews command sequence including auto-merge only when allowed", () => {
     [
       "fetch",
       "worktree",
+      "install",
       "agent",
       "typecheck",
       "commit",

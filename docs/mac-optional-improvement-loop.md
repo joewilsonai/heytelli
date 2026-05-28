@@ -112,9 +112,9 @@ The wrapper runs two steps in order:
 1. `run-improvement-swarm.sh` turns safe `agent-ready` issues into private DB
    work items with `planned` status.
 2. `run-swarm-executor.sh` claims `planned` work, creates an isolated worktree,
-   asks the local agent to implement from sanitized context, typechecks, opens a
-   PR, comments back on the source issue, and queues auto-merge for
-   `safe_auto_merge` work.
+   installs dependencies in that worktree, asks the local agent to implement
+   from sanitized context, typechecks, opens a PR, comments back on the source
+   issue, and queues auto-merge for `safe_auto_merge` work.
 
 You can exercise the executor by itself:
 

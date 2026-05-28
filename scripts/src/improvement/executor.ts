@@ -89,6 +89,7 @@ export type ExecutorCommandPreview = {
   kind:
     | "fetch"
     | "worktree"
+    | "install"
     | "agent"
     | "typecheck"
     | "commit"
@@ -382,6 +383,12 @@ export function buildSwarmExecutorCommandPreview(
         `origin/${options.baseBranch}`,
       ],
       cwd: options.repoRoot,
+    },
+    {
+      kind: "install",
+      command: "pnpm",
+      args: ["install", "--frozen-lockfile"],
+      cwd: worktreePath,
     },
     {
       kind: "agent",
@@ -739,6 +746,7 @@ async function executeWorkItem(
   );
   await writeFile(promptPath, prompt, "utf8");
 
+  await runner("pnpm", ["install", "--frozen-lockfile"], { cwd: worktreePath });
   await runAgent(worktreePath, prompt, promptPath, options, runner);
   await runner("pnpm", ["run", "typecheck"], { cwd: worktreePath });
   await commitIfNeeded(worktreePath, workItem, options.baseBranch, runner);
