@@ -7,6 +7,8 @@ import {
   planSwarmWorkItem,
   parseSwarmArgs,
   roleToRunType,
+  runImprovementSwarm,
+  swarmRunShouldFail,
   swarmPlanCommentMarker,
 } from "./swarm";
 
@@ -75,7 +77,13 @@ test("uses GitHub issue labels as risk and priority overrides", () => {
     { ...baseWorkItem, priority: "p3", riskTier: "safe_auto_merge" },
     {
       ...baseIssue,
-      labels: ["feedback", "bug", "priority:p0", "risk:safe_auto_merge", "agent-ready"],
+      labels: [
+        "feedback",
+        "bug",
+        "priority:p0",
+        "risk:safe_auto_merge",
+        "agent-ready",
+      ],
     },
   );
 
@@ -96,8 +104,13 @@ test("builds a privacy-safe issue comment for the planned swarm", () => {
   assert.match(comment, /researcher/);
   assert.match(comment, /builder/);
   assert.match(comment, /code_reviewer/);
-  assert.match(comment, /No private screenshots, transcripts, or dating details/);
+  assert.match(
+    comment,
+    /No private screenshots, transcripts, or dating details/,
+  );
   assert.match(comment, /heytelli-swarm-plan:7:12/);
+  assert.doesNotMatch(comment, /confusing feedback button/);
+  assert.doesNotMatch(comment, /The settings feedback button is confusing/);
   assert.equal(swarmPlanCommentMarker(result), "heytelli-swarm-plan:7:12");
 });
 
@@ -138,7 +151,7 @@ test("parses CLI options for bounded direct swarm runs", () => {
 });
 
 test("digest reports swarm label side effects", () => {
-  const digest = buildSwarmDigest({
+  const counts = {
     read: 1,
     planned: 1,
     skipped: 0,
@@ -148,8 +161,40 @@ test("digest reports swarm label side effects", () => {
     swarmLabelsAdded: 2,
     dbUpdated: 1,
     dryRun: false,
+  };
+  const digest = buildSwarmDigest({
+    ...counts,
   });
 
   assert.match(digest, /Mode: live/);
   assert.match(digest, /Swarm labels added: 2/);
+  assert.equal(swarmRunShouldFail(counts), false);
+  assert.equal(swarmRunShouldFail({ ...counts, failed: 1 }), true);
+});
+
+test("requires database access even for dry-run queue planning", async () => {
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+
+  try {
+    await assert.rejects(
+      runImprovementSwarm({
+        dryRun: true,
+        owner: "joewilsonai",
+        repo: "heytelli",
+        token: "token",
+        limit: 1,
+        agentName: "test-runner",
+        commentOnIssues: false,
+        consumeAgentReadyLabel: false,
+      }),
+      /DATABASE_URL missing/,
+    );
+  } finally {
+    if (originalDatabaseUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = originalDatabaseUrl;
+    }
+  }
 });

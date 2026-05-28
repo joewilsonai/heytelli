@@ -68,8 +68,10 @@ export function riskTierFromLabels(
 ): ImprovementRiskTier {
   const normalized = normalizeLabels(labels);
   if (normalized.includes("risk:no_auto_merge")) return "no_auto_merge";
-  if (normalized.includes("risk:extra_agent_review")) return "extra_agent_review";
-  if (normalized.includes("risk:guarded_auto_merge")) return "guarded_auto_merge";
+  if (normalized.includes("risk:extra_agent_review"))
+    return "extra_agent_review";
+  if (normalized.includes("risk:guarded_auto_merge"))
+    return "guarded_auto_merge";
   if (normalized.includes("risk:safe_auto_merge")) return "safe_auto_merge";
   return fallback;
 }
@@ -141,7 +143,8 @@ export function buildSwarmPlan(input: SwarmPlanInput): SwarmPlan {
         "test review",
         "rollback plan",
       ],
-      reason: "High-impact safety/privacy-sensitive work needs specialized review.",
+      reason:
+        "High-impact safety/privacy-sensitive work needs specialized review.",
     };
   }
 

@@ -30,11 +30,15 @@ copies may live in `~/.luna/secrets/keys.env`, but the loop must not depend on
 that file.
 
 ```bash
-DATABASE_URL=<Railway Postgres URL>
+DATABASE_URL=<public-reachable Railway Postgres URL>
 HEYTELLI_GITHUB_TOKEN=<repo-scoped GitHub token>
 GITHUB_OWNER=joewilsonai
 GITHUB_REPO=heytelli
 ```
+
+GitHub-hosted runners cannot reach Railway private-network URLs. Use the
+public Postgres connection string for `DATABASE_URL` or `HEYTELLI_DATABASE_URL`
+in GitHub Actions.
 
 The scripts also accept `GH_TOKEN` or `GITHUB_TOKEN` instead of
 `HEYTELLI_GITHUB_TOKEN`. For EAS cloud builds, configure:
@@ -87,6 +91,10 @@ without changing GitHub or DB state:
 pnpm --filter @workspace/scripts run improvement:swarm -- --dry-run --limit 5
 ```
 
+Dry-run still needs `DATABASE_URL` because the runner joins public
+`agent-ready` issues back to the private work-item queue before deciding what
+is actionable.
+
 Run live when the runner has `DATABASE_URL` and a GitHub token:
 
 ```bash
@@ -99,6 +107,7 @@ The local wrapper is convenient for Joe's machine because it can source
 ```bash
 ./scripts/run-improvement-swarm.sh --dry-run
 ./scripts/run-improvement-swarm.sh --limit 5
+./scripts/run-improvement-swarm.sh --live --limit 5
 ```
 
 Cloud runners should prefer explicit environment secrets over the local wrapper.
@@ -107,7 +116,8 @@ plan comments.
 
 ## EAS Cloud Builds
 
-Normal beta builds do not need a Mac:
+Normal beta builds do not need a Mac. The mobile package still lives at
+`artifacts/bumble-mobile` while the Expo scaffold is becoming HeyTelli:
 
 ```bash
 cd artifacts/bumble-mobile

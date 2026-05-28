@@ -94,12 +94,18 @@ function githubHeaders(token: string): Record<string, string> {
 
 function requireGitHubToken(token: string | null | undefined): string {
   if (!token) {
-    throw new Error("GITHUB_TOKEN, GH_TOKEN, or HEYTELLI_GITHUB_TOKEN is required");
+    throw new Error(
+      "GITHUB_TOKEN, GH_TOKEN, or HEYTELLI_GITHUB_TOKEN is required",
+    );
   }
   return token;
 }
 
-function repoIssuePath(owner: string, repo: string, issueNumber: number): string {
+function repoIssuePath(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): string {
   return `/repos/${owner}/${repo}/issues/${issueNumber}`;
 }
 
@@ -175,7 +181,9 @@ async function githubJsonRequest(
   });
   const expectedStatuses = options.expectedStatuses ?? [200];
   if (!expectedStatuses.includes(response.status)) {
-    throw new Error(`GitHub request failed: ${method} ${options.path} ${response.status}`);
+    throw new Error(
+      `GitHub request failed: ${method} ${options.path} ${response.status}`,
+    );
   }
   if (response.status === 204) {
     return null;
@@ -223,7 +231,9 @@ export async function addIssueLabels({
     apiUrl,
     fetchImpl,
   });
-  const currentLabelSet = new Set(currentLabels.map((label) => label.toLowerCase()));
+  const currentLabelSet = new Set(
+    currentLabels.map((label) => label.toLowerCase()),
+  );
   const missingLabels = requestedLabels.filter(
     (label) => !currentLabelSet.has(label.toLowerCase()),
   );
@@ -342,7 +352,8 @@ export async function findIssueCommentByMarker({
     return null;
   }
   const existing = data.find(
-    (comment) => typeof comment.body === "string" && comment.body.includes(marker),
+    (comment) =>
+      typeof comment.body === "string" && comment.body.includes(marker),
   );
   if (
     typeof existing?.html_url !== "string" ||
@@ -433,7 +444,9 @@ export async function createGitHubIssue({
     return { mode: "dry-run", url: null, number: null, draft };
   }
   if (!token) {
-    throw new Error("GITHUB_TOKEN, GH_TOKEN, or HEYTELLI_GITHUB_TOKEN is required");
+    throw new Error(
+      "GITHUB_TOKEN, GH_TOKEN, or HEYTELLI_GITHUB_TOKEN is required",
+    );
   }
   const normalizedApiUrl = normalizeApiUrl(apiUrl);
   const marker = dedupeKey ? `heytelli-improvement:${dedupeKey}` : null;
@@ -487,8 +500,7 @@ export async function createGitHubIssue({
     },
   );
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`GitHub issue creation failed: ${response.status} ${text}`);
+    throw new Error(`GitHub issue creation failed: ${response.status}`);
   }
   const data = (await response.json()) as {
     html_url?: unknown;

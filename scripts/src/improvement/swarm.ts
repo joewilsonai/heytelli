@@ -135,7 +135,12 @@ export function parseSwarmArgs(
     repo: argValue(argv, "--repo") || env.GITHUB_REPO || "heytelli",
     token: githubTokenFromEnv(env),
     githubApiUrl: argValue(argv, "--github-api-url") || env.GITHUB_API_URL,
-    limit: numericArg(argv, "--limit", env.IMPROVEMENT_SWARM_LIMIT, DEFAULT_LIMIT),
+    limit: numericArg(
+      argv,
+      "--limit",
+      env.IMPROVEMENT_SWARM_LIMIT,
+      DEFAULT_LIMIT,
+    ),
     agentName:
       argValue(argv, "--agent-name") ||
       env.IMPROVEMENT_SWARM_AGENT_NAME ||
@@ -276,6 +281,10 @@ export function buildSwarmDigest(counts: SwarmRunCounts): string {
   ].join("\n");
 }
 
+export function swarmRunShouldFail(counts: SwarmRunCounts): boolean {
+  return counts.failed > 0;
+}
+
 function emptyCounts(dryRun: boolean): SwarmRunCounts {
   return {
     read: 0,
@@ -299,10 +308,9 @@ export async function runImprovementSwarm(
 ): Promise<SwarmRunCounts> {
   const counts = emptyCounts(options.dryRun);
   if (!process.env.DATABASE_URL) {
-    if (!options.dryRun) {
-      throw new Error("DATABASE_URL missing; live swarm planning cannot run.");
-    }
-    return counts;
+    throw new Error(
+      "DATABASE_URL missing; swarm planning cannot inspect the private queue.",
+    );
   }
 
   const { db, improvementRuns, improvementWorkItems } =
@@ -413,8 +421,8 @@ export async function runImprovementSwarm(
         continue;
       }
 
-      counts.planned += 1;
       if (options.dryRun) {
+        counts.planned += 1;
         continue;
       }
 
@@ -441,6 +449,7 @@ export async function runImprovementSwarm(
         }
         claimed = true;
       }
+      counts.planned += 1;
 
       if (!isActiveResume) {
         const activeLabels = await addIssueLabels({
@@ -594,14 +603,13 @@ export async function runImprovementSwarm(
 async function main(): Promise<void> {
   const options = parseSwarmArgs(process.argv.slice(2));
   try {
-    if (!process.env.DATABASE_URL && !options.dryRun) {
-      throw new Error("DATABASE_URL missing; live swarm planning cannot run.");
-    }
     const counts = await runImprovementSwarm(options);
-    if (!process.env.DATABASE_URL) {
-      console.warn("DATABASE_URL missing; no improvement work items were planned.");
-    }
     console.log(buildSwarmDigest(counts));
+    if (swarmRunShouldFail(counts)) {
+      throw new Error(
+        `Improvement swarm completed with ${counts.failed} failed item(s).`,
+      );
+    }
   } finally {
     if (process.env.DATABASE_URL) {
       const { pool } = await import("@workspace/db");
@@ -610,7 +618,10 @@ async function main(): Promise<void> {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main().catch((err) => {
     console.error(errorMessage(err));
     process.exitCode = 1;

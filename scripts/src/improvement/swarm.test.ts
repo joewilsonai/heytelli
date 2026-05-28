@@ -13,7 +13,13 @@ test("maps low-risk copy work to a safe autonomous swarm", () => {
     priority: "p3",
     riskTier: "safe_auto_merge",
     privacyRisk: "low",
-    labels: ["feedback", "copy", "priority:p3", "risk:safe_auto_merge", "agent-ready"],
+    labels: [
+      "feedback",
+      "copy",
+      "priority:p3",
+      "risk:safe_auto_merge",
+      "agent-ready",
+    ],
   });
 
   assert.equal(plan.riskTier, "safe_auto_merge");
@@ -32,7 +38,13 @@ test("requires specialist review for guarded product bugs", () => {
     priority: "p2",
     riskTier: "guarded_auto_merge",
     privacyRisk: "low",
-    labels: ["feedback", "bug", "priority:p2", "risk:guarded_auto_merge", "agent-ready"],
+    labels: [
+      "feedback",
+      "bug",
+      "priority:p2",
+      "risk:guarded_auto_merge",
+      "agent-ready",
+    ],
   });
 
   assert.equal(plan.riskTier, "guarded_auto_merge");
@@ -53,7 +65,13 @@ test("blocks auto-merge for safety privacy and p0 work", () => {
     priority: "p0",
     riskTier: "safe_auto_merge",
     privacyRisk: "high",
-    labels: ["feedback", "safety_issue", "priority:p0", "risk:safe_auto_merge", "agent-ready"],
+    labels: [
+      "feedback",
+      "safety_issue",
+      "priority:p0",
+      "risk:safe_auto_merge",
+      "agent-ready",
+    ],
   });
 
   assert.equal(plan.riskTier, "no_auto_merge");
@@ -68,7 +86,13 @@ test("escalates medium privacy safe labels into guarded auto-merge", () => {
     priority: "p2",
     riskTier: "safe_auto_merge",
     privacyRisk: "medium",
-    labels: ["feedback", "feature_request", "priority:p2", "risk:safe_auto_merge", "agent-ready"],
+    labels: [
+      "feedback",
+      "feature_request",
+      "priority:p2",
+      "risk:safe_auto_merge",
+      "agent-ready",
+    ],
   });
 
   assert.equal(plan.riskTier, "guarded_auto_merge");
@@ -89,7 +113,13 @@ test("requires seven-agent review for safety work that is not p0 blocked", () =>
     priority: "p1",
     riskTier: "safe_auto_merge",
     privacyRisk: "medium",
-    labels: ["feedback", "safety_issue", "priority:p1", "risk:safe_auto_merge", "agent-ready"],
+    labels: [
+      "feedback",
+      "safety_issue",
+      "priority:p1",
+      "risk:safe_auto_merge",
+      "agent-ready",
+    ],
   });
 
   assert.equal(plan.riskTier, "extra_agent_review");
@@ -140,7 +170,12 @@ test("gates swarm planning on sanitized agent-ready issue labels", () => {
     false,
   );
   assert.equal(
-    issueLabelsAllowSwarmPlanning(["feedback", "bug", "priority:p2", "risk:guarded_auto_merge"]),
+    issueLabelsAllowSwarmPlanning([
+      "feedback",
+      "bug",
+      "priority:p2",
+      "risk:guarded_auto_merge",
+    ]),
     false,
   );
 });

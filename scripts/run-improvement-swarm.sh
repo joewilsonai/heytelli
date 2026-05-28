@@ -38,7 +38,7 @@ fi
 mode_args=()
 case " $* " in
   *" --live "*|*" --no-dry-run "*|*" --dry-run "*) ;;
-  *) mode_args=(--live) ;;
+  *) mode_args=(--dry-run) ;;
 esac
 
 if (( ${#mode_args[@]} > 0 )); then
