@@ -187,7 +187,12 @@ Set-once flow: she picks a phrase, picks the person, picks the action they shoul
 
 Short content card inside Date Mode: signs of spiking, what to do, products that help. Surfaced once at the right moment (start of Date Mode at a bar/restaurant venue), then sleeps.
 
-**Why now:** content-only, tiny effort. Partner with a DV org (RAINN, NDVH) for the copy.
+**Partnership angle — "products that help" section.**
+- **NightCap** ([nightcapit.com](https://nightcapit.com)) — strongest brand-fit partnership candidate; women-led, post-*Shark Tank*, same audience and ethos as HeyTelli. Path of least resistance: affiliate / discount code surfaced in this card.
+- Also list **Spikey** ([spikeyfirst.com](https://spikeyfirst.com)) and **drink-test strips** so the curation reads as guidance, not an ad.
+- A first-N-beta-testers co-branded NightCap mailing is the marketing version of the same partnership and would land hard on social.
+
+**Why now:** content-only, tiny effort. Partner with a DV org (RAINN, NDVH) for the copy. Affiliate revenue is secondary to brand alignment.
 
 ### 3.11 Ask for Angela / Angel Shot reference card
 **Effort:** S · **Deps:** none
@@ -207,7 +212,16 @@ Goal: elevate Date Mode from "checklist" to "she has my back if it goes wrong." 
 
 CallKit "incoming call" UI scheduled for T+45 min by default, or one-tap trigger any time during the date. Looks like a real call screen so she can excuse herself.
 
-**Why now:** real platform work (CallKit + audio session management). Worth doing right; not worth doing before Phase 3.
+**Technical approach:**
+- **CallKit** is the framework. Officially for VOIP, but it's what every "Fake Call" app uses to render a realistic incoming-call UI (real ringtone, lock-screen presentation, full-screen call interface with chosen contact name + photo).
+- **Triggers** (recommended bundle):
+  - **Scheduled** at T+45min by default, configurable when entering Date Mode.
+  - **Apple Watch complication** tap → fires within ~1 second. The fastest extraction motion.
+  - **iOS Back Tap** (Settings → Accessibility → Touch → Back Tap) — triple-tap back of phone fires it without unlocking. Zero-look trigger.
+- **Displayed caller** is configurable per match (her chosen "rescue person" — Mom, best friend, whoever).
+- **App Store positioning** matters: market the feature as safety/extraction (acceptable, many live precedents) rather than as deception-of-friends (rejection risk).
+
+**Why now:** real platform work (CallKit + audio session management + WatchKit complication + accessibility integration). Worth doing right; not worth doing before Phase 3. Can ship as a standalone Date Mode upgrade before the auto-escalation + SOS apparatus is built around it.
 
 ### 4.13 Auto-escalating check-in
 **Effort:** M · **Deps:** trusted contact data + scheduling
