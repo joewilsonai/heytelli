@@ -1146,6 +1146,7 @@ components:
       type: object
       required:
         - id
+        - fingerprint
         - title
         - summary
         - category
@@ -1165,6 +1166,7 @@ components:
         - updatedAt
       properties:
         id: { type: integer }
+        fingerprint: { type: string }
         title: { type: string }
         summary: { type: string }
         category:

@@ -115,6 +115,7 @@ export const improvementSignals = pgTable("improvement_signals", {
 
 export const improvementWorkItems = pgTable("improvement_work_items", {
   id: serial("id").primaryKey(),
+  fingerprint: text("fingerprint").notNull(),
   title: text("title").notNull(),
   summary: text("summary").notNull(),
   category: text("category").$type<ImprovementCategory>().notNull(),

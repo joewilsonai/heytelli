@@ -1,6 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { eq } from "drizzle-orm";
 import type {
+  ImprovementWorkItem,
   ImprovementPrivacyRisk,
   ImprovementSignalStatus,
 } from "@workspace/db";
@@ -78,14 +79,25 @@ export function mergeDuplicateWorkItem<T extends MergeableWorkItem>(
   workItem: T,
   signalId: number,
 ): T {
-  const signalIds = workItem.signalIds.includes(signalId)
-    ? workItem.signalIds
-    : [...workItem.signalIds, signalId];
+  if (workItem.signalIds.includes(signalId)) {
+    return workItem;
+  }
+  const signalIds = [...workItem.signalIds, signalId];
   return {
     ...workItem,
     signalIds,
     frequencyCount: workItem.frequencyCount + 1,
   };
+}
+
+export function mergeWorkItemSignals<T extends MergeableWorkItem>(
+  workItem: T,
+  signalIds: number[],
+): T {
+  return signalIds.reduce(
+    (current, signalId) => mergeDuplicateWorkItem(current, signalId),
+    workItem,
+  );
 }
 
 export function shouldCreateGithubIssue(plan: PlannedSignalTriage): boolean {
@@ -147,6 +159,61 @@ export async function runImprovementTriage(
   const { db, improvementRuns, improvementSignals, improvementWorkItems } =
     await import("@workspace/db");
 
+  async function loadWorkItemByFingerprint(
+    fingerprint: string,
+  ): Promise<ImprovementWorkItem | null> {
+    const [existing] = await db
+      .select()
+      .from(improvementWorkItems)
+      .where(eq(improvementWorkItems.fingerprint, fingerprint))
+      .limit(1);
+    return existing ?? null;
+  }
+
+  async function saveWorkItem(
+    plan: PlannedSignalTriage,
+  ): Promise<{ workItem: ImprovementWorkItem; created: boolean }> {
+    const existing = await loadWorkItemByFingerprint(plan.fingerprint);
+    if (existing) {
+      const merged = mergeWorkItemSignals(existing, plan.workItem.signalIds);
+      const [updated] = await db
+        .update(improvementWorkItems)
+        .set({
+          frequencyCount: merged.frequencyCount,
+          signalIds: merged.signalIds,
+          updatedAt: new Date(),
+        })
+        .where(eq(improvementWorkItems.id, existing.id))
+        .returning();
+      return { workItem: updated ?? existing, created: false };
+    }
+
+    try {
+      const [created] = await db
+        .insert(improvementWorkItems)
+        .values(plan.workItem)
+        .returning();
+      if (!created) {
+        throw new Error("Improvement work item insert returned no row");
+      }
+      return { workItem: created, created: true };
+    } catch (err) {
+      const raced = await loadWorkItemByFingerprint(plan.fingerprint);
+      if (!raced) throw err;
+      const merged = mergeWorkItemSignals(raced, plan.workItem.signalIds);
+      const [updated] = await db
+        .update(improvementWorkItems)
+        .set({
+          frequencyCount: merged.frequencyCount,
+          signalIds: merged.signalIds,
+          updatedAt: new Date(),
+        })
+        .where(eq(improvementWorkItems.id, raced.id))
+        .returning();
+      return { workItem: updated ?? raced, created: false };
+    }
+  }
+
   const signals = await db
     .select()
     .from(improvementSignals)
@@ -191,14 +258,69 @@ export async function runImprovementTriage(
     }
     if (options.dryRun) {
       counts.workItemsCreated += 1;
+      if (options.createGithubIssues && shouldCreateGithubIssue(plan)) {
+        counts.issuesCreated += 1;
+      }
       continue;
     }
 
-    const [created] = await db
-      .insert(improvementWorkItems)
-      .values(plan.workItem)
-      .returning();
-    counts.workItemsCreated += 1;
+    const saved = await saveWorkItem(plan);
+    const workItem = saved.workItem;
+    if (saved.created) {
+      counts.workItemsCreated += 1;
+    } else {
+      counts.duplicatesGrouped += 1;
+    }
+
+    const shouldOpenIssue =
+      options.createGithubIssues &&
+      shouldCreateGithubIssue(plan) &&
+      plan.issueDraft &&
+      workItem.githubIssueUrl == null;
+
+    if (shouldOpenIssue && plan.issueDraft) {
+      try {
+        const issue = await createGitHubIssue({
+          owner: options.owner,
+          repo: options.repo,
+          token: options.token,
+          draft: plan.issueDraft,
+          dryRun: options.dryRun,
+          apiUrl: options.githubApiUrl,
+        });
+        if (issue.mode === "live") {
+          await db
+            .update(improvementWorkItems)
+            .set({
+              githubIssueUrl: issue.url,
+              githubIssueNumber: issue.number,
+              status: "issue_created",
+              updatedAt: new Date(),
+            })
+            .where(eq(improvementWorkItems.id, workItem.id));
+          counts.issuesCreated += 1;
+        }
+      } catch (err) {
+        await db.insert(improvementRuns).values({
+          workItemId: workItem.id,
+          runType: "triage",
+          agentName: options.agentName,
+          status: "failed",
+          summary:
+            err instanceof Error
+              ? `GitHub issue creation failed: ${err.message}`
+              : "GitHub issue creation failed",
+          metadata: {
+            dryRun: options.dryRun,
+            createGithubIssues: options.createGithubIssues,
+            signalIds: plan.workItem.signalIds,
+            retryable: true,
+          },
+          completedAt: new Date(),
+        });
+        continue;
+      }
+    }
 
     for (const signalId of plan.workItem.signalIds) {
       await db
@@ -210,49 +332,19 @@ export async function runImprovementTriage(
         .where(eq(improvementSignals.id, signalId));
     }
 
-    if (
-      created &&
-      options.createGithubIssues &&
-      shouldCreateGithubIssue(plan) &&
-      plan.issueDraft
-    ) {
-      const issue = await createGitHubIssue({
-        owner: options.owner,
-        repo: options.repo,
-        token: options.token,
-        draft: plan.issueDraft,
+    await db.insert(improvementRuns).values({
+      workItemId: workItem.id,
+      runType: "triage",
+      agentName: options.agentName,
+      status: "succeeded",
+      summary: plan.skippedIssueReason ?? "Signal triaged",
+      metadata: {
         dryRun: options.dryRun,
-        apiUrl: options.githubApiUrl,
-      });
-      if (issue.mode === "live") {
-        await db
-          .update(improvementWorkItems)
-          .set({
-            githubIssueUrl: issue.url,
-            githubIssueNumber: issue.number,
-            status: "issue_created",
-            updatedAt: new Date(),
-          })
-          .where(eq(improvementWorkItems.id, created.id));
-        counts.issuesCreated += 1;
-      }
-    }
-
-    if (created) {
-      await db.insert(improvementRuns).values({
-        workItemId: created.id,
-        runType: "triage",
-        agentName: options.agentName,
-        status: "succeeded",
-        summary: plan.skippedIssueReason ?? "Signal triaged",
-        metadata: {
-          dryRun: options.dryRun,
-          createGithubIssues: options.createGithubIssues,
-          signalIds: plan.workItem.signalIds,
-        },
-        completedAt: new Date(),
-      });
-    }
+        createGithubIssues: options.createGithubIssues,
+        signalIds: plan.workItem.signalIds,
+      },
+      completedAt: new Date(),
+    });
   }
 
   return counts;

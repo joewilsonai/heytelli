@@ -43,6 +43,7 @@ export type SanitizedImprovementPayload = {
 };
 
 export type ImprovementWorkItemDraft = {
+  fingerprint: string;
   title: string;
   summary: string;
   category: ImprovementCategory;
@@ -106,11 +107,33 @@ const FORBIDDEN_KEY_PARTS = [
 const MAX_MESSAGE_LENGTH = 1200;
 const MAX_SURFACE_LENGTH = 80;
 const MAX_CONTEXT_LENGTH = 120;
+const MAX_CLIENT_CONTEXT_KEYS = 12;
+const MAX_CLIENT_CONTEXT_RAW_VALUE_LENGTH = 500;
+
+const DATA_IMAGE_RE = /data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+/gi;
+const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const PHONE_RE =
+  /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+const ADDRESS_RE =
+  /\b\d{2,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,4}\s+(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard)\b/gi;
+const PRIVATE_CONTENT_RE = /\b(?:screenshot|transcript|raw conversation)\b/gi;
+const PLACE_RE =
+  /\b(?:at|near|inside|outside|by)\s+[A-Z][A-Za-z0-9'&.-]+(?:\s+[A-Z][A-Za-z0-9'&.-]+){1,5}\b/g;
+const FULL_NAME_RE = /\b([A-Z][a-z]{2,})\s+[A-Z][a-z]{2,}\b/g;
+const SEXUAL_DETAIL_RE =
+  /\b(?:sex|sexual|hookup|nudes?|naked|intimate|assault|rape|coerc(?:e|ed|ion)|pressured)\b/gi;
+const SAFETY_DETAIL_RE =
+  /\b(?:abuse|abused|abusive|drugged|stalked|threatened|violence|violent)\b/gi;
 
 function cleanText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
   const cleaned = value.trim().replace(/\s+/g, " ");
   return cleaned ? cleaned.slice(0, maxLength) : null;
+}
+
+function matches(regex: RegExp, value: string): boolean {
+  regex.lastIndex = 0;
+  return regex.test(value);
 }
 
 function normalizeFeedbackType(value: unknown): ImprovementFeedbackType | null {
@@ -152,23 +175,47 @@ function cleanClientContext(
   return context;
 }
 
+function clientContextIsSafe(value: unknown): boolean {
+  if (!value || typeof value !== "object") return true;
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length > MAX_CLIENT_CONTEXT_KEYS) return false;
+  for (const [_key, child] of entries) {
+    if (
+      typeof child === "string" &&
+      child.length > MAX_CLIENT_CONTEXT_RAW_VALUE_LENGTH
+    ) {
+      return false;
+    }
+  }
+  return !hasForbiddenKeyOrBlob(value);
+}
+
+function messageIsSafeForRawPayload(value: string): boolean {
+  return !(
+    matches(DATA_IMAGE_RE, value) ||
+    matches(EMAIL_RE, value) ||
+    matches(PHONE_RE, value)
+  );
+}
+
 function sanitizeText(value: string): string {
   return value
-    .replace(/data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+/gi, "[image omitted]")
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
-    .replace(
-      /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g,
-      "[phone]",
-    )
-    .replace(/\b\d{2,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,4}\s+(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard)\b/gi, "[address]")
-    .replace(/\b(?:screenshot|transcript|raw conversation)\b/gi, "[private content]")
+    .replace(DATA_IMAGE_RE, "[image omitted]")
+    .replace(EMAIL_RE, "[email]")
+    .replace(PHONE_RE, "[phone]")
+    .replace(ADDRESS_RE, "[address]")
+    .replace(PLACE_RE, "[place]")
+    .replace(FULL_NAME_RE, "$1 [last name]")
+    .replace(SEXUAL_DETAIL_RE, "[sensitive detail]")
+    .replace(SAFETY_DETAIL_RE, "[safety detail]")
+    .replace(PRIVATE_CONTENT_RE, "[private content]")
     .trim()
     .replace(/\s+/g, " ");
 }
 
 function hasForbiddenKeyOrBlob(value: unknown): boolean {
   if (typeof value === "string") {
-    return /data:image\/[a-z0-9.+-]+;base64,/i.test(value);
+    return matches(DATA_IMAGE_RE, value);
   }
   if (!value || typeof value !== "object") return false;
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
@@ -202,6 +249,8 @@ export function normalizeImprovementSignalInput(
   const type = normalizeFeedbackType(input.type);
   const message = cleanText(input.message, MAX_MESSAGE_LENGTH);
   if (!source || !type || !message) return null;
+  if (!messageIsSafeForRawPayload(message)) return null;
+  if (!clientContextIsSafe(input.clientContext)) return null;
 
   const surface = cleanText(input.surface, MAX_SURFACE_LENGTH);
   const technicalContextConsent = input.technicalContextConsent !== false;
@@ -220,16 +269,6 @@ export function normalizeImprovementSignalInput(
   if (surface) rawPayload.surface = surface;
   if (Object.keys(clientContext).length > 0) {
     rawPayload.clientContext = clientContext;
-  }
-
-  if (input.clientContext && typeof input.clientContext === "object") {
-    for (const [key, value] of Object.entries(
-      input.clientContext as Record<string, unknown>,
-    )) {
-      if (!(CLIENT_CONTEXT_KEYS as readonly string[]).includes(key)) {
-        rawPayload[key] = value;
-      }
-    }
   }
 
   return {
@@ -254,7 +293,10 @@ export function sanitizeImprovementPayload(
     ? "blocked"
     : type === "Safety concern"
       ? "high"
-      : /privacy|location|delete|auth|login/i.test(message)
+      : /privacy|location|delete|auth|login/i.test(message) ||
+          summary !== message ||
+          matches(SEXUAL_DETAIL_RE, message) ||
+          matches(SAFETY_DETAIL_RE, message)
         ? "medium"
         : "low";
 
@@ -356,6 +398,7 @@ export function buildImprovementWorkItemDraft(input: {
   const title = `Feedback: ${surface} - ${summary}`.slice(0, 120);
 
   return {
+    fingerprint: input.fingerprint,
     title,
     summary,
     category,

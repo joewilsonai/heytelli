@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS improvement_signals_user_id_created_at_idx
 
 CREATE TABLE IF NOT EXISTS improvement_work_items (
   id serial PRIMARY KEY,
+  fingerprint text NOT NULL,
   title text NOT NULL,
   summary text NOT NULL,
   category text NOT NULL,
@@ -46,6 +47,9 @@ CREATE TABLE IF NOT EXISTS improvement_work_items (
 
 CREATE INDEX IF NOT EXISTS improvement_work_items_status_priority_idx
   ON improvement_work_items (status, priority, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS improvement_work_items_fingerprint_idx
+  ON improvement_work_items (fingerprint);
 
 CREATE INDEX IF NOT EXISTS improvement_work_items_github_issue_number_idx
   ON improvement_work_items (github_issue_number);

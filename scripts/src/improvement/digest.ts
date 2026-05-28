@@ -20,7 +20,7 @@ export function buildImprovementDigest(counts: ImprovementDigestCounts): string 
     `Signals read: ${counts.read}`,
     `Work items created: ${counts.workItemsCreated}`,
     `Duplicates grouped: ${counts.duplicatesGrouped}`,
-    `Issues opened: ${counts.issuesCreated}`,
+    `${counts.dryRun ? "Issue drafts previewed" : "Issues opened"}: ${counts.issuesCreated}`,
     `Blocked by privacy policy: ${counts.blocked}`,
     `Waiting for more signal: ${counts.waitingForSignal}`,
     `Rollbacks: ${counts.rolledBack}`,

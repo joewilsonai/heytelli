@@ -276,6 +276,7 @@ export interface ImprovementSignal {
 
 export interface ImprovementWorkItem {
   id: number;
+  fingerprint: string;
   title: string;
   summary: string;
   category: ImprovementCategory;

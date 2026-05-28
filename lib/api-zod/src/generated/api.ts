@@ -2039,6 +2039,7 @@ export const ListImprovementSignalsResponse = zod.array(ListImprovementSignalsRe
  */
 export const ListImprovementWorkItemsResponseItem = zod.object({
   "id": zod.number(),
+  "fingerprint": zod.string(),
   "title": zod.string(),
   "summary": zod.string(),
   "category": zod.enum(['bug', 'ux_confusion', 'feature_request', 'safety_issue', 'performance', 'reliability', 'privacy', 'copy', 'docs', 'test']),
@@ -2072,6 +2073,7 @@ export const GetImprovementWorkItemParams = zod.object({
 
 export const GetImprovementWorkItemResponse = zod.object({
   "id": zod.number(),
+  "fingerprint": zod.string(),
   "title": zod.string(),
   "summary": zod.string(),
   "category": zod.enum(['bug', 'ux_confusion', 'feature_request', 'safety_issue', 'performance', 'reliability', 'privacy', 'copy', 'docs', 'test']),

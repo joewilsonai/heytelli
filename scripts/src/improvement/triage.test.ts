@@ -71,9 +71,32 @@ test("duplicate signal increments frequency and retains source ids", () => {
   const mergedAgain = mergeDuplicateWorkItem(merged, 3);
 
   assert.deepEqual(merged.signalIds, [1, 2]);
-  assert.equal(merged.frequencyCount, 3);
+  assert.equal(merged.frequencyCount, 2);
   assert.deepEqual(mergedAgain.signalIds, [1, 2, 3]);
-  assert.equal(mergedAgain.frequencyCount, 4);
+  assert.equal(mergedAgain.frequencyCount, 3);
+});
+
+test("dry-run plans count github issues that would be opened", () => {
+  const plan = planSignalTriage({
+    id: 9,
+    fingerprint: "settings-confusing",
+    rawPayload: {
+      source: "in_app_feedback",
+      type: "Confusing",
+      message: "The settings feedback button was confusing.",
+      surface: "settings",
+    },
+    sanitizedSummary: "The settings feedback button was confusing.",
+    sanitizedPayload: {
+      type: "Confusing",
+      message: "The settings feedback button was confusing.",
+      surface: "settings",
+    },
+    privacyRisk: "low",
+  });
+
+  assert.equal(shouldCreateGithubIssue(plan), true);
+  assert.ok(plan.issueDraft);
 });
 
 test("github client dry-run does not call fetch", async () => {
@@ -114,4 +137,20 @@ test("digest summarizes counts without private payload fields", () => {
   assert.match(digest, /Work items created: 2/);
   assert.match(digest, /Issues opened: 1/);
   assert.doesNotMatch(digest, /rawPayload|screenshot|transcript|phone/);
+});
+
+test("digest names dry-run issue previews clearly", () => {
+  const digest = buildImprovementDigest({
+    read: 1,
+    workItemsCreated: 1,
+    duplicatesGrouped: 0,
+    issuesCreated: 1,
+    blocked: 0,
+    waitingForSignal: 0,
+    dryRun: true,
+    rolledBack: 0,
+  });
+
+  assert.match(digest, /Issue drafts previewed: 1/);
+  assert.doesNotMatch(digest, /Issues opened: 1/);
 });

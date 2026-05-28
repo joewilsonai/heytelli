@@ -9,30 +9,63 @@ import {
   sanitizeImprovementPayload,
 } from "./improvementPipeline";
 
-test("sanitizes private dating details before issue creation", () => {
+test("rejects forbidden client context before raw payload is persisted", () => {
+  assert.equal(
+    normalizeImprovementSignalInput({
+      source: "in_app_feedback",
+      type: "Bug",
+      message: "The app accepted a private image.",
+      surface: "match-read",
+      clientContext: {
+        platform: "ios",
+        screenshot: "data:image/png;base64,abc",
+      },
+      technicalContextConsent: true,
+    }),
+    null,
+  );
+});
+
+test("keeps raw payload limited to allowlisted technical context", () => {
   const normalized = normalizeImprovementSignalInput({
     source: "in_app_feedback",
     type: "Bug",
-    message:
-      "Gretchen texted me at 314-555-0199 and the app showed our transcript screenshot raw.",
-    surface: "match-read",
+    message: "Profile analysis failed.",
+    surface: "settings-profile",
     clientContext: {
       platform: "ios",
       buildNumber: "3",
-      transcript: "full private message",
-      screenshot: "data:image/png;base64,abc",
+      harmlessButUnknown: "not persisted",
     },
     technicalContextConsent: true,
   });
   assert.ok(normalized);
 
-  const sanitized = sanitizeImprovementPayload(normalized.rawPayload);
+  assert.deepEqual(normalized.rawPayload, {
+    source: "in_app_feedback",
+    type: "Bug",
+    message: "Profile analysis failed.",
+    technicalContextConsent: true,
+    surface: "settings-profile",
+    clientContext: { platform: "ios", buildNumber: "3" },
+  });
+});
 
-  assert.equal(sanitized.privacyRisk, "blocked");
+test("sanitizes private dating details before issue creation", () => {
+  const sanitized = sanitizeImprovementPayload({
+    source: "in_app_feedback",
+    type: "Bug",
+    message:
+      "Gretchen Smith texted me at 314-555-0199, pressured me for sex, and named Lincoln Park Zoo.",
+    surface: "match-read",
+  });
+
+  assert.equal(sanitized.privacyRisk, "medium");
   assert.doesNotMatch(sanitized.summary, /314-555-0199/);
+  assert.doesNotMatch(sanitized.summary, /Smith|sex|Lincoln Park Zoo/);
   assert.doesNotMatch(
     JSON.stringify(sanitized.sanitizedPayload),
-    /transcript|data:image|full private message/,
+    /314-555-0199|Smith|sex|Lincoln Park Zoo/,
   );
 });
 
