@@ -41,8 +41,14 @@ case " $* " in
   *) mode_args=(--dry-run) ;;
 esac
 
+repo_root_args=()
+case " $* " in
+  *" --repo-root "*|*" --repo-root="*) ;;
+  *) repo_root_args=(--repo-root "$ROOT_DIR") ;;
+esac
+
 if (( ${#mode_args[@]} > 0 )); then
-  pnpm --filter @workspace/scripts run improvement:execute -- "${mode_args[@]}" "$@"
+  pnpm --filter @workspace/scripts run improvement:execute -- "${mode_args[@]}" "${repo_root_args[@]}" "$@"
 else
-  pnpm --filter @workspace/scripts run improvement:execute -- "$@"
+  pnpm --filter @workspace/scripts run improvement:execute -- "${repo_root_args[@]}" "$@"
 fi
