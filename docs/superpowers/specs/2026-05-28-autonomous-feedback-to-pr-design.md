@@ -179,7 +179,7 @@ These are admin-token or admin-role protected.
 
 ## Triage Worker
 
-The triage worker runs as a repo script in V1 so local Codex/Hermes automation can invoke it. After the loop proves useful, the same worker can move to a Railway cron/service without changing the database model.
+The triage worker runs as a repo script in V1 and is deployed as a Railway cron service. It owns signal sanitization, work-item creation, and sanitized GitHub issue creation without depending on a local gateway.
 
 Responsibilities:
 
@@ -245,6 +245,15 @@ Issue format:
 ## Agent Workflow
 
 Agents should operate from GitHub issues and work item state.
+
+V1 runner command:
+
+- `pnpm --filter @workspace/scripts run improvement:swarm -- --dry-run`
+- `./scripts/run-improvement-swarm.sh`
+
+The runner consumes `agent-ready` issues directly from GitHub plus the private `improvement_work_items` queue. It does not depend on a local webhook gateway or hidden machine state.
+
+The runner uses `swarm-active` as a temporary claim label and `swarm-planned` as the durable GitHub-side completion label. Comments include a deterministic marker so retries can resume without posting duplicate plan comments.
 
 ### Research Agent
 
@@ -481,7 +490,7 @@ Operational tests:
 ## Resolved Implementation Defaults
 
 - GitHub automation uses a repository-scoped token from `~/.luna/secrets/keys.env` or deployment environment variables. Tokens are never stored in the database.
-- V1 orchestration uses GitHub issues and labels as the durable handoff, with the local Codex/Hermes runner consuming `agent-ready` issues. The database remains the canonical private queue.
+- V1 orchestration uses GitHub issues and labels as the durable handoff, with the HeyTelli swarm runner consuming `agent-ready` issues directly. The database remains the canonical private queue.
 - V1 auto-merges `safe_auto_merge` PRs when checks and review agents pass. `guarded_auto_merge` and `extra_agent_review` can merge only after their stronger review gates pass.
 - V1 can auto-deploy backend/API changes to Railway after merge and smoke tests. Mobile changes can create and submit TestFlight beta builds, but production App Store release remains out of scope.
 - EAS Update is deferred. Until it exists, mobile rollback requires another beta build, so mobile auto-merge risk classification is stricter than backend/web.

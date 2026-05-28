@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "improvement:triage": "tsx ./src/improvement/triage.ts",
+    "improvement:swarm": "tsx ./src/improvement/swarm.ts",
     "improvement:digest": "tsx ./src/improvement/digest.ts",
     "test:improvement": "tsx --test ./src/improvement/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
