@@ -16,8 +16,6 @@ on:
         required: true
         default: "5"
         type: string
-  schedule:
-    - cron: "17 15 * * 1"
 
 permissions:
   contents: read
@@ -38,8 +36,8 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.HEYTELLI_DATABASE_URL }}
       HEYTELLI_DATABASE_URL: ${{ secrets.HEYTELLI_DATABASE_URL }}
       IMPROVEMENT_SWARM_AGENT_NAME: github-actions-improvement-swarm
-      IMPROVEMENT_SWARM_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '5' }}
-      IMPROVEMENT_SWARM_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.mode != 'live' && 'true' || 'false' }}
+      IMPROVEMENT_SWARM_LIMIT: ${{ inputs.limit || '5' }}
+      IMPROVEMENT_SWARM_DRY_RUN: ${{ inputs.mode != 'live' && 'true' || 'false' }}
 
     steps:
       - name: Checkout

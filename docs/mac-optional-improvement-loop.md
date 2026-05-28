@@ -1,7 +1,8 @@
-# Mac-Optional Improvement Loop
+# Mac-First Improvement Loop
 
-Issue #8 makes the HeyTelli feedback-to-PR loop durable without Joe's Mac.
-The Mac is a verification tool, not the control plane.
+HeyTelli defaults to Joe's Mac as the swarm host so Codex, GitHub auth,
+Railway auth, Xcode, EAS, PyPhone, and local logs stay in one trusted place.
+GitHub Actions remains a manual fallback, not the primary scheduled runner.
 
 ## Architecture
 
@@ -11,12 +12,12 @@ The Mac is a verification tool, not the control plane.
 2. Railway triage, either as a cron service or one-off worker, sanitizes new
    `improvement_signals`, groups them into `improvement_work_items`, and opens
    GitHub issues only when the summary is safe.
-3. GitHub labels are the public handoff. `agent-ready` means a cloud/Linux
-   runner can plan work; `swarm-active` is a temporary claim; `swarm-planned`
-   is the idempotent completion marker.
-4. A cloud/Linux swarm runner reads `agent-ready` issues plus the private DB
-   queue, comments with a checklist-only plan, updates DB run state, and leaves
-   implementation/review/merge policy to the risk tier.
+3. GitHub labels are the public handoff. `agent-ready` means a trusted runner
+   can plan work; `swarm-active` is a temporary claim; `swarm-planned` is the
+   idempotent completion marker.
+4. Joe's Mac is the default trusted runner. It checks Tailscale and power
+   readiness, reads `agent-ready` issues plus the private DB queue, comments
+   with a checklist-only plan, and updates DB run state.
 5. EAS cloud builds handle normal iOS beta builds and TestFlight submission.
 
 Keep public GitHub artifacts to product surface, platform/build metadata, error
@@ -25,9 +26,9 @@ transcripts, names, phone numbers, exact locations, or private dating context.
 
 ## Required Secrets
 
-Store these in Railway, GitHub Actions, or the cloud runner secret store. Local
-copies may live in `~/.luna/secrets/keys.env`, but the loop must not depend on
-that file.
+Store these in Railway, GitHub Actions, or the trusted runner secret store.
+Joe's Mac uses `~/.luna/secrets/keys.env` plus `gh auth token` and Railway CLI
+fallbacks.
 
 ```bash
 DATABASE_URL=<public-reachable Railway Postgres URL>
@@ -82,7 +83,70 @@ IMPROVEMENT_AGENT_NAME=heytelli-triage-worker
 Expected labels on safe actionable issues include `feedback`, category,
 priority, risk tier, and `agent-ready`.
 
-## Cloud/Linux Swarm Runner
+## Local Mac Swarm Host
+
+The Mac host preflight checks Tailscale status, reachable MagicDNS/IP, relay,
+and `pmset` sleep/keepalive settings without printing peer devices or private
+tailnet details:
+
+```bash
+pnpm --filter @workspace/scripts run local-swarm-host:check
+```
+
+Run a safe local discovery pass:
+
+```bash
+./scripts/run-local-swarm-host.sh --dry-run --limit 5
+```
+
+Run the live local swarm planner:
+
+```bash
+./scripts/run-local-swarm-host.sh --live --limit 5
+```
+
+Install the Mac as the default scheduled swarm host:
+
+```bash
+./scripts/install-local-swarm-launchd.sh
+```
+
+The launchd job runs every 15 minutes by default, uses `caffeinate` while the
+swarm is active, and writes logs to:
+
+```bash
+~/Library/Logs/heytelli/local-swarm.out.log
+~/Library/Logs/heytelli/local-swarm.err.log
+```
+
+Useful knobs:
+
+```bash
+HEYTELLI_LOCAL_SWARM_INTERVAL_SECONDS=900
+HEYTELLI_LOCAL_SWARM_LIMIT=5
+```
+
+Uninstall the Mac runner:
+
+```bash
+./scripts/uninstall-local-swarm-launchd.sh
+```
+
+The current Mac should stay reachable over Tailscale at:
+
+```text
+joes-macbook-pro-3-1.tailc35824.ts.net
+100.97.186.33
+```
+
+Tailscale SSH should be enabled on the Mac host. From another trusted tailnet
+machine, connect with:
+
+```bash
+tailscale ssh joewilson@joes-macbook-pro-3-1.tailc35824.ts.net
+```
+
+## Cloud/Linux Swarm Fallback
 
 Use this command in a clean Linux runner to verify discovery and planning
 without changing GitHub or DB state:
@@ -110,9 +174,10 @@ The local wrapper is convenient for Joe's machine because it can source
 ./scripts/run-improvement-swarm.sh --live --limit 5
 ```
 
-Cloud runners should prefer explicit environment secrets over the local wrapper.
-The runner comments with deterministic markers, so retries should not duplicate
-plan comments.
+The GitHub Actions workflow is manual-only now. Use it when the Mac is
+unavailable or when you want a cloud dry-run. Cloud runners should prefer
+explicit environment secrets over the local wrapper. The runner comments with
+deterministic markers, so retries should not duplicate plan comments.
 
 ## EAS Cloud Builds
 
@@ -145,4 +210,5 @@ Use Joe's Mac, PyPhone, Xcode, or local native tools for:
 - Native crash/device log investigation.
 - Manual App Store Connect checks when EAS cannot complete a credential flow.
 
-Everything else should run from Railway, GitHub, EAS, or a Linux runner.
+Everything else can run from Railway, GitHub, EAS, or a Linux runner when the
+Mac is unavailable.

@@ -8,7 +8,9 @@
     "improvement:triage": "tsx ./src/improvement/triage.ts",
     "improvement:swarm": "tsx ./src/improvement/swarm.ts",
     "improvement:digest": "tsx ./src/improvement/digest.ts",
+    "local-swarm-host:check": "tsx ./src/localSwarmHost.ts",
     "test:improvement": "tsx --test ./src/improvement/*.test.ts",
+    "test:local-swarm-host": "tsx --test ./src/localSwarmHost.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
