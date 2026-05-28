@@ -111,3 +111,182 @@ test("merge extraction clears legacy score values", async () => {
     },
   ]);
 });
+
+test("repairs generic media placeholders before saving transcript context", async () => {
+  const { openai } = await import("@workspace/integrations-openai-ai-server");
+  const { extractFromScreenshots } = await import("./extraction");
+
+  type CompletionPayload = {
+    messages?: Array<{ role: string; content: unknown }>;
+  };
+  type CompletionResponse = {
+    choices: Array<{ message: { content: string } }>;
+  };
+  type CompletionCreate = (
+    payload: CompletionPayload,
+  ) => Promise<CompletionResponse>;
+
+  const completions = openai.chat.completions as unknown as {
+    create: CompletionCreate;
+  };
+  const originalCreate = completions.create;
+  const calls: CompletionPayload[] = [];
+  const response = (content: unknown): CompletionResponse => ({
+    choices: [{ message: { content: JSON.stringify(content) } }],
+  });
+
+  completions.create = async (payload) => {
+    calls.push(payload);
+    if (calls.length === 1) {
+      return response({
+        suggestedName: "Gretchen",
+        vibeTags: ["warm"],
+        job: null,
+        location: null,
+        interests: [],
+        mentionedTopics: [],
+        conversationTone: "warm and personal",
+        visibleMedia: [],
+        read: "The conversation has a warm, sharing tone.",
+        transcript: [
+          { speaker: "her", text: "[photo]" },
+          { speaker: "her", text: "This was the view." },
+          { speaker: "me", text: "[gif]" },
+        ],
+        sexPotentialScore: { value: null, rationale: null },
+        conversionAbilityScore: { value: null, rationale: null },
+        chemistryScore: { value: null, rationale: null },
+      });
+    }
+    return response({
+      transcript: [
+        {
+          speaker: "her",
+          text: "[photo: sunset view from a restaurant patio]",
+        },
+        { speaker: "her", text: "This was the view." },
+        {
+          speaker: "me",
+          text: "[gif: animated thumbs up]",
+        },
+      ],
+      visibleMedia: [
+        {
+          kind: "photo",
+          description: "sunset view from a restaurant patio",
+          source: "chat",
+          speaker: "her",
+        },
+        {
+          kind: "gif",
+          description: "animated thumbs up",
+          source: "chat",
+          speaker: "me",
+        },
+      ],
+    });
+  };
+
+  try {
+    const result = await extractFromScreenshots(["data:image/png;base64,AAAA"]);
+
+    assert.equal(calls.length, 2);
+    assert.match(
+      JSON.stringify(calls[1]?.messages ?? []),
+      /generic media placeholders/i,
+    );
+    assert.deepEqual(result.transcript, [
+      {
+        speaker: "her",
+        text: "[photo: sunset view from a restaurant patio]",
+      },
+      { speaker: "her", text: "This was the view." },
+      {
+        speaker: "me",
+        text: "[gif: animated thumbs up]",
+      },
+    ]);
+    assert.deepEqual(result.profile.visibleMedia, [
+      {
+        kind: "photo",
+        description: "sunset view from a restaurant patio",
+        source: "chat",
+        speaker: "her",
+      },
+      {
+        kind: "gif",
+        description: "animated thumbs up",
+        source: "chat",
+        speaker: "me",
+      },
+    ]);
+  } finally {
+    completions.create = originalCreate;
+  }
+});
+
+test("media placeholder repair preserves original text if repair omits a turn", async () => {
+  const { openai } = await import("@workspace/integrations-openai-ai-server");
+  const { extractFromScreenshots } = await import("./extraction");
+
+  type CompletionPayload = {
+    messages?: Array<{ role: string; content: unknown }>;
+  };
+  type CompletionResponse = {
+    choices: Array<{ message: { content: string } }>;
+  };
+  type CompletionCreate = (
+    payload: CompletionPayload,
+  ) => Promise<CompletionResponse>;
+
+  const completions = openai.chat.completions as unknown as {
+    create: CompletionCreate;
+  };
+  const originalCreate = completions.create;
+  const response = (content: unknown): CompletionResponse => ({
+    choices: [{ message: { content: JSON.stringify(content) } }],
+  });
+  let calls = 0;
+
+  completions.create = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return response({
+        suggestedName: null,
+        vibeTags: [],
+        visibleMedia: [],
+        transcript: [
+          { speaker: "her", text: "[photo]" },
+          { speaker: "her", text: "This was the view." },
+        ],
+      });
+    }
+    return response({
+      transcript: [
+        {
+          speaker: "her",
+          text: "[photo: skyline at night]",
+        },
+      ],
+      visibleMedia: [
+        {
+          kind: "photo",
+          description: "skyline at night",
+          source: "chat",
+          speaker: "her",
+        },
+      ],
+    });
+  };
+
+  try {
+    const result = await extractFromScreenshots(["data:image/png;base64,AAAA"]);
+
+    assert.deepEqual(result.transcript, [
+      { speaker: "her", text: "[photo: skyline at night]" },
+      { speaker: "her", text: "This was the view." },
+    ]);
+  } finally {
+    completions.create = originalCreate;
+  }
+});
