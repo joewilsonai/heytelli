@@ -50,3 +50,4 @@ Thumbs.db
 
 # Local Codex/Superpowers scratch artifacts
 .superpowers/
+.worktrees/
