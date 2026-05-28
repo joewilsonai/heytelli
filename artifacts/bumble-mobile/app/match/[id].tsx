@@ -57,6 +57,7 @@ import { FeedbackSheet } from "@/components/FeedbackSheet";
 import { VoiceDebriefSheet } from "@/components/VoiceDebriefSheet";
 import { VoiceNoteFeedbackSheet } from "@/components/VoiceNoteFeedbackSheet";
 import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
+import { GutCheckCard } from "@/components/GutCheckCard";
 import { RedFlagsCard } from "@/components/RedFlagsCard";
 import { DatingPatternGlossaryCard } from "@/components/DatingPatternGlossaryCard";
 import { CheatSheetCard } from "@/components/CheatSheetCard";
@@ -292,6 +293,7 @@ export default function MatchDetailScreen() {
         <NextStepCard match={data} />
         <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
         <LatestReadCard match={data} onChange={() => refetch()} />
+        <GutCheckCard match={data} onChange={() => refetch()} />
         <RedFlagsCard
           matchId={data.id}
           promoted
