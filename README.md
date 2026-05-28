@@ -45,12 +45,14 @@ pnpm --filter @workspace/api-server run dev
 pnpm --filter @workspace/bumble-mobile run dev
 pnpm --filter @workspace/bumble-reply run dev
 pnpm --filter @workspace/scripts run local-swarm-host:check
+./scripts/run-swarm-executor.sh --dry-run --limit 5
 ```
 
 Backend deployment setup lives in `docs/backend-setup.md`. The autonomous
 feedback-to-PR runbook lives in `docs/mac-optional-improvement-loop.md`. The
-default swarm host is Joe's Mac over Tailscale; GitHub Actions is the manual
-fallback runner.
+default swarm host is Joe's Mac over Tailscale; it plans issues, opens executor
+PRs from sanitized DB work items, and uses GitHub Actions as the manual fallback
+planner.
 
 ## Required Environment
 

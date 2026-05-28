@@ -14,10 +14,12 @@ GitHub Actions remains a manual fallback, not the primary scheduled runner.
    GitHub issues only when the summary is safe.
 3. GitHub labels are the public handoff. `agent-ready` means a trusted runner
    can plan work; `swarm-active` is a temporary claim; `swarm-planned` is the
-   idempotent completion marker.
+   idempotent planning marker.
 4. Joe's Mac is the default trusted runner. It checks Tailscale and power
    readiness, reads `agent-ready` issues plus the private DB queue, comments
-   with a checklist-only plan, and updates DB run state.
+   with a checklist-only plan, executes planned low/medium-risk work in local
+   git worktrees, opens PRs, and queues auto-merge only when the risk tier
+   allows it.
 5. EAS cloud builds handle normal iOS beta builds and TestFlight submission.
 
 Keep public GitHub artifacts to product surface, platform/build metadata, error
@@ -99,11 +101,45 @@ Run a safe local discovery pass:
 ./scripts/run-local-swarm-host.sh --dry-run --limit 5
 ```
 
-Run the live local swarm planner:
+Run the live local swarm planner and executor:
 
 ```bash
 ./scripts/run-local-swarm-host.sh --live --limit 5
 ```
+
+The wrapper runs two steps in order:
+
+1. `run-improvement-swarm.sh` turns safe `agent-ready` issues into private DB
+   work items with `planned` status.
+2. `run-swarm-executor.sh` claims `planned` work, creates an isolated worktree,
+   asks the local agent to implement from sanitized context, typechecks, opens a
+   PR, comments back on the source issue, and queues auto-merge for
+   `safe_auto_merge` work.
+
+You can exercise the executor by itself:
+
+```bash
+./scripts/run-swarm-executor.sh --dry-run --limit 5
+./scripts/run-swarm-executor.sh --live --limit 1
+```
+
+By default the executor uses:
+
+```bash
+codex exec --dangerously-bypass-approvals-and-sandbox --cd <worktree> -
+```
+
+To swap in a different local agent command, set
+`HEYTELLI_SWARM_EXECUTOR_COMMAND`. The command receives:
+
+```bash
+HEYTELLI_SWARM_PROMPT_FILE=<path to sanitized prompt>
+HEYTELLI_SWARM_WORKTREE=<path to isolated worktree>
+```
+
+`guarded_auto_merge` and `extra_agent_review` work items can still open PRs, but
+they do not queue auto-merge unless the corresponding executor flags are
+enabled. `no_auto_merge` items remain research/planning-only in the V1 runner.
 
 Install the Mac as the default scheduled swarm host:
 
@@ -174,10 +210,10 @@ The local wrapper is convenient for Joe's machine because it can source
 ./scripts/run-improvement-swarm.sh --live --limit 5
 ```
 
-The GitHub Actions workflow is manual-only now. Use it when the Mac is
-unavailable or when you want a cloud dry-run. Cloud runners should prefer
-explicit environment secrets over the local wrapper. The runner comments with
-deterministic markers, so retries should not duplicate plan comments.
+The GitHub Actions workflow is manual-only now and plans work only. Use it when
+the Mac is unavailable or when you want a cloud dry-run. Cloud runners should
+prefer explicit environment secrets over the local wrapper. The runner comments
+with deterministic markers, so retries should not duplicate plan comments.
 
 ## EAS Cloud Builds
 
