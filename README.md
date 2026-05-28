@@ -44,10 +44,13 @@ pnpm --filter @workspace/api-spec run codegen
 pnpm --filter @workspace/api-server run dev
 pnpm --filter @workspace/bumble-mobile run dev
 pnpm --filter @workspace/bumble-reply run dev
+pnpm --filter @workspace/scripts run local-swarm-host:check
 ```
 
 Backend deployment setup lives in `docs/backend-setup.md`. The autonomous
-feedback-to-PR runbook lives in `docs/mac-optional-improvement-loop.md`.
+feedback-to-PR runbook lives in `docs/mac-optional-improvement-loop.md`. The
+default swarm host is Joe's Mac over Tailscale; GitHub Actions is the manual
+fallback runner.
 
 ## Required Environment
 
