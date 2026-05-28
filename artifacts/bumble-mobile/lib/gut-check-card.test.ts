@@ -8,6 +8,7 @@ import {
   buildGutCheckMessage,
   buildGutCheckNoteAppend,
   getGutCheckContextPreview,
+  toggleGutCheckMomentId,
   type GutCheckMatch,
 } from "./gut-check-card.ts";
 
@@ -122,6 +123,15 @@ test("builds selectable gut check moments from analyzed context without overridi
   );
 });
 
+test("toggles gut check moments so none or several can be selected", () => {
+  assert.deepEqual(toggleGutCheckMomentId([], "red-flag-0"), ["red-flag-0"]);
+  assert.deepEqual(toggleGutCheckMomentId(["red-flag-0"], "timeline-4"), [
+    "red-flag-0",
+    "timeline-4",
+  ]);
+  assert.deepEqual(toggleGutCheckMomentId(["red-flag-0"], "red-flag-0"), []);
+});
+
 test("builds a privacy-first gut check message for the user's real circle", () => {
   const selectedMoment = buildGutCheckMoments(match).find(
     (moment) => moment.id === "red-flag-0",
@@ -159,6 +169,31 @@ test("builds a privacy-first gut check message for the user's real circle", () =
   assert.doesNotMatch(message, /private transcript/);
   assert.doesNotMatch(message, /screenshots\//);
   assert.doesNotMatch(message, /dangerous|rating|score/i);
+});
+
+test("builds a gut check message from multiple selected moments", () => {
+  const moments = buildGutCheckMoments(match);
+  const selectedMoments = [
+    moments.find((moment) => moment.id === "red-flag-0"),
+    moments.find((moment) => moment.id === "timeline-4"),
+  ].filter((moment) => moment != null);
+
+  const message = buildGutCheckMessage(match, {
+    selectedMoments,
+    note: "These are the two pieces I want a second read on.",
+    question: "Can you look at both together?",
+    includeDate: false,
+    includeTimeline: false,
+    maskName: true,
+  });
+
+  assert.match(message, /Gut check items:/);
+  assert.match(message, /Pattern: Late-night-only texting/);
+  assert.match(message, /Moment: Late-night-only texting/);
+  assert.match(message, /These are the two pieces/);
+  assert.match(message, /Can you look at both together/);
+  assert.doesNotMatch(message, /Gut check item:/);
+  assert.doesNotMatch(message, /private transcript|screenshots\//);
 });
 
 test("can mask the match name and omit date or timeline context", () => {
@@ -222,7 +257,9 @@ test("match screen exposes Gut Check with native share and Circle Note follow-up
 
   assert.match(screen, /GutCheckCard/);
   assert.match(card, /buildGutCheckMoments/);
-  assert.match(card, /selectedMoment/);
+  assert.match(card, /selectedMomentIds/);
+  assert.match(card, /toggleGutCheckMomentId/);
+  assert.doesNotMatch(card, /useState\("manual-instinct"\)/);
   assert.match(card, /Something\s+feels off/);
   assert.match(card, /buildGutCheckMessage/);
   assert.match(card, /Share\.share/);
