@@ -118,6 +118,7 @@ type CommandRunner = (
 ) => Promise<CommandResult>;
 
 const DEFAULT_LIMIT = 3;
+export const EXECUTOR_PROMPT_FILE_NAME = ".heytelli-swarm-prompt.md";
 
 function envFlag(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === "") return defaultValue;
@@ -595,6 +596,14 @@ async function commitIfNeeded(
   }
 }
 
+export async function removeExecutorScratchFiles(
+  worktreePath: string,
+): Promise<void> {
+  await rm(path.join(worktreePath, EXECUTOR_PROMPT_FILE_NAME), {
+    force: true,
+  });
+}
+
 async function createOrReusePullRequest(
   worktreePath: string,
   workItem: SwarmExecutorWorkItem,
@@ -725,7 +734,7 @@ async function executeWorkItem(
 }> {
   const worktreePath = path.join(options.worktreeRoot, String(workItem.id));
   const prompt = buildExecutorPrompt(workItem, plan);
-  const promptPath = path.join(worktreePath, ".heytelli-swarm-prompt.md");
+  const promptPath = path.join(worktreePath, EXECUTOR_PROMPT_FILE_NAME);
 
   await mkdir(options.worktreeRoot, { recursive: true });
   await runner("git", ["fetch", "origin", options.baseBranch], {
@@ -749,6 +758,7 @@ async function executeWorkItem(
   await runner("pnpm", ["install", "--frozen-lockfile"], { cwd: worktreePath });
   await runAgent(worktreePath, prompt, promptPath, options, runner);
   await runner("pnpm", ["run", "typecheck"], { cwd: worktreePath });
+  await removeExecutorScratchFiles(worktreePath);
   await commitIfNeeded(worktreePath, workItem, options.baseBranch, runner);
   await runner("git", ["push", "-u", "origin", plan.branchName], {
     cwd: worktreePath,

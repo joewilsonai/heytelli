@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
@@ -8,6 +11,7 @@ import {
   executorPrBodyMarker,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
+  removeExecutorScratchFiles,
   swarmExecutorRunShouldFail,
 } from "./executor";
 
@@ -146,6 +150,23 @@ test("previews command sequence including auto-merge only when allowed", () => {
       baseBranch: "main",
     }).some((command) => command.kind === "automerge"),
   );
+});
+
+test("removes executor scratch prompt before commit staging", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "heytelli-executor-"));
+  try {
+    const promptPath = path.join(tempDir, ".heytelli-swarm-prompt.md");
+    const realChangePath = path.join(tempDir, "real-change.txt");
+    await writeFile(promptPath, "sanitized executor prompt", "utf8");
+    await writeFile(realChangePath, "keep me", "utf8");
+
+    await removeExecutorScratchFiles(tempDir);
+
+    await assert.rejects(stat(promptPath), /ENOENT/);
+    assert.equal(await readFile(realChangePath, "utf8"), "keep me");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("parses executor CLI options", () => {
