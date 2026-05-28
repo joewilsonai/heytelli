@@ -2,6 +2,36 @@
 
 This is the near-term product roadmap for turning HeyTelli from a useful beta into a clear, repeatable safety-and-clarity loop for women dating online.
 
+## 0. Privacy and Signal Foundation
+
+**Goal:** Keep HeyTelli private by default and remove legacy scoring language before layering on more safety intelligence.
+
+### Screenshot Retention
+
+- Raw screenshot images uploaded to the backend are temporary analysis inputs.
+- After analysis succeeds, the backend should purge the raw object and keep only extracted text, read summaries, timeline facts, tags, green flags, red flags, and freshness metadata.
+- The iPhone can keep a private local copy of match screenshots so the user can review or resubmit them later.
+- Local screenshot copies are deleted when the match is deleted.
+- Gut Check and Date Card shares should never include screenshots by default. Any future image-sharing option must be explicit and local-device initiated.
+
+### Neutral Signals
+
+- Do not use sex, chemistry, conversion, attraction, or dateability scores in the product UI.
+- Use neutral pattern signals instead:
+  - consistency across messages
+  - pace match
+  - escalation velocity
+  - self-disclosure balance
+  - planning clarity
+  - respect for boundaries
+- The app should describe what is happening, not label what the match is worth.
+
+### Success Criteria
+
+- A tester can still see local screenshot copies after the server image has been purged.
+- A tester can resubmit a local copy for analysis if needed.
+- Home, reads, and timeline surfaces do not sort or label matches using legacy scores.
+
 ## 1. Safe Date Flow
 
 **Goal:** When a user enters a date, HeyTelli should automatically guide her from "I have plans" to "I am prepared, my circle knows, and I can debrief after."
@@ -148,6 +178,9 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
   - Concerns repeating
 - Durable green flags and red flags should remain visible even if not present in the newest analysis.
 - Timeline should link back to transcript/read/debrief where appropriate.
+- Story Check should extract first-person claims into a private claim ledger and surface contradictions as evidence pairs with timestamps, never as a verdict.
+- Green flags should be durable, visible, and symmetric with saved concerns.
+- Cross-match pattern analysis should show repeated arcs across the user's own history with evidence, not labels.
 
 ### Success Criteria
 
@@ -189,9 +222,43 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
 
 ## Product Priority
 
-1. Safe Date Flow
-2. First-Run Onboarding
-3. Match Memory and Timeline Upgrade
-4. Dating Profile Compatibility
+1. Privacy and Signal Foundation
+2. Safe Date Flow
+3. Story Check and Green Flags
+4. First-Run Onboarding
+5. Match Memory and Timeline Upgrade
+6. Dating Profile Compatibility
+7. Vet Packet
 
-Safe Date Flow comes first because it ties together the most differentiated parts of HeyTelli: date planning, circle sharing, cover mode, check-ins, timeline memory, and post-date debrief.
+## Vet Packet
+
+**Goal:** Help the user do her own pre-date reality check without HeyTelli creating dossiers, labels, or background-check claims.
+
+### Features
+
+- Pull user-visible claims from Story Check:
+  - name
+  - employer
+  - role
+  - city
+  - school
+  - social handle
+  - named pet/family details when relevant
+- Generate one-tap search links the user can open herself:
+  - Google
+  - LinkedIn
+  - Instagram
+  - employer website
+  - NSOPW when state/name are available
+- Let the user save private observations back to the match timeline.
+- Store observations, not scraped data.
+
+### Non-Goals
+
+- No automated background-check reports.
+- No safe/unsafe labels.
+- No hosted dossiers.
+- No friend or public match pages.
+- No automatic sharing.
+
+The privacy and signal foundation comes first because every later feature depends on trust. Safe Date Flow follows because it ties together the most differentiated parts of HeyTelli: date planning, circle sharing, cover mode, check-ins, timeline memory, and post-date debrief.

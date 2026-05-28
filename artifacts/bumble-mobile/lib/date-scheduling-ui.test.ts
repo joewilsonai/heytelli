@@ -73,7 +73,7 @@ test("match screen includes the dating pattern glossary near the radar", () => {
   assert.match(matchScreen, /compact/);
 });
 
-test("post-date debrief asks for safety and chemistry signals", () => {
+test("post-date debrief asks for safety and in-person signals", () => {
   assert.match(matchScreen, /How did you feel in your body/);
   assert.match(matchScreen, /Any boundary pressure/);
   assert.match(matchScreen, /Any mismatch between text and in-person/);

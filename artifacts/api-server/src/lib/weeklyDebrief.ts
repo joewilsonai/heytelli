@@ -18,13 +18,13 @@ export type WeeklyDebriefResult = {
   recommendations: string[];
 };
 
-const SYSTEM = `You are a candid dating coach producing a weekly Sunday debrief for the user across their entire active match pipeline. Be ruthless and specific. No filler.
+const SYSTEM = `You are HeyTelli, a candid but careful weekly dating debrief for the user across her active match pipeline. Be specific without ranking people or making safety claims.
 
-Given a list of matches with name, scores, last activity hours ago, last speaker, recent transcript turns, you must classify each into one of:
-- "heating_up": recent activity, her engaging well, scores trending up
+Given a list of matches with name, last activity hours ago, last speaker, recent transcript turns, and upcoming date status, classify each into one of:
+- "heating_up": recent mutual activity and clear planning/interest
 - "cold": gone quiet, low effort, no recent traction
 - "needs_attention": his turn to reply, or a date to schedule, or risk of losing
-- "deprioritize": low scores, low effort, not worth more energy
+- "deprioritize": low effort, mismatch, or not worth more energy
 - "steady": stable, no urgent action
 
 Respond with ONLY JSON:
@@ -41,7 +41,6 @@ export type WeeklyDebriefInput = {
   matches: Array<{
     matchId: number;
     name: string;
-    scores: { sex: number | null; conv: number | null; chem: number | null };
     hoursSinceLastActivity: number | null;
     lastSpeaker: "her" | "me" | null;
     recentTurns: string;
@@ -55,7 +54,7 @@ export async function generateWeeklyDebrief(
   const matchBlocks = input.matches
     .map(
       (m) =>
-        `[${m.matchId}] ${m.name} | scores S:${m.scores.sex ?? "?"} C:${m.scores.conv ?? "?"} Ch:${m.scores.chem ?? "?"} | ${
+        `[${m.matchId}] ${m.name} | ${
           m.hoursSinceLastActivity != null
             ? `${Math.round(m.hoursSinceLastActivity)}h since last`
             : "no activity"
@@ -79,7 +78,8 @@ ${matchBlocks || "(no active matches)"}`;
   const raw = completion.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw);
   return {
-    headline: typeof parsed.headline === "string" ? parsed.headline : "Weekly debrief",
+    headline:
+      typeof parsed.headline === "string" ? parsed.headline : "Weekly debrief",
     summary: typeof parsed.summary === "string" ? parsed.summary : "",
     totalActive: input.totalActive,
     newThisWeek: input.newThisWeek,

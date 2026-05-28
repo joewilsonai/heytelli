@@ -21,7 +21,6 @@ export async function generateStaleNudgeOpeners(
 
   const user = `Match: ${name}
 Hours since her last reply: ${Math.round(hoursSinceLastReply)}
-Her vibe: ${profile.scores.chemistry.rationale ?? "(unknown)"}
 Her interests: ${(profile.interests || []).join(", ") || "(none captured)"}
 Things she mentioned: ${(profile.mentionedTopics || []).join("; ") || "(none captured)"}
 Her tone: ${profile.conversationTone ?? "(unknown)"}
@@ -48,7 +47,9 @@ Generate 3 re-engagement openers in his voice.`;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed.openers)) {
       return parsed.openers
-        .filter((o: unknown): o is string => typeof o === "string" && o.trim() !== "")
+        .filter(
+          (o: unknown): o is string => typeof o === "string" && o.trim() !== "",
+        )
         .map((o: string) => o.trim())
         .slice(0, 3);
     }

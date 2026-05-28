@@ -175,7 +175,7 @@ test("surfaces active Date Mode before ordinary Date Card readiness", () => {
   assert.ok(model.contextChips.includes("Date Mode"));
 });
 
-test("uses connection and momentum scores without exposing old score labels", () => {
+test("ignores legacy scoring values when choosing the home signal", () => {
   const model = getHomeMatchCardModel({
     ...baseMatch,
     extractedProfile: {
@@ -189,7 +189,7 @@ test("uses connection and momentum scores without exposing old score labels", ()
     lastActivityAt: "2026-05-22T00:00:00.000Z",
   });
 
-  assert.equal(model.signal.label, "Promising");
+  assert.equal(model.signal.label, "Current");
   assert.deepEqual(
     model.contextChips.filter((chip) => /Sex|Conv|Chem/.test(chip)),
     [],

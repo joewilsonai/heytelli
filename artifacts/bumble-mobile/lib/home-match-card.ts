@@ -228,12 +228,12 @@ function getSignal(
   match: HomeMatchCardMatch,
   now: Date,
 ): HomeMatchCardModel["signal"] {
-  const connection = match.extractedProfile.scores.chemistry.value;
-  const momentum = match.extractedProfile.scores.conversionAbility.value;
   const needsContext =
     match.analysisFreshness !== "current" ||
     pendingContextCount(match) > 0 ||
-    (!match.lastActivityAt && connection == null && momentum == null);
+    (!match.lastActivityAt &&
+      !match.lastRead &&
+      !match.extractedProfile.conversationTone);
   const concerns = savedConcernCount(match);
 
   if (match.status !== "active") return { label: "Stale", tone: "muted" };
@@ -250,22 +250,7 @@ function getSignal(
   }
   if (isStale(match, now)) return { label: "Stale", tone: "warning" };
   if (needsContext) return { label: "Needs more context", tone: "warning" };
-  if (
-    (connection != null && connection <= 3) ||
-    (momentum != null && momentum <= 3)
-  ) {
-    return { label: "Needs eyes", tone: "warning" };
-  }
-  if (
-    (connection != null && connection <= 5) ||
-    (momentum != null && momentum <= 5)
-  ) {
-    return { label: "Proceed slowly", tone: "warning" };
-  }
-  if ((connection ?? 0) >= 7 && (momentum ?? 0) >= 6) {
-    return { label: "Promising", tone: "success" };
-  }
-  return { label: "Needs more context", tone: "warning" };
+  return { label: "Current", tone: "success" };
 }
 
 function getNextAction(match: HomeMatchCardMatch, now: Date): string {
@@ -409,12 +394,8 @@ function getReadBody(match: HomeMatchCardMatch): string {
     .join(" ");
 
   return (
-    firstNonEmpty(
-      profile.conversationTone,
-      profile.scores.chemistry.rationale,
-      profile.scores.conversionAbility.rationale,
-      details,
-    ) ?? "No read yet. Upload screenshots to build the first read."
+    firstNonEmpty(profile.conversationTone, details) ??
+    "No read yet. Upload screenshots to build the first read."
   );
 }
 

@@ -11,8 +11,8 @@ import { useColors } from "@/hooks/useColors";
 const TRUST_ITEMS = [
   {
     icon: "image" as const,
-    title: "Raw screenshots are temporary",
-    body: "Screenshots are used for analysis, then purged when the backend no longer needs the raw image. In this beta, raw screenshot storage is temporary processing, not a long-term private vault.",
+    title: "Server screenshots are temporary",
+    body: "Screenshots are uploaded only long enough for analysis, then the backend purges the raw image. A private copy can stay on this iPhone so you can review or resubmit it later without HeyTelli keeping it on the server.",
   },
   {
     icon: "share-2" as const,
@@ -27,7 +27,7 @@ const TRUST_ITEMS = [
   {
     icon: "trash-2" as const,
     title: "Delete a match deletes its history",
-    body: "Deleting a match removes linked chat history, screenshots, notes, timeline events, and saved safety data for that match.",
+    body: "Deleting a match removes linked chat history, local screenshots, notes, timeline events, and saved safety data for that match.",
   },
 ];
 

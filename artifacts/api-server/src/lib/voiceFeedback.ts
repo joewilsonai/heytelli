@@ -42,7 +42,6 @@ export async function analyzeVoiceNote(
 
   const user = `Match: ${context.name}
 Her tone: ${context.profile.conversationTone ?? "(unknown)"}
-Her vibe: ${(context.profile.scores.chemistry.rationale) ?? "(unknown)"}
 
 Recent chat:
 ${recentText || "(no prior chat)"}

@@ -107,7 +107,16 @@ import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 import { buildDateSafetyPlanFromSettings } from "@/lib/user-settings";
 import { useUserSettings } from "@/lib/use-user-settings";
-import { useLocalMatchPhotos } from "@/lib/local-match-photos";
+import {
+  clearLocalMatchPhoto,
+  useLocalMatchPhotos,
+} from "@/lib/local-match-photos";
+import {
+  clearLocalMatchScreenshotArchive,
+  getLocalMatchScreenshotUri,
+  saveLocalMatchScreenshot,
+  useLocalMatchScreenshots,
+} from "@/lib/local-match-screenshots";
 
 export default function MatchDetailScreen() {
   const c = useColors();
@@ -1550,6 +1559,11 @@ function useScreenshotUpload({
             ? `${result.savedCount} screenshot${result.savedCount === 1 ? "" : "s"} saved. ${result.failedCount} did not upload.`
             : "No screenshots were added. Try again.",
         );
+      } else if (result.localArchiveFailedCount > 0) {
+        Alert.alert(
+          "Saved, but not archived",
+          "The screenshot was uploaded for analysis, but HeyTelli could not keep a private local copy on this iPhone.",
+        );
       }
     } catch (e: any) {
       onChange();
@@ -1594,18 +1608,29 @@ async function pickScreenshotUris(): Promise<string[]> {
 async function attachScreenshotsToMatch(matchId: number, uris: string[]) {
   let savedCount = 0;
   let failedCount = 0;
+  let localArchiveFailedCount = 0;
 
   for (const uri of uris) {
     try {
       const path = await uploadImage(uri);
-      await addScreenshot(matchId, { objectPath: path });
+      const updated = await addScreenshot(matchId, { objectPath: path });
+      const savedScreenshot = [...updated.screenshots]
+        .reverse()
+        .find((s) => s.objectPath === path);
+      if (savedScreenshot) {
+        try {
+          await saveLocalMatchScreenshot(matchId, savedScreenshot.id, uri);
+        } catch {
+          localArchiveFailedCount += 1;
+        }
+      }
       savedCount += 1;
     } catch {
       failedCount += 1;
     }
   }
 
-  return { savedCount, failedCount };
+  return { savedCount, failedCount, localArchiveFailedCount };
 }
 
 function ScreenshotIntakeCard({
@@ -4145,7 +4170,29 @@ function ScreenshotsCard({
 }) {
   const c = useColors();
   const [open, setOpen] = useState(false);
+  const [restoringId, setRestoringId] = useState<number | null>(null);
   const { upload, uploading } = useScreenshotUpload({ match, onChange });
+  const { screenshots: localScreenshots } = useLocalMatchScreenshots();
+
+  const restoreLocalScreenshot = async (uri: string, screenshotId: number) => {
+    if (restoringId != null) return;
+    setRestoringId(screenshotId);
+    try {
+      const result = await attachScreenshotsToMatch(match.id, [uri]);
+      onChange();
+      if (result.savedCount > 0) {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
+      } else {
+        Alert.alert("Couldn't restore", "Try adding the screenshot again.");
+      }
+    } catch (e: any) {
+      Alert.alert("Couldn't restore", e?.message ?? "Try again.");
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   return (
     <Card>
@@ -4192,20 +4239,51 @@ function ScreenshotsCard({
               contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
             >
               {match.screenshots.map((s) => {
-                const url = objectPathToUrl(s.objectPath);
+                const localUri = getLocalMatchScreenshotUri(
+                  localScreenshots,
+                  match.id,
+                  s.id,
+                );
+                const url = objectPathToUrl(s.objectPath) ?? localUri;
+                const localOnly = !s.objectPath && Boolean(localUri);
                 return (
                   <View key={s.id} style={{ alignItems: "center", gap: 4 }}>
                     {url && (
-                      <Image
-                        source={url}
-                        style={{
-                          width: 140,
-                          height: 240,
-                          borderRadius: 12,
-                          backgroundColor: c.muted,
-                        }}
-                        contentFit="cover"
-                      />
+                      <View>
+                        <Image
+                          source={url}
+                          style={{
+                            width: 140,
+                            height: 240,
+                            borderRadius: 12,
+                            backgroundColor: c.muted,
+                          }}
+                          contentFit="cover"
+                        />
+                        {localOnly && (
+                          <View
+                            style={{
+                              position: "absolute",
+                              left: 8,
+                              bottom: 8,
+                              borderRadius: 999,
+                              backgroundColor: "rgba(0,0,0,0.64)",
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 10,
+                                fontWeight: "700",
+                              }}
+                            >
+                              On this iPhone
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     )}
                     {!url && (
                       <View
@@ -4240,6 +4318,33 @@ function ScreenshotsCard({
                     <Text style={{ fontSize: 10, color: c.mutedForeground }}>
                       {formatTimeAgo(s.uploadedAt)}
                     </Text>
+                    {localOnly && localUri && (
+                      <Pressable
+                        onPress={() => restoreLocalScreenshot(localUri, s.id)}
+                        disabled={restoringId != null}
+                        style={({ pressed }) => ({
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: c.border,
+                          paddingHorizontal: 9,
+                          paddingVertical: 5,
+                          opacity:
+                            restoringId === s.id ? 0.5 : pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <Text
+                          style={{
+                            color: c.foreground,
+                            fontSize: 11,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {restoringId === s.id
+                            ? "Restoring..."
+                            : "Restore for analysis"}
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                 );
               })}
@@ -4460,7 +4565,7 @@ function StatusActionsCard({
   const confirmDelete = () => {
     Alert.alert(
       `Delete ${match.name}?`,
-      "This removes the connection, screenshots, chat history, notes, dates, scores, and tags. This can't be undone.",
+      "This removes the connection, local screenshots, chat history, notes, dates, patterns, and tags. This can't be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -4470,6 +4575,10 @@ function StatusActionsCard({
             setDeleting(true);
             try {
               await deleteMatch(match.id);
+              await Promise.all([
+                clearLocalMatchPhoto(match.id),
+                clearLocalMatchScreenshotArchive(match.id),
+              ]);
               qc.removeQueries({ queryKey: getGetMatchQueryKey(match.id) });
               await Promise.all([
                 qc.invalidateQueries({ queryKey: getListMatchesQueryKey() }),

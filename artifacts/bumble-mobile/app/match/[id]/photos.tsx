@@ -17,6 +17,10 @@ import { useGetMatch } from "@workspace/api-client-react";
 
 import { EmptyState, Skeleton } from "@/components/ui";
 import { objectPathToUrl } from "@/lib/image";
+import {
+  getLocalMatchScreenshotUri,
+  useLocalMatchScreenshots,
+} from "@/lib/local-match-screenshots";
 
 export default function PhotoGalleryScreen() {
   const c = useColors();
@@ -25,6 +29,7 @@ export default function PhotoGalleryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Number(id);
   const { data, isLoading } = useGetMatch(matchId);
+  const { screenshots: localScreenshots } = useLocalMatchScreenshots();
 
   const width = Dimensions.get("window").width;
   const cols = width > 600 ? 3 : 2;
@@ -68,7 +73,13 @@ export default function PhotoGalleryScreen() {
             </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap }}>
               {data.screenshots.map((s) => {
-                const uri = objectPathToUrl(s.objectPath);
+                const localUri = getLocalMatchScreenshotUri(
+                  localScreenshots,
+                  matchId,
+                  s.id,
+                );
+                const uri = objectPathToUrl(s.objectPath) ?? localUri;
+                const localOnly = !s.objectPath && Boolean(localUri);
                 return (
                   <View
                     key={s.id}
@@ -81,12 +92,37 @@ export default function PhotoGalleryScreen() {
                     }}
                   >
                     {uri ? (
-                      <Image
-                        source={uri}
-                        style={{ width: "100%", height: "100%" }}
-                        contentFit="cover"
-                        transition={150}
-                      />
+                      <>
+                        <Image
+                          source={uri}
+                          style={{ width: "100%", height: "100%" }}
+                          contentFit="cover"
+                          transition={150}
+                        />
+                        {localOnly && (
+                          <View
+                            style={{
+                              position: "absolute",
+                              left: 6,
+                              bottom: 6,
+                              borderRadius: 999,
+                              backgroundColor: "rgba(0,0,0,0.64)",
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 10,
+                                fontWeight: "700",
+                              }}
+                            >
+                              On this iPhone
+                            </Text>
+                          </View>
+                        )}
+                      </>
                     ) : (
                       <View
                         style={{

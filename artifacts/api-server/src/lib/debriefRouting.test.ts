@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-process.env.DATABASE_URL ??= "postgres://heytelli:heytelli@127.0.0.1:1/heytelli";
+process.env.DATABASE_URL ??=
+  "postgres://heytelli:heytelli@127.0.0.1:1/heytelli";
 process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ??= "http://127.0.0.1:1/openai";
 process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??= "test-openai-key";
 
@@ -11,7 +12,8 @@ import {
 } from "./debriefRouting";
 
 const baseAnalysis: DebriefRoutingAnalysis = {
-  summary: "She was warm and present, but got evasive when plans became concrete.",
+  summary:
+    "She was warm and present, but got evasive when plans became concrete.",
   vibe: "warm but cautious",
   greenFlags: ["Asked follow-up questions"],
   redFlags: ["Deflected a clear planning question"],
@@ -27,7 +29,7 @@ const baseAnalysis: DebriefRoutingAnalysis = {
     location: null,
     recap: null,
   },
-  readUpdate: "Promising, but verify follow-through before overinvesting.",
+  readUpdate: "Warm, but verify follow-through before overinvesting.",
   timelineTitle: "Coffee debrief",
 };
 
@@ -54,7 +56,7 @@ test("voice debriefs persist a transcript timeline event without appending to no
   assert.equal(plan.mainTimelineEvent.title, "Coffee debrief");
   assert.match(plan.mainTimelineEvent.body ?? "", /We had coffee/);
   assert.deepEqual(plan.matchUpdates.lastRead, {
-    body: "Promising, but verify follow-through before overinvesting.",
+    body: "Warm, but verify follow-through before overinvesting.",
     generatedAt: "2026-05-26T16:00:00.000Z",
     screenshotCountAt: 3,
   });
@@ -76,7 +78,11 @@ test("debrief tags are normalized, deduped, and recorded as AI tag events", () =
     now: new Date("2026-05-26T16:00:00.000Z"),
   });
 
-  assert.deepEqual(plan.matchUpdates.tags, ["fitness", "slow-burn", "thoughtful"]);
+  assert.deepEqual(plan.matchUpdates.tags, [
+    "fitness",
+    "slow-burn",
+    "thoughtful",
+  ]);
   assert.deepEqual(
     plan.tagEvents.map((event) => ({
       tag: event.tag,
@@ -130,7 +136,10 @@ test("date debriefs create date history and route the main event as date_debrief
   assert.equal(plan.matchUpdates.nextDateLocation, null);
   assert.equal(plan.matchUpdates.dateHistory?.length, 1);
   assert.equal(plan.matchUpdates.dateHistory?.[0]?.location, "Louie");
-  assert.match(plan.matchUpdates.dateHistory?.[0]?.recap ?? "", /Dinner ran long/);
+  assert.match(
+    plan.matchUpdates.dateHistory?.[0]?.recap ?? "",
+    /Dinner ran long/,
+  );
 });
 
 test("green and red flags are split into durable timeline events", () => {
