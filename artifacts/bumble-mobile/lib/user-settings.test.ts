@@ -46,6 +46,7 @@ test("uses selected primary circle person when building a new date card", () => 
         id: "circle_1",
         name: "Claire",
         relationship: "sister",
+        cardLabelPreference: "relationship" as const,
         phoneNumber: null,
         source: "contacts" as const,
         createdAt: "2026-05-26T07:00:00.000Z",
@@ -54,6 +55,7 @@ test("uses selected primary circle person when building a new date card", () => 
         id: "circle_2",
         name: "Maya",
         relationship: "roommate",
+        cardLabelPreference: "name" as const,
         phoneNumber: null,
         source: "manual" as const,
         createdAt: "2026-05-26T07:05:00.000Z",
@@ -62,6 +64,7 @@ test("uses selected primary circle person when building a new date card", () => 
         id: "circle_3",
         name: "Riley",
         relationship: "friend",
+        cardLabelPreference: "relationship" as const,
         phoneNumber: null,
         source: "contacts" as const,
         createdAt: "2026-05-26T07:10:00.000Z",
@@ -90,7 +93,7 @@ test("uses selected primary circle person when building a new date card", () => 
     nextDateAt: "2026-06-01T00:00:00.000Z",
   });
 
-  assert.equal(plan.trustedCircleName, "Claire, Maya, Riley");
+  assert.equal(plan.trustedCircleName, "sister, Maya, friend");
   assert.equal(plan.transportPlan, "I drive myself and park near the front");
   assert.equal(plan.codeWord, "pineapple");
   assert.equal(plan.circleNote, "Text me if I miss the check-in.");
@@ -100,6 +103,29 @@ test("uses selected primary circle person when building a new date card", () => 
   assert.equal(plan.safeDateChecklist?.circleHasPlan, false);
   assert.equal(plan.safeDateChecklist?.ownTransport, true);
   assert.equal(plan.safeDateChecklist?.profileReviewed, false);
+});
+
+test("falls back to first name when relationship label is selected without a relationship", () => {
+  const settings = {
+    ...DEFAULT_HEYTELLI_SETTINGS,
+    trustedCircle: [
+      {
+        id: "circle_1",
+        name: "Terry",
+        relationship: null,
+        cardLabelPreference: "relationship" as const,
+        phoneNumber: null,
+        source: "manual" as const,
+        createdAt: "2026-05-26T07:00:00.000Z",
+      },
+    ],
+  };
+
+  const plan = buildDateSafetyPlanFromSettings(settings, {
+    nextDateAt: "2026-06-01T00:00:00.000Z",
+  });
+
+  assert.equal(plan.trustedCircleName, "Terry");
 });
 
 test("profile review spots privacy leaks and unclear dating intent", () => {

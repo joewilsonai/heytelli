@@ -1,4 +1,9 @@
 import type { DateSafetyPlan } from "./date-safety-plan.ts";
+import {
+  getCirclePersonCardLabel,
+  normalizeCircleCardPreference,
+  type CircleCardLabelPreference,
+} from "./circle-card-labels.ts";
 
 export type TrustedCircleSource = "manual" | "contacts";
 
@@ -6,6 +11,7 @@ export type TrustedCirclePerson = {
   id: string;
   name: string;
   relationship: string | null;
+  cardLabelPreference?: CircleCardLabelPreference;
   phoneNumber: string | null;
   source: TrustedCircleSource;
   createdAt: string;
@@ -111,6 +117,7 @@ export function sanitizeCircleContact(
     id: makeLocalId("circle"),
     name: firstName(contact.fullName),
     relationship: nullable(contact.relationship),
+    cardLabelPreference: "name",
     phoneNumber: options.storePhone ? nullable(contact.phoneNumber) : null,
     source: options.source ?? "contacts",
     createdAt: new Date().toISOString(),
@@ -150,7 +157,9 @@ export function buildDateSafetyPlanFromSettings(
 
   return {
     trustedCircleName:
-      circlePeople.map((person) => person.name).join(", ") || null,
+      circlePeople
+        .map((person) => getCirclePersonCardLabel(person))
+        .join(", ") || null,
     transportPlan: nullable(defaults.transportPlan),
     checkInAt: minutesAfter(match.nextDateAt, defaults.checkInOffsetMinutes),
     expectedEndAt: minutesAfter(
@@ -187,7 +196,14 @@ export function mergeSettings(
         : [],
     },
     trustedCircle: Array.isArray(value?.trustedCircle)
-      ? value.trustedCircle.slice(0, MAX_TRUSTED_CIRCLE_PEOPLE)
+      ? value.trustedCircle
+          .slice(0, MAX_TRUSTED_CIRCLE_PEOPLE)
+          .map((person) => ({
+            ...person,
+            cardLabelPreference: normalizeCircleCardPreference(
+              person.cardLabelPreference,
+            ),
+          }))
       : [],
     dateSafetyDefaults: {
       ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
