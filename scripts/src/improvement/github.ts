@@ -20,6 +20,7 @@ export type CreateGitHubIssueOptions = {
   token: string | null | undefined;
   draft: GithubIssueDraft;
   dryRun: boolean;
+  dedupeKey?: string;
   apiUrl?: string;
   fetchImpl?: typeof fetch;
 };
@@ -38,6 +39,7 @@ export async function createGitHubIssue({
   token,
   draft,
   dryRun,
+  dedupeKey,
   apiUrl,
   fetchImpl = fetch,
 }: CreateGitHubIssueOptions): Promise<GitHubIssueResult> {
@@ -47,20 +49,52 @@ export async function createGitHubIssue({
   if (!token) {
     throw new Error("GITHUB_TOKEN, GH_TOKEN, or HEYTELLI_GITHUB_TOKEN is required");
   }
+  const normalizedApiUrl = normalizeApiUrl(apiUrl);
+  const marker = dedupeKey ? `heytelli-improvement:${dedupeKey}` : null;
+  const headers = {
+    accept: "application/vnd.github+json",
+    authorization: `Bearer ${token}`,
+    "content-type": "application/json",
+    "x-github-api-version": "2022-11-28",
+  };
+
+  if (marker) {
+    const query = encodeURIComponent(
+      `repo:${owner}/${repo} ${marker} in:body type:issue`,
+    );
+    const searchResponse = await fetchImpl(
+      `${normalizedApiUrl}/search/issues?q=${query}`,
+      {
+        headers,
+      },
+    );
+    if (searchResponse.ok) {
+      const data = (await searchResponse.json()) as {
+        items?: Array<{ html_url?: unknown; number?: unknown }>;
+      };
+      const [existing] = data.items ?? [];
+      if (
+        typeof existing?.html_url === "string" &&
+        typeof existing.number === "number"
+      ) {
+        return {
+          mode: "live",
+          url: existing.html_url,
+          number: existing.number,
+          draft,
+        };
+      }
+    }
+  }
 
   const response = await fetchImpl(
-    `${normalizeApiUrl(apiUrl)}/repos/${owner}/${repo}/issues`,
+    `${normalizedApiUrl}/repos/${owner}/${repo}/issues`,
     {
       method: "POST",
-      headers: {
-        accept: "application/vnd.github+json",
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-        "x-github-api-version": "2022-11-28",
-      },
+      headers,
       body: JSON.stringify({
         title: draft.title,
-        body: draft.body,
+        body: marker ? `${draft.body}\n\n<!-- ${marker} -->` : draft.body,
         labels: draft.labels,
       }),
     },

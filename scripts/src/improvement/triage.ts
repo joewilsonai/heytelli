@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type {
   ImprovementWorkItem,
   ImprovementPrivacyRisk,
@@ -173,19 +173,36 @@ export async function runImprovementTriage(
   async function saveWorkItem(
     plan: PlannedSignalTriage,
   ): Promise<{ workItem: ImprovementWorkItem; created: boolean }> {
-    const existing = await loadWorkItemByFingerprint(plan.fingerprint);
-    if (existing) {
-      const merged = mergeWorkItemSignals(existing, plan.workItem.signalIds);
+    async function mergeSignalIds(
+      workItemId: number,
+      signalIds: number[],
+    ): Promise<ImprovementWorkItem> {
+      const signalIdsJson = JSON.stringify(signalIds);
       const [updated] = await db
         .update(improvementWorkItems)
         .set({
-          frequencyCount: merged.frequencyCount,
-          signalIds: merged.signalIds,
+          signalIds: sql`(
+            SELECT COALESCE(jsonb_agg(DISTINCT items.value::int), '[]'::jsonb)
+            FROM jsonb_array_elements_text(${improvementWorkItems.signalIds} || ${signalIdsJson}::jsonb) AS items(value)
+          )`,
+          frequencyCount: sql`(
+            SELECT count(DISTINCT items.value::int)::int
+            FROM jsonb_array_elements_text(${improvementWorkItems.signalIds} || ${signalIdsJson}::jsonb) AS items(value)
+          )`,
           updatedAt: new Date(),
         })
-        .where(eq(improvementWorkItems.id, existing.id))
+        .where(eq(improvementWorkItems.id, workItemId))
         .returning();
-      return { workItem: updated ?? existing, created: false };
+      if (!updated) {
+        throw new Error("Improvement work item merge returned no row");
+      }
+      return updated;
+    }
+
+    const existing = await loadWorkItemByFingerprint(plan.fingerprint);
+    if (existing) {
+      const updated = await mergeSignalIds(existing.id, plan.workItem.signalIds);
+      return { workItem: updated, created: false };
     }
 
     try {
@@ -200,17 +217,8 @@ export async function runImprovementTriage(
     } catch (err) {
       const raced = await loadWorkItemByFingerprint(plan.fingerprint);
       if (!raced) throw err;
-      const merged = mergeWorkItemSignals(raced, plan.workItem.signalIds);
-      const [updated] = await db
-        .update(improvementWorkItems)
-        .set({
-          frequencyCount: merged.frequencyCount,
-          signalIds: merged.signalIds,
-          updatedAt: new Date(),
-        })
-        .where(eq(improvementWorkItems.id, raced.id))
-        .returning();
-      return { workItem: updated ?? raced, created: false };
+      const updated = await mergeSignalIds(raced.id, plan.workItem.signalIds);
+      return { workItem: updated, created: false };
     }
   }
 
@@ -257,8 +265,17 @@ export async function runImprovementTriage(
       counts.blocked += plan.workItem.frequencyCount;
     }
     if (options.dryRun) {
-      counts.workItemsCreated += 1;
-      if (options.createGithubIssues && shouldCreateGithubIssue(plan)) {
+      const existing = await loadWorkItemByFingerprint(plan.fingerprint);
+      if (existing) {
+        counts.duplicatesGrouped += 1;
+      } else {
+        counts.workItemsCreated += 1;
+      }
+      if (
+        options.createGithubIssues &&
+        shouldCreateGithubIssue(plan) &&
+        existing?.githubIssueUrl == null
+      ) {
         counts.issuesCreated += 1;
       }
       continue;
@@ -286,6 +303,7 @@ export async function runImprovementTriage(
           token: options.token,
           draft: plan.issueDraft,
           dryRun: options.dryRun,
+          dedupeKey: plan.fingerprint,
           apiUrl: options.githubApiUrl,
         });
         if (issue.mode === "live") {

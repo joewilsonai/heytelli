@@ -51,6 +51,24 @@ test("keeps raw payload limited to allowlisted technical context", () => {
   });
 });
 
+test("stores sanitized message text in raw payload", () => {
+  const normalized = normalizeImprovementSignalInput({
+    source: "in_app_feedback",
+    type: "Safety concern",
+    message:
+      "Gretchen Smith pressured me for sex near Lincoln Park Zoo and the flow felt unsafe.",
+    surface: "date-mode",
+    technicalContextConsent: true,
+  });
+
+  assert.ok(normalized);
+  assert.doesNotMatch(
+    String(normalized.rawPayload.message),
+    /Smith|sex|Lincoln Park Zoo/,
+  );
+  assert.match(String(normalized.rawPayload.message), /\[sensitive detail\]/);
+});
+
 test("sanitizes private dating details before issue creation", () => {
   const sanitized = sanitizeImprovementPayload({
     source: "in_app_feedback",

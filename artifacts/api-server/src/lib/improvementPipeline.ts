@@ -259,10 +259,11 @@ export function normalizeImprovementSignalInput(
     technicalContextConsent,
   );
   const matchId = cleanMatchId(input.matchId);
+  const payloadMessage = sanitizeText(message) || "Feedback received.";
   const rawPayload: Record<string, unknown> = {
     source,
     type,
-    message,
+    message: payloadMessage,
     technicalContextConsent,
   };
   if (matchId != null) rawPayload.matchId = matchId;

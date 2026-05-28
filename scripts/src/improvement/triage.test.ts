@@ -122,6 +122,44 @@ test("github client dry-run does not call fetch", async () => {
   assert.equal(result.url, null);
 });
 
+test("github client reuses existing issue by fingerprint marker", async () => {
+  const calls: string[] = [];
+  const result = await createGitHubIssue({
+    owner: "joewilsonai",
+    repo: "heytelli",
+    token: "token",
+    dryRun: false,
+    dedupeKey: "abc123",
+    draft: {
+      title: "Feedback: duplicate",
+      body: "No private screenshots/transcripts included.",
+      labels: ["feedback", "bug", "priority:p2", "risk:safe_auto_merge"],
+    },
+    fetchImpl: async (input) => {
+      calls.push(String(input));
+      return new Response(
+        JSON.stringify({
+          items: [
+            {
+              html_url: "https://github.com/joewilsonai/heytelli/issues/44",
+              number: 44,
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    },
+  });
+
+  assert.equal(result.mode, "live");
+  assert.equal(result.number, 44);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /search\/issues/);
+});
+
 test("digest summarizes counts without private payload fields", () => {
   const digest = buildImprovementDigest({
     read: 4,
