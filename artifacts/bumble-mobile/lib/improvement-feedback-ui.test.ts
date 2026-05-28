@@ -26,9 +26,13 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
   assert.match(helper, /Safety concern/);
   assert.match(helper, /Love this/);
   assert.match(sheet, /Include basic app context/);
+  assert.match(sheet, /buildFeedbackReceiptMessage/);
+  assert.match(sheet, /Feedback saved/);
+  assert.match(helper, /feedbackFollowUpStages/);
+  assert.match(helper, /Settings build notes/);
   assert.match(
     sheet,
-    /We do not include screenshots or private conversations in engineering issues\./,
+    /We do not include screenshots or private\s+conversations in engineering issues\./,
   );
   assert.match(helper, /createImprovementSignal/);
   assert.doesNotMatch(

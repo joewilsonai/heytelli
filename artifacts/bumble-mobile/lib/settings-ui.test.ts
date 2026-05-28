@@ -26,6 +26,8 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /cardLabelPreference/);
   assert.match(screen, /MAX_TRUSTED_CIRCLE_PEOPLE/);
   assert.match(screen, /Date Safety Defaults/);
+  assert.match(screen, /Build changelog/);
+  assert.match(screen, /getLatestBuildChangelog/);
   assert.match(screen, /Add from Contacts/);
   assert.match(screen, /HeyTelli stores up to 3 first names locally/);
   assert.match(screen, /Profile Review/);
@@ -35,6 +37,18 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /analyzeDatingProfileScreenshots/);
   assert.match(screen, /stripStoredCirclePhoneNumbers/);
   assert.match(screen, /draftDirty/);
+});
+
+test("settings changelog has detailed latest build notes", () => {
+  const screen = read("../app/settings.tsx");
+  const changelog = read("./build-changelog.ts");
+
+  assert.match(screen, /formatBuildChangelogVersion/);
+  assert.match(screen, /Constants\.nativeBuildVersion/);
+  assert.match(changelog, /BUILD_CHANGELOG_ENTRIES/);
+  assert.match(changelog, /Beta safety polish/);
+  assert.match(changelog, /Private match photos repair/);
+  assert.match(changelog, /Feedback now confirms/);
 });
 
 test("settings profile screenshots allow ten and analyze into profile fields", () => {

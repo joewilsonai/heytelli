@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { Stack } from "expo-router";
@@ -34,6 +35,10 @@ import {
   type CircleCardLabelPreference,
 } from "@/lib/circle-card-labels";
 import {
+  formatBuildChangelogVersion,
+  getLatestBuildChangelog,
+} from "@/lib/build-changelog";
+import {
   MAX_TRUSTED_CIRCLE_PEOPLE,
   buildProfileReview,
   sanitizeCircleContact,
@@ -53,6 +58,11 @@ export default function SettingsScreen() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [manualName, setManualName] = useState("");
   const [manualRelationship, setManualRelationship] = useState("");
+  const latestChangelog = getLatestBuildChangelog();
+  const buildVersionLabel = formatBuildChangelogVersion(
+    latestChangelog,
+    Constants.nativeBuildVersion,
+  );
 
   useEffect(() => {
     if (draftDirty) return;
@@ -611,6 +621,27 @@ export default function SettingsScreen() {
           onPress={() => setFeedbackOpen(true)}
           style={{ marginTop: 12 }}
         />
+      </Card>
+
+      <Card>
+        <SectionLabel>Build changelog</SectionLabel>
+        <H2 style={{ fontSize: 18 }}>{latestChangelog.title}</H2>
+        <Body muted style={{ marginTop: 4 }}>
+          {buildVersionLabel} · {latestChangelog.date}
+        </Body>
+        <View style={{ gap: 8, marginTop: 12 }}>
+          {latestChangelog.highlights.map((highlight) => (
+            <View
+              key={highlight}
+              style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}
+            >
+              <Feather name="check-circle" size={15} color={c.primary} />
+              <Text style={{ flex: 1, color: c.foreground, fontSize: 13 }}>
+                {highlight}
+              </Text>
+            </View>
+          ))}
+        </View>
       </Card>
 
       <Button

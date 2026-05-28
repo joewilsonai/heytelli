@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Body, Button, SectionLabel } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import {
+  buildFeedbackReceiptMessage,
   feedbackTypes,
   submitImprovementFeedback,
   type FeedbackType,
@@ -53,7 +54,7 @@ export function FeedbackSheet({
     if (!message.trim() || sending) return;
     setSending(true);
     try {
-      await submitImprovementFeedback({
+      const created = await submitImprovementFeedback({
         type,
         message,
         surface,
@@ -65,7 +66,7 @@ export function FeedbackSheet({
       );
       onSubmitted?.();
       onClose();
-      Alert.alert("Thanks", "Telli will use this to improve HeyTelli.");
+      Alert.alert("Feedback saved", buildFeedbackReceiptMessage(created.id));
     } catch (error: any) {
       Alert.alert("Couldn't save feedback", error?.message ?? "Try again.");
     } finally {
@@ -131,7 +132,8 @@ export function FeedbackSheet({
           </View>
 
           <Body muted>
-            Send a quick note. We do not include screenshots or private conversations in engineering issues.
+            Send a quick note. We do not include screenshots or private
+            conversations in engineering issues.
           </Body>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>

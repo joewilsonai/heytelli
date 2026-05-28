@@ -24,6 +24,20 @@ export type SubmitImprovementFeedbackInput = {
   context?: Record<string, string | number | boolean | null | undefined>;
 };
 
+export const feedbackFollowUpStages = [
+  "received",
+  "accepted",
+  "planned",
+  "shipped",
+] as const;
+
+export function buildFeedbackReceiptMessage(signalId?: number | null): string {
+  const ticket = signalId
+    ? `Feedback #${signalId} is saved.`
+    : "Feedback is saved.";
+  return `${ticket} If we accept it, Settings build notes will call out whether it is planned, shipping soon, or already shipped.`;
+}
+
 export function buildFeedbackTechnicalContext(
   surface: string,
   context: SubmitImprovementFeedbackInput["context"] = {},
