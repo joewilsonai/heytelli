@@ -24,6 +24,22 @@ API. The API should return `401` for protected data without a bearer token.
 Use TestFlight for real beta testers. The app depends on native modules and a
 share extension, so Expo Go is not a valid beta distribution path.
 
+Merges to `main` that touch the mobile app or generated API client now trigger
+the `iOS Beta Build` GitHub Actions workflow. By default, that workflow runs
+the `beta` EAS profile and uses `--auto-submit`, so successful builds are sent
+to TestFlight using the `beta` submit profile.
+
+The workflow needs a repository secret named `EXPO_TOKEN`. Create an Expo access
+token from the Expo dashboard and store it in GitHub Actions secrets. Until the
+secret exists, the workflow intentionally exits with a notice instead of failing
+every merge.
+
+Manual runs are available from GitHub Actions with controls for:
+
+- EAS profile: `beta`, `development`, or `production`.
+- Whether to submit after build completion.
+- Optional EAS build message.
+
 From the mobile app directory:
 
 ```bash
