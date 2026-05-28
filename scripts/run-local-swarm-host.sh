@@ -41,8 +41,10 @@ run_args+=("$@")
 
 if command -v caffeinate >/dev/null 2>&1; then
   caffeinate -dimsu ./scripts/run-improvement-swarm.sh "${run_args[@]}"
+  caffeinate -dimsu ./scripts/run-swarm-executor.sh "${run_args[@]}"
 else
   ./scripts/run-improvement-swarm.sh "${run_args[@]}"
+  ./scripts/run-swarm-executor.sh "${run_args[@]}"
 fi
 
 echo "[$(timestamp)] HeyTelli local swarm host finished"
