@@ -8,3 +8,4 @@ export * from "./matchTagEvents";
 export * from "./matchRedFlagEvents";
 export * from "./matchTimelineEvents";
 export * from "./productFeedback";
+export * from "./improvementPipeline";

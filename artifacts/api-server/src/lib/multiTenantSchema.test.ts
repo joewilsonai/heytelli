@@ -4,8 +4,15 @@ import test from "node:test";
 process.env.DATABASE_URL ??=
   "postgres://heytelli:heytelli@127.0.0.1:1/heytelli";
 
-const { conversations, matches, productFeedback, users } =
-  await import("@workspace/db");
+const {
+  conversations,
+  improvementRuns,
+  improvementSignals,
+  improvementWorkItems,
+  matches,
+  productFeedback,
+  users,
+} = await import("@workspace/db");
 
 test("private beta data has a user owner in the core schema", () => {
   assert.ok(users.id, "users table should be exported");
@@ -17,5 +24,21 @@ test("private beta data has a user owner in the core schema", () => {
   assert.ok(
     productFeedback.userId,
     "product feedback must retain the signed-in user's tenant",
+  );
+  assert.ok(
+    improvementSignals.userId,
+    "improvement signals must retain the signed-in user's tenant",
+  );
+  assert.ok(
+    improvementSignals.rawPayload,
+    "improvement signals must keep raw payload private in the database",
+  );
+  assert.ok(
+    improvementWorkItems.signalIds,
+    "improvement work items must retain private source signal ids",
+  );
+  assert.ok(
+    improvementRuns.workItemId,
+    "improvement runs must be linked to one work item",
   );
 });
