@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sarah's Date Card · HeyTelli</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#FAF7F3" />
+    <style>
+      :root {
+        --cream: #faf7f3;
+        --surface: #ffffff;
+        --ink: #2e2632;
+        --muted: #756e78;
+        --accent: #e07a5f;
+        --accent-hover: #cf6549;
+        --line: #e7e0d8;
+        --line-soft: #f0eae0;
+        --focus: rgba(224, 122, 95, 0.28);
+        --ok: #3f7d5b;
+        --ok-bg: #e8f1eb;
+        --warn: #b4543e;
+        --warn-bg: #fbe8e2;
+        --tint: #f6efe6;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        max-width: 540px;
+        margin: 0 auto;
+        padding: 28px 22px 40px;
+      }
+
+      /* Brand */
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 36px;
+      }
+      .mark {
+        width: 36px; height: 36px;
+        border-radius: 9px;
+        background: var(--surface);
+        border: 1.5px solid var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+      }
+      .mark::before {
+        content: "";
+        position: absolute;
+        width: 18px; height: 18px;
+        border: 1.5px solid var(--accent);
+        border-radius: 50%;
+        background: var(--surface);
+      }
+      .mark::after {
+        content: "";
+        position: absolute;
+        right: 8px; top: 6px;
+        width: 4px; height: 4px;
+        transform: rotate(45deg);
+        background: var(--accent);
+      }
+      .wordmark {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 0.1px;
+        margin: 0;
+      }
+      .wordmark .dot { color: var(--accent); }
+
+      /* Greeting */
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 10px;
+      }
+      .greeting {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(24px, 5.6vw, 32px);
+        line-height: 1.18;
+        letter-spacing: -0.3px;
+        margin: 0 0 8px;
+      }
+      .greeting .accent { color: var(--accent); }
+      .lede {
+        font-size: 14.5px;
+        color: var(--muted);
+        margin: 0 0 28px;
+      }
+
+      /* The card */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px;
+        margin-bottom: 22px;
+        box-shadow: 0 1px 0 rgba(46, 38, 50, 0.02);
+      }
+      .card-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .card-title {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 22px;
+        margin: 0;
+        letter-spacing: -0.2px;
+      }
+      .card-eyebrow {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .field {
+        margin-bottom: 14px;
+      }
+      .field:last-child { margin-bottom: 0; }
+      .field .label {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 4px;
+      }
+      .field .value {
+        font-size: 15.5px;
+        color: var(--ink);
+        margin: 0;
+        line-height: 1.5;
+      }
+      .field .value .secondary {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .divider {
+        height: 1px;
+        background: var(--line-soft);
+        margin: 18px 0;
+      }
+
+      /* If-not-checked-in block — visually distinct */
+      .if-block {
+        background: var(--tint);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin: 4px 0 0;
+      }
+      .if-block .label {
+        color: var(--accent);
+      }
+
+      /* Sender's note */
+      .note {
+        background: var(--cream);
+        border-left: 3px solid var(--accent);
+        padding: 12px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 0;
+      }
+      .note p {
+        margin: 0;
+        font-size: 14.5px;
+        color: var(--ink);
+        line-height: 1.55;
+        font-style: italic;
+      }
+
+      /* Code word — subtle */
+      .code-word {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px dashed var(--line);
+      }
+      .code-word .label {
+        color: var(--accent);
+      }
+      .code-word .value {
+        font-size: 15px;
+      }
+      .code-word .value strong {
+        font-family: ui-serif, Georgia, serif;
+        font-weight: 600;
+        font-style: italic;
+        color: var(--accent);
+      }
+
+      /* Live status block */
+      .live-status {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .live-status .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--ok);
+        flex-shrink: 0;
+        animation: pulse 1.8s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.9); }
+      }
+      .live-status .text {
+        font-size: 14px;
+        color: var(--ink);
+        line-height: 1.4;
+      }
+      .live-status .text strong {
+        color: var(--ok);
+        font-weight: 600;
+      }
+
+      /* CTAs */
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+      .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 15px 18px;
+        font-size: 15.5px;
+        font-weight: 600;
+        font-family: inherit;
+        border-radius: 12px;
+        border: 0;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s, transform 0.05s, border-color 0.15s;
+      }
+      .btn-primary {
+        color: #fff;
+        background: var(--accent);
+      }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-primary:active { transform: translateY(1px); }
+      .btn-secondary {
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+      .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+      /* Footer CTA — the viral surface, deliberately gentle */
+      .footer-cta {
+        margin-top: 32px;
+        padding: 20px 22px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        text-align: center;
+      }
+      .footer-cta p {
+        font-size: 14.5px;
+        color: var(--muted);
+        margin: 0 0 8px;
+        line-height: 1.5;
+      }
+      .footer-cta p strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .footer-cta a {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .footer-cta a:hover { color: var(--accent-hover); }
+
+      /* Bottom utility row */
+      .utility {
+        margin-top: 24px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .utility a {
+        color: var(--muted);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      footer {
+        text-align: center;
+        padding: 24px 22px 8px;
+        font-size: 11.5px;
+        color: #a59ea8;
+      }
+
+      /* Demo banner — strip for production */
+      .demo-banner {
+        background: #fff8ec;
+        border-bottom: 1px solid #f0e3c0;
+        text-align: center;
+        font-size: 12px;
+        color: #8a6b1f;
+        padding: 8px 16px;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-banner">
+      Mockup — recipient web view (delete banner in production)
+    </div>
+
+    <main class="page">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <p class="wordmark">HeyTelli<span class="dot">.</span></p>
+      </div>
+
+      <p class="eyebrow">Shared with you</p>
+      <h1 class="greeting">
+        <span class="accent">Sarah</span> is sharing safety info with you.
+      </h1>
+      <p class="lede">
+        She's heading out tonight and wants you to have the details. Tap
+        <strong>Got it</strong> below so she knows you've seen this.
+      </p>
+
+      <!-- Live status — appears the day-of, otherwise hidden -->
+      <div class="live-status" id="live-status">
+        <div class="dot"></div>
+        <div class="text">
+          <strong>Tonight, 7:00 PM.</strong> Sarah's check-in time is 9:00 PM.
+        </div>
+      </div>
+
+      <!-- The Date Card itself -->
+      <article class="card">
+        <header class="card-header">
+          <h2 class="card-title">Mike</h2>
+          <p class="card-eyebrow">Date Card</p>
+        </header>
+
+        <div class="field">
+          <p class="label">When</p>
+          <p class="value">
+            Thursday, Nov 14 · 7:00 PM – 10:00 PM
+          </p>
+        </div>
+
+        <div class="field">
+          <p class="label">Where</p>
+          <p class="value">
+            The Library Bar<br />
+            <span class="secondary">Williamsburg, Brooklyn</span>
+          </p>
+        </div>
+
+        <div class="field">
+          <p class="label">Getting there</p>
+          <p class="value">Uber there, Uber home</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <p class="label">Check-in</p>
+          <p class="value">
+            Sarah will text by <strong>9:00 PM</strong>.
+          </p>
+        </div>
+
+        <div class="field if-block">
+          <p class="label">If she doesn't check in</p>
+          <p class="value">
+            Call her at the venue: <strong>The Library Bar — (718) 555-0142</strong>.
+            If she still doesn't pick up, call her phone.
+          </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <p class="label">Sarah's note</p>
+          <div class="note">
+            <p>
+              "If I don't text by 11pm, please call me. Mike: 28, works at a
+              design agency in Brooklyn. He has my number; I don't have his
+              full name yet."
+            </p>
+          </div>
+        </div>
+
+        <div class="code-word">
+          <p class="label">Code word</p>
+          <p class="value">
+            If Sarah uses the word <strong>"Marigold"</strong> with you, that
+            means "call me with an emergency."
+          </p>
+        </div>
+      </article>
+
+      <div class="actions">
+        <button class="btn btn-primary" type="button">Got it</button>
+        <button class="btn btn-secondary" type="button">
+          Get reminders at check-in time
+        </button>
+      </div>
+
+      <!-- The viral surface — gentle, never pushy -->
+      <div class="footer-cta">
+        <p>
+          <strong>HeyTelli is the calmest voice in your group chat.</strong>
+          Private dating clarity, built for women.
+        </p>
+        <a href="https://heytelli.com/">Get yours →</a>
+      </div>
+
+      <p class="utility">
+        This card expires after tonight. ·
+        <a href="#">Stop receiving cards from Sarah</a>
+      </p>
+    </main>
+
+    <footer>
+      Private by default · © HeyTelli
+    </footer>
+  </body>
+</html>

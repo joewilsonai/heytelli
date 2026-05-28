@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Date Card · Sender view · HeyTelli</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#FAF7F3" />
+    <style>
+      :root {
+        --cream: #faf7f3;
+        --surface: #ffffff;
+        --ink: #2e2632;
+        --muted: #756e78;
+        --accent: #e07a5f;
+        --accent-hover: #cf6549;
+        --line: #e7e0d8;
+        --line-soft: #f0eae0;
+        --ok: #3f7d5b;
+        --ok-bg: #e8f1eb;
+        --warn: #b4543e;
+        --warn-bg: #fbe8e2;
+        --info: #5f6e8a;
+        --info-bg: #ecf0f6;
+        --tint: #f6efe6;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .phone-frame {
+        max-width: 414px;
+        margin: 0 auto;
+        background: var(--cream);
+        min-height: 100vh;
+        padding: 0 0 60px;
+      }
+
+      /* iOS-style top bar */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px 12px;
+        background: var(--cream);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .topbar .back {
+        background: none;
+        border: 0;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .topbar .back::before {
+        content: "‹";
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .topbar .title {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 15px;
+        margin: 0;
+      }
+      .topbar .more {
+        background: none;
+        border: 0;
+        color: var(--accent);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0 4px;
+        font-weight: 600;
+      }
+
+      .content {
+        padding: 20px 18px;
+      }
+
+      /* Header section */
+      .header-section {
+        margin-bottom: 18px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+      .header-section h1 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 26px;
+        line-height: 1.18;
+        letter-spacing: -0.3px;
+        margin: 0 0 4px;
+      }
+      .header-section .when {
+        font-size: 14.5px;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      /* Status pill row */
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 14px 0 20px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+      .pill.ok { background: var(--ok-bg); color: var(--ok); }
+      .pill.info { background: var(--info-bg); color: var(--info); }
+      .pill.warn { background: var(--warn-bg); color: var(--warn); }
+      .pill.muted { background: var(--tint); color: var(--muted); }
+      .pill::before {
+        content: "";
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        flex-shrink: 0;
+      }
+
+      /* Card preview — the actual Date Card */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .card-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .card-title {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 20px;
+        margin: 0;
+        letter-spacing: -0.2px;
+      }
+      .card-eyebrow {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+      .field:last-child { margin-bottom: 0; }
+      .field .label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 3px;
+      }
+      .field .value {
+        font-size: 14.5px;
+        color: var(--ink);
+        margin: 0;
+        line-height: 1.5;
+      }
+      .field .value .secondary {
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      .divider {
+        height: 1px;
+        background: var(--line-soft);
+        margin: 14px 0;
+      }
+
+      .if-block {
+        background: var(--tint);
+        border-radius: 10px;
+        padding: 11px 13px;
+        margin: 2px 0 0;
+      }
+      .if-block .label {
+        color: var(--accent);
+      }
+
+      .note {
+        background: var(--cream);
+        border-left: 3px solid var(--accent);
+        padding: 10px 12px;
+        border-radius: 0 8px 8px 0;
+      }
+      .note p {
+        margin: 0;
+        font-size: 13.5px;
+        color: var(--ink);
+        line-height: 1.5;
+        font-style: italic;
+      }
+
+      .code-word {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--line);
+      }
+      .code-word .label {
+        color: var(--accent);
+      }
+      .code-word .value strong {
+        font-family: ui-serif, Georgia, serif;
+        font-style: italic;
+        color: var(--accent);
+      }
+
+      /* Recipients section */
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 10px;
+      }
+      .recipients {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 6px;
+        margin-bottom: 20px;
+      }
+      .recipient-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--tint);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-serif, Georgia, serif;
+        font-weight: 600;
+        font-size: 15px;
+        flex-shrink: 0;
+      }
+      .recipient-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .recipient-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink);
+        margin: 0;
+      }
+      .recipient-meta {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 2px 0 0;
+      }
+      .add-recipient {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+        color: var(--accent);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        background: none;
+        border: 0;
+        width: 100%;
+        text-align: left;
+      }
+      .add-recipient .plus {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--cream);
+        border: 1px dashed var(--accent);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 400;
+        flex-shrink: 0;
+      }
+
+      /* Activity timeline */
+      .timeline {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px 18px 14px;
+        margin-bottom: 24px;
+      }
+      .timeline-item {
+        display: flex;
+        gap: 12px;
+        padding-bottom: 14px;
+        position: relative;
+      }
+      .timeline-item:last-child { padding-bottom: 0; }
+      .timeline-item:not(:last-child)::before {
+        content: "";
+        position: absolute;
+        left: 7px;
+        top: 16px;
+        bottom: 0;
+        width: 1px;
+        background: var(--line);
+      }
+      .timeline-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--surface);
+        border: 2px solid var(--accent);
+        flex-shrink: 0;
+        margin-top: 3px;
+        z-index: 1;
+        position: relative;
+      }
+      .timeline-dot.muted {
+        border-color: var(--line);
+        background: var(--surface);
+      }
+      .timeline-dot.filled {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .timeline-content {
+        flex: 1;
+        min-width: 0;
+        padding-top: 1px;
+      }
+      .timeline-text {
+        font-size: 14px;
+        color: var(--ink);
+        margin: 0;
+        line-height: 1.4;
+      }
+      .timeline-text strong { font-weight: 600; }
+      .timeline-time {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 2px 0 0;
+      }
+
+      /* Actions */
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 14px 14px;
+        font-size: 14.5px;
+        font-weight: 600;
+        font-family: inherit;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+      }
+      .btn:hover { border-color: var(--accent); color: var(--accent); }
+      .btn.danger:hover { border-color: var(--warn); color: var(--warn); }
+
+      /* Demo banner */
+      .demo-banner {
+        background: #fff8ec;
+        border-bottom: 1px solid #f0e3c0;
+        text-align: center;
+        font-size: 12px;
+        color: #8a6b1f;
+        padding: 8px 16px;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-banner">
+      Mockup — sender's in-app view (delete banner in production)
+    </div>
+
+    <div class="phone-frame">
+      <!-- iOS-style top bar -->
+      <div class="topbar">
+        <button class="back" type="button">Back</button>
+        <p class="title">Date Card</p>
+        <button class="more" type="button" aria-label="More">···</button>
+      </div>
+
+      <div class="content">
+        <!-- Header: the date this card is for -->
+        <div class="header-section">
+          <p class="eyebrow">Sent · Tonight</p>
+          <h1>Date with Mike</h1>
+          <p class="when">Thursday, Nov 14 · 7:00 PM</p>
+        </div>
+
+        <!-- Status pills -->
+        <div class="status-row">
+          <span class="pill ok">Sent · 2:08 PM</span>
+          <span class="pill ok">Viewed by Anna · 2:14 PM</span>
+          <span class="pill ok">Confirmed</span>
+        </div>
+
+        <!-- The card preview — exactly what Anna sees -->
+        <article class="card">
+          <header class="card-header">
+            <h2 class="card-title">Mike</h2>
+            <p class="card-eyebrow">Date Card</p>
+          </header>
+
+          <div class="field">
+            <p class="label">When</p>
+            <p class="value">Thursday, Nov 14 · 7:00 PM – 10:00 PM</p>
+          </div>
+
+          <div class="field">
+            <p class="label">Where</p>
+            <p class="value">
+              The Library Bar<br />
+              <span class="secondary">Williamsburg, Brooklyn</span>
+            </p>
+          </div>
+
+          <div class="field">
+            <p class="label">Getting there</p>
+            <p class="value">Uber there, Uber home</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <p class="label">Check-in</p>
+            <p class="value">I'll text by <strong>9:00 PM</strong></p>
+          </div>
+
+          <div class="field if-block">
+            <p class="label">If I don't check in</p>
+            <p class="value">
+              Call the venue: The Library Bar — (718) 555-0142. If I still don't
+              pick up, call my phone.
+            </p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <p class="label">Note</p>
+            <div class="note">
+              <p>
+                "If I don't text by 11pm, please call me. Mike: 28, works at a
+                design agency in Brooklyn. He has my number; I don't have his
+                full name yet."
+              </p>
+            </div>
+          </div>
+
+          <div class="code-word">
+            <p class="label">Code word</p>
+            <p class="value">
+              <strong>"Marigold"</strong> = call me with an emergency
+            </p>
+          </div>
+        </article>
+
+        <!-- Recipients -->
+        <p class="section-title">Shared with</p>
+        <div class="recipients">
+          <div class="recipient-row">
+            <div class="avatar">A</div>
+            <div class="recipient-info">
+              <p class="recipient-name">Anna</p>
+              <p class="recipient-meta">Viewed 2:14 PM · Confirmed</p>
+            </div>
+            <span class="pill ok">Got it</span>
+          </div>
+          <button class="add-recipient" type="button">
+            <span class="plus">+</span>
+            <span>Add someone else from your circle</span>
+          </button>
+        </div>
+
+        <!-- Activity timeline -->
+        <p class="section-title">Activity</p>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot muted"></div>
+            <div class="timeline-content">
+              <p class="timeline-text">Card created</p>
+              <p class="timeline-time">Today · 2:07 PM</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot filled"></div>
+            <div class="timeline-content">
+              <p class="timeline-text">Sent to <strong>Anna</strong></p>
+              <p class="timeline-time">Today · 2:08 PM</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot filled"></div>
+            <div class="timeline-content">
+              <p class="timeline-text">Anna opened the card</p>
+              <p class="timeline-time">Today · 2:14 PM</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot filled"></div>
+            <div class="timeline-content">
+              <p class="timeline-text">Anna tapped <strong>Got it</strong></p>
+              <p class="timeline-time">Today · 2:16 PM</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+              <p class="timeline-text">
+                Check-in time
+              </p>
+              <p class="timeline-time">Tonight · 9:00 PM</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action footer -->
+        <div class="actions">
+          <button class="btn" type="button">Edit</button>
+          <button class="btn" type="button">Share again</button>
+          <button class="btn danger" type="button">Revoke</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
