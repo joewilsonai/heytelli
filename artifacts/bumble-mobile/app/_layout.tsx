@@ -10,6 +10,7 @@ import {
   Pressable,
   Text,
   TextInput,
+  useColorScheme,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -17,6 +18,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { resolveColorScheme } from "@/constants/colors";
 import { displayFontFamily } from "@/constants/typography";
 import { getApiBaseUrl } from "@/lib/api-base";
 import {
@@ -25,6 +27,7 @@ import {
   loadAndValidateAuthSession,
   loginBetaUser,
 } from "@/lib/auth-session";
+import { UserSettingsProvider, useUserSettings } from "@/lib/use-user-settings";
 import { useColors } from "@/hooks/useColors";
 
 // API base URL — Expo bundles run outside the web proxy and need an absolute URL.
@@ -50,12 +53,15 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
+  const c = useColors();
   return (
     <Stack
       screenOptions={{
         headerBackTitle: "Back",
-        headerTitleStyle: { fontWeight: "600" },
-        headerStyle: { backgroundColor: "#FBF8F2" },
+        headerTitleStyle: { color: c.foreground, fontWeight: "600" },
+        headerStyle: { backgroundColor: c.background },
+        headerTintColor: c.foreground,
+        contentStyle: { backgroundColor: c.background },
         headerShadowVisible: false,
       }}
     >
@@ -84,6 +90,16 @@ function RootLayoutNav() {
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
     </Stack>
   );
+}
+
+function AppStatusBar() {
+  const systemScheme = useColorScheme();
+  const { settings } = useUserSettings();
+  const scheme = resolveColorScheme(
+    settings.appearance.colorScheme,
+    systemScheme,
+  );
+  return <StatusBar style={scheme === "dark" ? "light" : "dark"} />;
 }
 
 function BetaSignInScreen({
@@ -295,18 +311,20 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <StatusBar style="auto" />
-              <AuthGate>
-                <RootLayoutNav />
-              </AuthGate>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </ErrorBoundary>
+      <UserSettingsProvider>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <KeyboardProvider>
+                <AppStatusBar />
+                <AuthGate>
+                  <RootLayoutNav />
+                </AuthGate>
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </UserSettingsProvider>
     </SafeAreaProvider>
   );
 }

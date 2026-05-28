@@ -17,6 +17,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Body, Button, Card, H1, H2, SectionLabel } from "@/components/ui";
 import { FeedbackSheet } from "@/components/FeedbackSheet";
+import paletteConfig, {
+  APP_COLOR_SCHEME_OPTIONS,
+  COLOR_THEME_OPTIONS,
+  type AppColorSchemePreference,
+  type ColorThemePreference,
+} from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
 import {
   MAX_PROFILE_SCREENSHOTS,
@@ -46,6 +52,15 @@ import {
   type HeyTelliSettings,
   type TrustedCirclePerson,
 } from "@/lib/user-settings";
+
+const COLOR_SCHEME_ICONS: Record<
+  AppColorSchemePreference,
+  keyof typeof Feather.glyphMap
+> = {
+  system: "smartphone",
+  light: "sun",
+  dark: "moon",
+};
 
 export default function SettingsScreen() {
   const c = useColors();
@@ -129,6 +144,25 @@ export default function SettingsScreen() {
         ...next,
       },
     }));
+  };
+
+  const updateAppearance = (next: Partial<HeyTelliSettings["appearance"]>) => {
+    setDraft((current) => ({
+      ...current,
+      appearance: {
+        ...current.appearance,
+        ...next,
+      },
+    }));
+    void setSettings((current) => ({
+      ...current,
+      appearance: {
+        ...current.appearance,
+        ...next,
+      },
+    })).catch((error: any) => {
+      Alert.alert("Couldn't save appearance", error?.message ?? "Try again.");
+    });
   };
 
   const toggleStorePhone = (storePhone: boolean) => {
@@ -402,6 +436,24 @@ export default function SettingsScreen() {
           <OsStatusTile key={tile.label} {...tile} />
         ))}
       </View>
+
+      <Card>
+        <SectionLabel>Appearance</SectionLabel>
+        <H2 style={{ fontSize: 18 }}>Light mode</H2>
+        <Body muted style={{ marginTop: 4 }}>
+          Choose a color mode and palette for the app.
+        </Body>
+        <View style={{ gap: 12, marginTop: 12 }}>
+          <AppearanceModePicker
+            value={draft.appearance.colorScheme}
+            onChange={(colorScheme) => updateAppearance({ colorScheme })}
+          />
+          <ColorThemePicker
+            value={draft.appearance.colorTheme}
+            onChange={(colorTheme) => updateAppearance({ colorTheme })}
+          />
+        </View>
+      </Card>
 
       <Card>
         <SectionLabel>My Dating Profile</SectionLabel>
@@ -775,6 +827,151 @@ function ReviewBlock({
           </View>
         ))
       )}
+    </View>
+  );
+}
+
+function AppearanceModePicker({
+  value,
+  onChange,
+}: {
+  value: AppColorSchemePreference;
+  onChange: (next: AppColorSchemePreference) => void;
+}) {
+  const c = useColors();
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ color: c.foreground, fontSize: 14, fontWeight: "700" }}>
+        Light mode
+      </Text>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {APP_COLOR_SCHEME_OPTIONS.map((option) => {
+          const selected = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityLabel={`${option.label} mode`}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                onChange(option.value);
+              }}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 58,
+                borderWidth: 1,
+                borderColor: selected ? c.primary : c.border,
+                borderRadius: 12,
+                backgroundColor: selected ? c.secondary : c.background,
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <Feather
+                name={COLOR_SCHEME_ICONS[option.value]}
+                size={16}
+                color={selected ? c.primary : c.mutedForeground}
+              />
+              <Text
+                style={{
+                  color: selected ? c.foreground : c.mutedForeground,
+                  fontSize: 12,
+                  fontWeight: "700",
+                }}
+                numberOfLines={1}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function ColorThemePicker({
+  value,
+  onChange,
+}: {
+  value: ColorThemePreference;
+  onChange: (next: ColorThemePreference) => void;
+}) {
+  const c = useColors();
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ color: c.foreground, fontSize: 14, fontWeight: "700" }}>
+        Color theme
+      </Text>
+      <View style={{ gap: 8 }}>
+        {COLOR_THEME_OPTIONS.map((option) => {
+          const selected = value === option.value;
+          const theme = paletteConfig.themes[option.value];
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityLabel={`${option.label} color theme`}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                onChange(option.value);
+              }}
+              style={({ pressed }) => ({
+                minHeight: 54,
+                borderWidth: 1,
+                borderColor: selected ? c.primary : c.border,
+                borderRadius: 12,
+                backgroundColor: selected ? c.secondary : c.background,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <View
+                style={{
+                  width: 46,
+                  height: 28,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  flexDirection: "row",
+                  borderWidth: 1,
+                  borderColor: c.border,
+                }}
+              >
+                <View
+                  style={{ flex: 1, backgroundColor: theme.light.primary }}
+                />
+                <View
+                  style={{ flex: 1, backgroundColor: theme.light.accent }}
+                />
+                <View
+                  style={{ flex: 1, backgroundColor: theme.dark.background }}
+                />
+              </View>
+              <Text
+                style={{
+                  flex: 1,
+                  color: selected ? c.foreground : c.mutedForeground,
+                  fontSize: 14,
+                  fontWeight: "700",
+                }}
+              >
+                {option.label}
+              </Text>
+              {selected ? (
+                <Feather name="check" size={17} color={c.primary} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }

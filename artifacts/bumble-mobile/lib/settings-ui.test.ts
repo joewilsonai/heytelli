@@ -26,6 +26,11 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /cardLabelPreference/);
   assert.match(screen, /MAX_TRUSTED_CIRCLE_PEOPLE/);
   assert.match(screen, /Date Safety Defaults/);
+  assert.match(screen, /Appearance/);
+  assert.match(screen, /Light mode/);
+  assert.match(screen, /Color theme/);
+  assert.match(screen, /updateAppearance/);
+  assert.match(screen, /setSettings\(\(current\)/);
   assert.match(screen, /Build changelog/);
   assert.match(screen, /getLatestBuildChangelog/);
   assert.match(screen, /Add from Contacts/);
@@ -92,6 +97,7 @@ test("settings route is registered and reachable from home", () => {
   const layout = read("../app/_layout.tsx");
   const home = read("../app/index.tsx");
 
+  assert.match(layout, /UserSettingsProvider/);
   assert.match(layout, /name="settings"/);
   assert.match(home, /href="\/settings"/);
   assert.match(home, /accessibilityLabel="My dating OS"/);
