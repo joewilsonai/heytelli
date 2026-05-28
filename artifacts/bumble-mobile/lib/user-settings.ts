@@ -1,3 +1,9 @@
+import {
+  normalizeColorSchemePreference,
+  normalizeColorThemePreference,
+  type AppColorSchemePreference,
+  type ColorThemePreference,
+} from "../constants/colors.ts";
 import type { DateSafetyPlan } from "./date-safety-plan.ts";
 import {
   getCirclePersonCardLabel,
@@ -37,7 +43,13 @@ export type DateSafetyDefaults = {
   storePhone: boolean;
 };
 
+export type AppearanceSettings = {
+  colorScheme: AppColorSchemePreference;
+  colorTheme: ColorThemePreference;
+};
+
 export type HeyTelliSettings = {
+  appearance: AppearanceSettings;
   datingProfile: DatingProfileSettings;
   trustedCircle: TrustedCirclePerson[];
   dateSafetyDefaults: DateSafetyDefaults;
@@ -59,6 +71,10 @@ export type ProfileReview = {
 export const MAX_TRUSTED_CIRCLE_PEOPLE = 3;
 
 export const DEFAULT_HEYTELLI_SETTINGS: HeyTelliSettings = {
+  appearance: {
+    colorScheme: "system",
+    colorTheme: "heytelli",
+  },
   datingProfile: {
     profileText: "",
     lookingFor: "",
@@ -186,6 +202,12 @@ export function mergeSettings(
   value: Partial<HeyTelliSettings> | null | undefined,
 ): HeyTelliSettings {
   return {
+    appearance: {
+      colorScheme: normalizeColorSchemePreference(
+        value?.appearance?.colorScheme,
+      ),
+      colorTheme: normalizeColorThemePreference(value?.appearance?.colorTheme),
+    },
     datingProfile: {
       ...DEFAULT_HEYTELLI_SETTINGS.datingProfile,
       ...(value?.datingProfile ?? {}),

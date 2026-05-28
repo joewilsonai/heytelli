@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import {
   DEFAULT_HEYTELLI_SETTINGS,
@@ -10,7 +10,17 @@ import {
 
 const SETTINGS_KEY = "heytelli:user-settings:v1";
 
-export function useUserSettings() {
+type UserSettingsValue = {
+  settings: HeyTelliSettings;
+  setSettings: (
+    next: HeyTelliSettings | ((current: HeyTelliSettings) => HeyTelliSettings),
+  ) => Promise<HeyTelliSettings>;
+  loading: boolean;
+};
+
+const UserSettingsContext = React.createContext<UserSettingsValue | null>(null);
+
+function useUserSettingsState(): UserSettingsValue {
   const [settings, setSettingsState] = useState<HeyTelliSettings>(
     DEFAULT_HEYTELLI_SETTINGS,
   );
@@ -53,8 +63,9 @@ export function useUserSettings() {
         | HeyTelliSettings
         | ((current: HeyTelliSettings) => HeyTelliSettings),
     ) => {
-      const resolved =
-        typeof next === "function" ? next(settings) : mergeSettings(next);
+      const resolved = mergeSettings(
+        typeof next === "function" ? next(settings) : next,
+      );
       const privacySafe = resolved.dateSafetyDefaults.storePhone
         ? resolved
         : stripStoredCirclePhoneNumbers(resolved);
@@ -66,4 +77,21 @@ export function useUserSettings() {
   );
 
   return { settings, setSettings, loading };
+}
+
+export function UserSettingsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const value = useUserSettingsState();
+  return React.createElement(UserSettingsContext.Provider, { value }, children);
+}
+
+export function useUserSettings(): UserSettingsValue {
+  const context = useContext(UserSettingsContext);
+  if (!context) {
+    throw new Error("useUserSettings must be used within UserSettingsProvider");
+  }
+  return context;
 }

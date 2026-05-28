@@ -8,6 +8,7 @@ import {
   buildProfileReview,
   getPrimaryCirclePerson,
   getTrustedCirclePeople,
+  mergeSettings,
   sanitizeCircleContact,
   stripStoredCirclePhoneNumbers,
 } from "./user-settings.ts";
@@ -23,6 +24,21 @@ test("defaults keep trusted circle local and date-card focused", () => {
     180,
   );
   assert.equal(DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults.storePhone, false);
+});
+
+test("appearance settings default to system mode and preserve color theme choices", () => {
+  assert.equal(DEFAULT_HEYTELLI_SETTINGS.appearance.colorScheme, "system");
+  assert.equal(DEFAULT_HEYTELLI_SETTINGS.appearance.colorTheme, "heytelli");
+
+  const settings = mergeSettings({
+    appearance: {
+      colorScheme: "light",
+      colorTheme: "ocean",
+    },
+  });
+
+  assert.equal(settings.appearance.colorScheme, "light");
+  assert.equal(settings.appearance.colorTheme, "ocean");
 });
 
 test("sanitizes picked contacts to first name and does not keep phone numbers by default", () => {

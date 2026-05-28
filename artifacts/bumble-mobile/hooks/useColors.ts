@@ -1,8 +1,11 @@
 import { useColorScheme } from "react-native";
 
-import colors from "@/constants/colors";
+import colors, {
+  resolveColorPalette,
+  type ColorPalette,
+} from "@/constants/colors";
+import { useUserSettings } from "@/lib/use-user-settings";
 
-type ColorPalette = typeof colors.light;
 type ColorTokens = ColorPalette & { radius: typeof colors.radius };
 
 /**
@@ -11,15 +14,16 @@ type ColorTokens = ColorPalette & { radius: typeof colors.radius };
  * The returned object contains all color tokens for the active palette
  * plus scheme-independent values like `radius`.
  *
- * Falls back to the light palette when no dark key is defined in
- * constants/colors.ts (the scaffold ships light-only by default).
- * When a sibling web artifact's dark tokens are synced into a `dark`
- * key, this hook will automatically switch palettes based on the
- * device's appearance setting.
+ * Uses the saved Settings appearance preference when present, and otherwise
+ * follows the device appearance setting.
  */
 export function useColors(): ColorTokens {
-  const scheme = useColorScheme();
-  const palette: ColorPalette =
-    scheme === "dark" ? colors.dark : colors.light;
+  const systemScheme = useColorScheme();
+  const { settings } = useUserSettings();
+  const palette = resolveColorPalette({
+    colorScheme: settings.appearance.colorScheme,
+    colorTheme: settings.appearance.colorTheme,
+    systemScheme,
+  });
   return { ...palette, radius: colors.radius };
 }
