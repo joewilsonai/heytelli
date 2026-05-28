@@ -2,6 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File, Paths } from "expo-file-system";
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  resolveStoredLocalMatchPhotoUri,
+  serializeLocalMatchPhotoUriForStorage,
+} from "./local-match-photo-paths.ts";
+
 const LOCAL_MATCH_PHOTO_DIR = "heytelli-match-photos";
 export const LOCAL_MATCH_PHOTO_STORAGE_KEY = "heytelli:local-match-photos:v1";
 
@@ -37,31 +42,6 @@ function canReadLocalPhoto(uri: string): boolean {
   }
 }
 
-function localPhotoFileName(uri: string): string | null {
-  const withoutQuery = uri.split(/[?#]/)[0] ?? "";
-  const fileName = withoutQuery.split("/").filter(Boolean).pop();
-  if (!fileName || !/^match_[^/]+\.(?:jpe?g|png|webp|heic)$/i.test(fileName)) {
-    return null;
-  }
-  try {
-    return decodeURIComponent(fileName);
-  } catch {
-    return fileName;
-  }
-}
-
-function remapLocalMatchPhotoUri(uri: string): string | null {
-  if (canReadLocalPhoto(uri)) return uri;
-  const fileName = localPhotoFileName(uri);
-  if (!fileName) return null;
-  try {
-    const file = new File(matchPhotoDir(), fileName);
-    return file.exists ? file.uri : null;
-  } catch {
-    return null;
-  }
-}
-
 function deleteLocalMatchPhotoFile(uri: string | null | undefined): void {
   if (!uri) return;
   const directory = matchPhotoDir();
@@ -83,12 +63,26 @@ function notifyLocalMatchPhotoListeners(photos: LocalMatchPhotoMap): void {
 export function pruneMissingLocalMatchPhotos(
   photos: LocalMatchPhotoMap,
 ): LocalMatchPhotoMap {
+  const directory = matchPhotoDir();
   const next: LocalMatchPhotoMap = {};
   for (const [id, uri] of Object.entries(photos)) {
-    const currentUri = uri ? remapLocalMatchPhotoUri(uri) : null;
+    const currentUri = uri
+      ? resolveStoredLocalMatchPhotoUri(uri, directory.uri, canReadLocalPhoto)
+      : null;
     if (currentUri) {
       next[id] = currentUri;
     }
+  }
+  return next;
+}
+
+function serializeLocalMatchPhotosForStorage(
+  photos: LocalMatchPhotoMap,
+): LocalMatchPhotoMap {
+  const directory = matchPhotoDir();
+  const next: LocalMatchPhotoMap = {};
+  for (const [id, uri] of Object.entries(photos)) {
+    next[id] = serializeLocalMatchPhotoUriForStorage(uri, directory.uri);
   }
   return next;
 }
@@ -119,7 +113,7 @@ async function writeLocalMatchPhotos(
   const pruned = pruneMissingLocalMatchPhotos(photos);
   await AsyncStorage.setItem(
     LOCAL_MATCH_PHOTO_STORAGE_KEY,
-    JSON.stringify(pruned),
+    JSON.stringify(serializeLocalMatchPhotosForStorage(pruned)),
   );
   notifyLocalMatchPhotoListeners(pruned);
   return pruned;
