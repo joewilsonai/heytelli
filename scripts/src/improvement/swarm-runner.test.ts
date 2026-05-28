@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildSwarmDigest,
+  buildSwarmBreakdownComment,
   buildSwarmPlanComment,
   planSwarmWorkItem,
   parseSwarmArgs,
@@ -22,6 +23,11 @@ const baseWorkItem = {
   status: "issue_created" as const,
   githubIssueNumber: 12,
   githubIssueUrl: "https://github.com/joewilsonai/heytelli/issues/12",
+  fingerprint: "settings-feedback-confusing-button",
+  signalIds: [101],
+  impactScore: 2,
+  confidenceScore: 3,
+  frequencyCount: 1,
 };
 
 const baseIssue = {
@@ -93,6 +99,96 @@ test("uses GitHub issue labels as risk and priority overrides", () => {
   assert.equal(result.plan.autoMergePolicy.allowed, false);
 });
 
+test("breaks broad agent-ready issues into child PR-sized work items", () => {
+  const result = planSwarmWorkItem(
+    {
+      ...baseWorkItem,
+      title: "Feedback: safe date flow needs end-to-end polish",
+      summary: [
+        "Safe date flow needs several coordinated changes:",
+        "- Add backend storage for selected date templates.",
+        "- Add mobile UI for choosing a template and editing the date card.",
+        "- Add automation coverage so TestFlight builds verify the flow.",
+      ].join("\n"),
+    },
+    {
+      ...baseIssue,
+      title: "Feedback: safe date flow needs end-to-end polish",
+      labels: [...baseIssue.labels, "needs-breakdown"],
+    },
+  );
+
+  assert.equal(result.status, "needs-breakdown");
+  if (result.status !== "needs-breakdown") return;
+  assert.equal(result.workItemId, 7);
+  assert.equal(result.issueNumber, 12);
+  assert.equal(result.children.length, 3);
+  assert.deepEqual(
+    result.children.map((child) => child.title),
+    [
+      "Safe date flow: Add backend storage for selected date templates",
+      "Safe date flow: Add mobile UI for choosing a template and editing the date card",
+      "Safe date flow: Add automation coverage so TestFlight builds verify the flow",
+    ],
+  );
+  assert.deepEqual(
+    result.children.map((child) => child.fingerprint),
+    [
+      "settings-feedback-confusing-button:child:1",
+      "settings-feedback-confusing-button:child:2",
+      "settings-feedback-confusing-button:child:3",
+    ],
+  );
+  for (const child of result.children) {
+    assert.equal(child.status, "draft");
+    assert.equal(child.riskTier, "safe_auto_merge");
+    assert.equal(child.githubIssueDraft.labels.includes("agent-ready"), true);
+    assert.equal(
+      child.githubIssueDraft.labels.includes("needs-breakdown"),
+      false,
+    );
+    assert.match(child.githubIssueDraft.body, /Parent issue: #12/);
+    assert.match(child.githubIssueDraft.body, /PR-sized child issue/);
+    assert.doesNotMatch(
+      child.githubIssueDraft.body,
+      /screenshots|transcripts|phone numbers|raw dating details/i,
+    );
+  }
+});
+
+test("builds a parent breakdown comment without private implementation details", () => {
+  const result = planSwarmWorkItem(
+    {
+      ...baseWorkItem,
+      title: "Feedback: safe date flow needs end-to-end polish",
+      summary: [
+        "Safe date flow needs several coordinated changes:",
+        "- Add backend storage for selected date templates.",
+        "- Add mobile UI for choosing a template and editing the date card.",
+      ].join("\n"),
+    },
+    {
+      ...baseIssue,
+      title: "Feedback: safe date flow needs end-to-end polish",
+      labels: [...baseIssue.labels, "needs-breakdown"],
+    },
+  );
+  assert.equal(result.status, "needs-breakdown");
+  if (result.status !== "needs-breakdown") return;
+
+  const comment = buildSwarmBreakdownComment(result, [
+    "https://github.com/joewilsonai/heytelli/issues/21",
+    "https://github.com/joewilsonai/heytelli/issues/22",
+  ]);
+
+  assert.match(comment, /HeyTelli swarm breakdown/);
+  assert.match(comment, /Parent work item: #7/);
+  assert.match(comment, /#21/);
+  assert.match(comment, /#22/);
+  assert.match(comment, /heytelli-swarm-breakdown:7:12/);
+  assert.doesNotMatch(comment, /selected date templates|editing the date card/);
+});
+
 test("builds a privacy-safe issue comment for the planned swarm", () => {
   const result = planSwarmWorkItem(baseWorkItem, baseIssue);
   assert.equal(result.status, "planned");
@@ -159,6 +255,8 @@ test("digest reports swarm label side effects", () => {
     commentsCreated: 1,
     agentReadyLabelsRemoved: 1,
     swarmLabelsAdded: 2,
+    breakdownsCreated: 0,
+    childIssuesCreated: 0,
     dbUpdated: 1,
     dryRun: false,
   };
