@@ -6,7 +6,7 @@
     <title>HeyTelli — private dating clarity, built for women</title>
     <meta
       name="description"
-      content="HeyTelli helps you remember the conversations, prepare for the dates, and trust your own read — privately, on your phone. Join the beta."
+      content="HeyTelli is the smartest, calmest friend in your group chat — a private memory layer for modern dating. Built for women. Join the beta."
     />
     <meta name="theme-color" content="#FAF7F3" />
 
@@ -14,7 +14,7 @@
     <meta property="og:title" content="HeyTelli — the calmest voice in your group chat" />
     <meta
       property="og:description"
-      content="Private dating clarity, built for women. Join the beta."
+      content="A private memory layer for modern dating, built for women. Join the beta."
     />
     <meta property="og:type" content="website" />
 
@@ -49,29 +49,51 @@
         color: var(--ink);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, Arial, sans-serif;
-        line-height: 1.55;
+        line-height: 1.6;
         -webkit-font-smoothing: antialiased;
-        display: flex;
-        flex-direction: column;
-        min-height: 100%;
       }
 
-      .page {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 22px;
-      }
-
-      .card {
+      /* ----------------------------------------------------------------
+         Layout primitives
+         ---------------------------------------------------------------- */
+      .container {
         width: 100%;
-        max-width: 540px;
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 0 22px;
+      }
+
+      .hero {
+        padding: 56px 22px 8px;
         text-align: center;
       }
 
+      .section {
+        padding: 64px 22px;
+      }
+
+      @media (min-width: 720px) {
+        .hero {
+          padding-top: 80px;
+        }
+        .section {
+          padding: 88px 22px;
+        }
+      }
+
+      .rule {
+        border: 0;
+        height: 1px;
+        background: var(--line);
+        width: 80px;
+        margin: 0 auto;
+      }
+
+      /* ----------------------------------------------------------------
+         Hero
+         ---------------------------------------------------------------- */
       .brand {
-        margin: 0 0 48px;
+        margin: 0 0 36px;
       }
       .mark {
         display: block;
@@ -88,7 +110,6 @@
         color: var(--ink);
         margin: 0;
       }
-
       .wordmark .dot {
         color: var(--accent);
       }
@@ -100,6 +121,9 @@
         line-height: 1.12;
         letter-spacing: -0.5px;
         margin: 0 0 18px;
+        max-width: 560px;
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .subhead {
@@ -109,6 +133,16 @@
         max-width: 440px;
       }
 
+      .reassure {
+        margin: 22px auto 0;
+        max-width: 420px;
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+
+      /* ----------------------------------------------------------------
+         Form
+         ---------------------------------------------------------------- */
       form {
         display: flex;
         flex-direction: column;
@@ -120,7 +154,7 @@
       .field {
         width: 100%;
         padding: 15px 16px;
-        font-size: 16px; /* >=16px avoids iOS zoom-on-focus */
+        font-size: 16px;
         font-family: inherit;
         color: var(--ink);
         background: var(--surface);
@@ -128,11 +162,9 @@
         border-radius: 12px;
         transition: border-color 0.15s, box-shadow 0.15s;
       }
-
       .field::placeholder {
         color: #a59ea8;
       }
-
       .field:focus {
         outline: none;
         border-color: var(--accent);
@@ -151,25 +183,15 @@
         cursor: pointer;
         transition: background 0.15s, transform 0.05s;
       }
-
       button:hover {
         background: var(--accent-hover);
       }
-
       button:active {
         transform: translateY(1px);
       }
-
       button:disabled {
         opacity: 0.6;
         cursor: default;
-      }
-
-      .reassure {
-        margin: 22px auto 0;
-        max-width: 400px;
-        font-size: 13.5px;
-        color: var(--muted);
       }
 
       .status {
@@ -177,111 +199,213 @@
         margin-top: 16px;
         font-size: 14px;
       }
-
       .status.ok {
         color: var(--ok);
       }
-
       .status.err {
         color: var(--err);
       }
 
-      /* success state */
       .success {
         display: none;
         animation: rise 0.4s ease;
       }
-
       .success h2 {
         font-family: ui-serif, Georgia, "Times New Roman", serif;
         font-weight: 600;
-        font-size: clamp(26px, 6vw, 34px);
-        margin: 0 0 12px;
+        font-size: clamp(24px, 5vw, 30px);
+        margin: 0 0 10px;
       }
-
       .success p {
         color: var(--muted);
         margin: 0 auto;
         max-width: 380px;
       }
-
-      .share {
-        margin-top: 24px;
-        font-size: 14px;
-      }
-
-      .share button {
-        margin-top: 8px;
-        background: transparent;
-        color: var(--accent);
-        border: 1px solid var(--line);
-        font-weight: 500;
-      }
-
-      .share button:hover {
-        background: #fff;
-        border-color: var(--accent);
-      }
-
       @keyframes rise {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
       }
-
       @media (prefers-reduced-motion: reduce) {
-        .success {
-          animation: none;
-        }
-        button:active {
-          transform: none;
-        }
+        .success { animation: none; }
+        button:active { transform: none; }
+      }
+      @media (min-width: 560px) {
+        form { flex-direction: row; }
+        .field { flex: 1; }
+        button { white-space: nowrap; }
       }
 
+      /* ----------------------------------------------------------------
+         Section typography
+         ---------------------------------------------------------------- */
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 14px;
+      }
+
+      h2.section-title {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(24px, 5.5vw, 34px);
+        line-height: 1.18;
+        letter-spacing: -0.3px;
+        margin: 0 0 18px;
+      }
+
+      .section p {
+        font-size: 16.5px;
+        color: var(--ink);
+        margin: 0 0 16px;
+      }
+      .section p.muted {
+        color: var(--muted);
+      }
+
+      /* ----------------------------------------------------------------
+         How it works — steps
+         ---------------------------------------------------------------- */
+      .steps {
+        margin-top: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .step {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      .step-number {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        font-family: ui-serif, Georgia, serif;
+        font-weight: 600;
+        font-size: 16px;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .step h3 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 19px;
+        margin: 4px 0 6px;
+        line-height: 1.3;
+      }
+      .step p {
+        font-size: 15.5px;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      /* ----------------------------------------------------------------
+         Anti-list ("what it isn't")
+         ---------------------------------------------------------------- */
+      .anti-list {
+        margin: 24px 0 16px;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .anti-list li {
+        padding-left: 20px;
+        position: relative;
+        font-size: 16px;
+      }
+      .anti-list li::before {
+        content: "—";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .anti-list strong {
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .anti-list span {
+        color: var(--muted);
+      }
+
+      /* ----------------------------------------------------------------
+         Privacy blocks
+         ---------------------------------------------------------------- */
+      .privacy {
+        margin-top: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .privacy-item h3 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 17px;
+        margin: 0 0 4px;
+      }
+      .privacy-item p {
+        margin: 0;
+        font-size: 15.5px;
+        color: var(--muted);
+      }
+
+      /* ----------------------------------------------------------------
+         Second CTA section
+         ---------------------------------------------------------------- */
+      .cta {
+        background: transparent;
+        text-align: center;
+      }
+      .cta .container {
+        max-width: 540px;
+      }
+      .cta form {
+        margin-top: 24px;
+      }
+      .cta p.muted {
+        max-width: 440px;
+        margin: 0 auto 6px;
+      }
+
+      /* ----------------------------------------------------------------
+         Footer
+         ---------------------------------------------------------------- */
       footer {
         text-align: center;
-        padding: 22px;
+        padding: 28px 22px 36px;
         font-size: 12px;
         color: #a59ea8;
-      }
-
-      @media (min-width: 560px) {
-        form {
-          flex-direction: row;
-        }
-        .field {
-          flex: 1;
-        }
-        button {
-          white-space: nowrap;
-        }
       }
     </style>
   </head>
   <body>
-    <main class="page">
-      <div class="card">
+    <!-- ====================== HERO ====================== -->
+    <header class="hero">
+      <div class="container">
         <div class="brand">
           <img class="mark" src="icon.svg" width="56" height="56" alt="HeyTelli logo" />
           <p class="wordmark">HeyTelli<span class="dot">.</span></p>
         </div>
 
-        <!-- Signup view -->
-        <div id="signup-view">
+        <div id="hero-signup">
           <h1>The calmest voice in your group chat.</h1>
           <p class="subhead">
             HeyTelli helps you remember the conversations, prepare for the
             dates, and trust your own read — privately, on your phone.
           </p>
 
-          <form id="signup-form" novalidate>
+          <form class="signup-form" data-form="hero" novalidate>
             <input
-              id="email"
               class="field"
               type="email"
               name="email"
@@ -291,10 +415,9 @@
               aria-label="Email address"
               required
             />
-            <button id="submit-btn" type="submit">Request beta access</button>
+            <button type="submit">Request beta access</button>
           </form>
-
-          <p class="status" id="status" role="alert" aria-live="polite"></p>
+          <p class="status" data-status="hero" role="alert" aria-live="polite"></p>
 
           <p class="reassure">
             Built for women. We never rate or judge anyone. Your screenshots and
@@ -302,119 +425,277 @@
           </p>
         </div>
 
-        <!-- Success view -->
-        <div class="success" id="success-view">
+        <div class="success" data-success="hero">
           <h2>You're on the list.</h2>
           <p>
             We'll email your TestFlight invite when your spot opens. Keep an eye
             on your inbox.
           </p>
-          <div class="share" id="share-block" hidden>
-            <span>Want in sooner? Share your invite link.</span><br />
-            <button type="button" id="copy-btn">Copy my link</button>
+        </div>
+      </div>
+    </header>
+
+    <hr class="rule" />
+
+    <!-- ====================== WHAT IT IS ====================== -->
+    <section class="section" id="what">
+      <div class="container">
+        <p class="eyebrow">What HeyTelli is</p>
+        <h2 class="section-title">A private memory for modern dating.</h2>
+        <p>
+          You already do this. You screenshot the chat. You send the profile to
+          the group chat. You debrief the date in the car. You compare what felt
+          right at first to what feels right now.
+        </p>
+        <p class="muted">
+          HeyTelli organizes that — quietly, on your phone, just for you. The
+          smartest, calmest friend in your group chat: the one who remembers
+          everything.
+        </p>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ====================== HOW IT WORKS ====================== -->
+    <section class="section" id="how">
+      <div class="container">
+        <p class="eyebrow">How it works</p>
+        <h2 class="section-title">Three quiet steps.</h2>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <div>
+              <h3>Share a screenshot.</h3>
+              <p>
+                Open Photos. Share a profile or chat to HeyTelli — no logins
+                inside the dating app, nothing to set up.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div>
+              <h3>It becomes a private read.</h3>
+              <p>
+                HeyTelli reads the details, threads the conversation, and
+                surfaces the patterns you'd notice yourself if you had the time.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div>
+              <h3>Reflect, prep, decide.</h3>
+              <p>
+                A calm timeline of who said what when. Gentle prep before a
+                date. A chat assistant when you want to think out loud. Every
+                decision stays yours.
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </main>
+    </section>
 
-    <footer>Private by default · © <span id="year"></span> HeyTelli</footer>
+    <hr class="rule" />
+
+    <!-- ====================== WHAT IT ISN'T ====================== -->
+    <section class="section" id="not">
+      <div class="container">
+        <p class="eyebrow">What HeyTelli isn't</p>
+        <h2 class="section-title">Some things this is <em>not</em>.</h2>
+        <p class="muted">We're careful about what HeyTelli is not.</p>
+
+        <ul class="anti-list">
+          <li>
+            <strong>Not a rate-men board.</strong>
+            <span> We will never host a public review of anyone.</span>
+          </li>
+          <li>
+            <strong>Not a danger detector.</strong>
+            <span> We don't label people "safe" or "unsafe."</span>
+          </li>
+          <li>
+            <strong>Not a friend dossier or gossip network.</strong>
+            <span> There is no shared profile of anyone in here.</span>
+          </li>
+          <li>
+            <strong>Not surveillance.</strong>
+            <span>
+              HeyTelli only knows what you put in, and only ever shows it to
+              you.
+            </span>
+          </li>
+        </ul>
+
+        <p class="muted">
+          HeyTelli helps you understand your own situation. It never makes
+          claims about someone else.
+        </p>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ====================== PRIVACY ====================== -->
+    <section class="section" id="privacy">
+      <div class="container">
+        <p class="eyebrow">Privacy, in plain words</p>
+        <h2 class="section-title">What "private" actually means here.</h2>
+
+        <div class="privacy">
+          <div class="privacy-item">
+            <h3>Raw screenshots are temporary.</h3>
+            <p>
+              Screenshots are used to build your read, then purged when the app
+              no longer needs the raw image.
+            </p>
+          </div>
+          <div class="privacy-item">
+            <h3>Date Cards share only what helps you stay safe.</h3>
+            <p>
+              First name, time, location, transport, check-in, expected end, an
+              optional code word, and your own note — no photos, no
+              conversations.
+            </p>
+          </div>
+          <div class="privacy-item">
+            <h3>Your circle stays local.</h3>
+            <p>
+              Trusted contacts live on your phone, not in our database. We only
+              read your contacts when you choose to add one.
+            </p>
+          </div>
+          <div class="privacy-item">
+            <h3>Delete a match, delete the history.</h3>
+            <p>
+              Removing a connection removes its chat, screenshots, notes,
+              timeline, and saved safety data — fully, not just hidden.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ====================== SECOND CTA ====================== -->
+    <section class="section cta" id="join">
+      <div class="container">
+        <p class="eyebrow">Join the beta</p>
+        <h2 class="section-title">Get on the list.</h2>
+        <p class="muted">
+          Beta access rolls out via TestFlight on iPhone. Add your email and
+          we'll send your invite when your spot opens.
+        </p>
+
+        <div id="bottom-signup">
+          <form class="signup-form" data-form="bottom" novalidate>
+            <input
+              class="field"
+              type="email"
+              name="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="you@email.com"
+              aria-label="Email address"
+              required
+            />
+            <button type="submit">Request beta access</button>
+          </form>
+          <p class="status" data-status="bottom" role="alert" aria-live="polite"></p>
+        </div>
+
+        <div class="success" data-success="bottom">
+          <h2>You're on the list.</h2>
+          <p>Watch your inbox for your TestFlight invite.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Private by default · © <span id="year"></span> HeyTelli
+    </footer>
 
     <script>
       // ---------------------------------------------------------------------
-      // CONFIG — replace with your GetWaitlist numeric waitlist ID.
-      // Find it in your GetWaitlist dashboard (widget/embed snippet:
-      // `waitlist_id: 12345`). This is a PUBLIC id and safe to ship.
-      // Do NOT put your secret API key here.
+      // CONFIG — public GetWaitlist waitlist ID. Safe to expose; do not put
+      // any secret API key here.
       // ---------------------------------------------------------------------
-      const WAITLIST_ID = 32856; // GetWaitlist waitlist ID
-
+      const WAITLIST_ID = 32856;
       const SIGNUP_ENDPOINT = "https://api.getwaitlist.com/api/v1/signup";
 
-      const form = document.getElementById("signup-form");
-      const emailInput = document.getElementById("email");
-      const submitBtn = document.getElementById("submit-btn");
-      const statusEl = document.getElementById("status");
-      const signupView = document.getElementById("signup-view");
-      const successView = document.getElementById("success-view");
-      const shareBlock = document.getElementById("share-block");
-      const copyBtn = document.getElementById("copy-btn");
-
       document.getElementById("year").textContent = new Date().getFullYear();
-
-      function setStatus(msg, kind) {
-        statusEl.textContent = msg;
-        statusEl.className = "status" + (kind ? " " + kind : "");
-      }
 
       function isValidEmail(value) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
       }
 
-      let referralLink = "";
+      function wireForm(formEl) {
+        const key = formEl.dataset.form;
+        const statusEl = document.querySelector(`[data-status="${key}"]`);
+        const successEl = document.querySelector(`[data-success="${key}"]`);
+        const wrapperEl = formEl.closest("[id$=-signup]");
+        const submitBtn = formEl.querySelector("button[type=submit]");
+        const emailInput = formEl.querySelector("input[type=email]");
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const email = emailInput.value.trim();
-
-        if (!isValidEmail(email)) {
-          setStatus("Please enter a valid email address.", "err");
-          emailInput.focus();
-          return;
+        function setStatus(msg, kind) {
+          statusEl.textContent = msg;
+          statusEl.className = "status" + (kind ? " " + kind : "");
         }
 
-        if (!WAITLIST_ID) {
-          setStatus(
-            "Signups aren't connected yet. (Set WAITLIST_ID in index.html.)",
-            "err",
-          );
-          return;
-        }
+        formEl.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = emailInput.value.trim();
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Adding you…";
-        setStatus("", "");
-
-        try {
-          const res = await fetch(SIGNUP_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: email,
-              waitlist_id: WAITLIST_ID,
-              referral_link: window.location.href,
-            }),
-          });
-
-          if (!res.ok) {
-            throw new Error("Signup failed with status " + res.status);
+          if (!isValidEmail(email)) {
+            setStatus("Please enter a valid email address.", "err");
+            emailInput.focus();
+            return;
+          }
+          if (!WAITLIST_ID) {
+            setStatus(
+              "Signups aren't connected yet. (Set WAITLIST_ID in index.html.)",
+              "err",
+            );
+            return;
           }
 
-          const data = await res.json().catch(() => ({}));
-          referralLink = data && data.referral_link ? data.referral_link : "";
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Adding you…";
+          setStatus("", "");
 
-          signupView.style.display = "none";
-          successView.style.display = "block";
-          if (referralLink) shareBlock.hidden = false;
-        } catch (err) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Request beta access";
-          setStatus(
-            "Something went wrong. Please try again in a moment.",
-            "err",
-          );
-        }
-      });
+          try {
+            const res = await fetch(SIGNUP_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: email,
+                waitlist_id: WAITLIST_ID,
+                referral_link: window.location.href,
+              }),
+            });
+            if (!res.ok) {
+              throw new Error("Signup failed with status " + res.status);
+            }
+            // Hide the signup wrapper (form + status + reassurance line if any),
+            // reveal the inline success state for this form.
+            if (wrapperEl) wrapperEl.style.display = "none";
+            successEl.style.display = "block";
+          } catch (err) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Request beta access";
+            setStatus(
+              "Something went wrong. Please try again in a moment.",
+              "err",
+            );
+          }
+        });
+      }
 
-      copyBtn.addEventListener("click", async () => {
-        if (!referralLink) return;
-        try {
-          await navigator.clipboard.writeText(referralLink);
-          copyBtn.textContent = "Copied!";
-          setTimeout(() => (copyBtn.textContent = "Copy my link"), 2000);
-        } catch {
-          copyBtn.textContent = referralLink;
-        }
-      });
+      document.querySelectorAll("form.signup-form").forEach(wireForm);
     </script>
   </body>
 </html>
