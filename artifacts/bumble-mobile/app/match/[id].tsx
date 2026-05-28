@@ -1453,7 +1453,9 @@ function HeaderCard({
                 lineHeight: 15,
               }}
             >
-              Stored on this phone only. Not sent to HeyTelli servers.
+              {localPhotoUri
+                ? "Stored on this phone only. Not sent to HeyTelli servers."
+                : "Add a private photo. It will be stored on this phone only and not sent to HeyTelli servers."}
             </Text>
           </View>
         </View>
