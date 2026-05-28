@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   db,
   conversations,
+  dateCards,
   matches,
   matchScoreHistory,
   matchRedFlagEvents,
@@ -53,6 +54,7 @@ import {
   normalizePersistedDateSafetyPlan,
   summarizeDateSafetyPlanForList,
 } from "../lib/dateSafetyPlan";
+import { buildDateCardSharePersistence } from "../lib/dateCardShare";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logger } from "../lib/logger";
 import {
@@ -1454,6 +1456,23 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
     if (safetyPlanTouched) {
       updates.dateSafetyPlan = dateSafetyPlanPatch.dateSafetyPlan;
     }
+    const dateCardShare = safetyPlanTouched
+      ? buildDateCardSharePersistence({
+          userId,
+          matchId: existing.id,
+          matchName: body.data.name ?? existing.name,
+          nextDateAt:
+            body.data.nextDateAt !== undefined
+              ? (updates.nextDateAt as Date | null)
+              : existing.nextDateAt,
+          nextDateLocation:
+            body.data.nextDateLocation !== undefined
+              ? body.data.nextDateLocation
+              : existing.nextDateLocation,
+          existingPlan: existing.dateSafetyPlan,
+          nextPlan: dateSafetyPlanPatch.dateSafetyPlan,
+        })
+      : null;
 
     if (Object.keys(updates).length === 0) {
       return { notFound: false as const, updated: existing };
@@ -1493,6 +1512,10 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
       await tx
         .insert(matchTimelineEvents)
         .values(dateSafetyPlanPatch.timelineEvent);
+    }
+    if (dateCardShare) {
+      await tx.insert(dateCards).values(dateCardShare.dateCard);
+      await tx.insert(matchTimelineEvents).values(dateCardShare.timelineEvent);
     }
     return { notFound: false as const, updated: updated ?? existing };
   });

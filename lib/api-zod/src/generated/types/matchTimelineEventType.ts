@@ -11,6 +11,7 @@ export type MatchTimelineEventType = typeof MatchTimelineEventType[keyof typeof 
 
 export const MatchTimelineEventType = {
   date_scheduled: 'date_scheduled',
+  date_card_shared: 'date_card_shared',
   safety_plan_updated: 'safety_plan_updated',
   voice_debrief: 'voice_debrief',
   date_debrief: 'date_debrief',

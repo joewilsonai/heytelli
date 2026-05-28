@@ -6,6 +6,7 @@ process.env.DATABASE_URL ??=
 
 const {
   conversations,
+  dateCards,
   improvementRuns,
   improvementSignals,
   improvementWorkItems,
@@ -24,6 +25,11 @@ test("private beta data has a user owner in the core schema", () => {
   assert.ok(
     productFeedback.userId,
     "product feedback must retain the signed-in user's tenant",
+  );
+  assert.ok(dateCards.userId, "date cards must belong to one signed-in user");
+  assert.ok(
+    dateCards.matchId,
+    "date cards must stay scoped to one owned match",
   );
   assert.ok(
     improvementSignals.userId,
