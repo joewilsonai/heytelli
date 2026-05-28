@@ -22,6 +22,11 @@ export type SubmitImprovementFeedbackInput = {
   matchId?: number | null;
   technicalContextConsent: boolean;
   context?: Record<string, string | number | boolean | null | undefined>;
+  feedbackAttachment?: {
+    objectPath: string;
+    contentType: string;
+    size: number;
+  } | null;
 };
 
 export const feedbackFollowUpStages = [
@@ -60,7 +65,14 @@ export async function submitImprovementFeedback({
   matchId = null,
   technicalContextConsent,
   context,
+  feedbackAttachment,
 }: SubmitImprovementFeedbackInput) {
+  const clientContext = {
+    ...(technicalContextConsent
+      ? buildFeedbackTechnicalContext(surface, context)
+      : {}),
+    ...(feedbackAttachment ? { feedbackAttachment } : {}),
+  };
   return createImprovementSignal({
     source: "in_app_feedback",
     type,
@@ -68,8 +80,8 @@ export async function submitImprovementFeedback({
     matchId,
     surface,
     technicalContextConsent,
-    clientContext: technicalContextConsent
-      ? buildFeedbackTechnicalContext(surface, context)
+    clientContext: Object.keys(clientContext).length
+      ? clientContext
       : undefined,
   });
 }

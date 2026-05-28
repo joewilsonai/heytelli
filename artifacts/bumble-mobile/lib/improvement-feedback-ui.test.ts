@@ -28,14 +28,21 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
   assert.match(sheet, /Include basic app context/);
   assert.match(sheet, /buildFeedbackReceiptMessage/);
   assert.match(sheet, /Feedback saved/);
+  assert.match(sheet, /ImagePicker/);
+  assert.match(sheet, /Attach private image/);
+  assert.match(sheet, /Remove attachment/);
+  assert.match(sheet, /uploadFeedbackAttachment/);
+  assert.match(helper, /feedbackAttachment/);
   assert.match(helper, /feedbackFollowUpStages/);
   assert.match(helper, /Settings build notes/);
   assert.match(
     sheet,
     /We do not include screenshots or private\s+conversations in engineering issues\./,
   );
-  assert.match(sheet, /keep it on your phone for now/);
-  assert.match(sheet, /redaction, consent, and auto-delete/);
+  assert.match(
+    sheet,
+    /Attachments stay private and are not copied into GitHub/,
+  );
   assert.match(helper, /createImprovementSignal/);
   assert.doesNotMatch(
     helper,
