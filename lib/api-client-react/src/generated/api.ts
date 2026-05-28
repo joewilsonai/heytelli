@@ -35,6 +35,9 @@ import type {
   FunnelStats,
   GetCurrentUser200,
   HealthStatus,
+  ImprovementSignal,
+  ImprovementSignalInput,
+  ImprovementWorkItem,
   InPersonRecordingInput,
   Match,
   MatchCreateInput,
@@ -141,12 +144,6 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
-
 
 export const getLoginBetaUserUrl = () => {
 
@@ -289,12 +286,6 @@ export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUs
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
-
 
 export const getListMatchesUrl = () => {
 
@@ -2612,3 +2603,298 @@ export const useCreateProductFeedback = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getCreateProductFeedbackMutationOptions(options));
     }
 
+export const getCreateImprovementSignalUrl = () => {
+
+
+
+
+  return `/api/improvement/signals`
+}
+
+/**
+ * @summary Capture a private product improvement signal
+ */
+export const createImprovementSignal = async (improvementSignalInput: ImprovementSignalInput, options?: RequestInit): Promise<ImprovementSignal> => {
+
+  return customFetch<ImprovementSignal>(getCreateImprovementSignalUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      improvementSignalInput,)
+  }
+);}
+
+
+
+
+export const getCreateImprovementSignalMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImprovementSignal>>, TError,{data: BodyType<ImprovementSignalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createImprovementSignal>>, TError,{data: BodyType<ImprovementSignalInput>}, TContext> => {
+
+const mutationKey = ['createImprovementSignal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createImprovementSignal>>, {data: BodyType<ImprovementSignalInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createImprovementSignal(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateImprovementSignalMutationResult = NonNullable<Awaited<ReturnType<typeof createImprovementSignal>>>
+    export type CreateImprovementSignalMutationBody = BodyType<ImprovementSignalInput>
+    export type CreateImprovementSignalMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Capture a private product improvement signal
+ */
+export const useCreateImprovementSignal = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createImprovementSignal>>, TError,{data: BodyType<ImprovementSignalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createImprovementSignal>>,
+        TError,
+        {data: BodyType<ImprovementSignalInput>},
+        TContext
+      > => {
+      return useMutation(getCreateImprovementSignalMutationOptions(options));
+    }
+
+export const getListImprovementSignalsUrl = () => {
+
+
+
+
+  return `/api/admin/improvement/signals`
+}
+
+/**
+ * @summary List private improvement signals for admins
+ */
+export const listImprovementSignals = async ( options?: RequestInit): Promise<ImprovementSignal[]> => {
+
+  return customFetch<ImprovementSignal[]>(getListImprovementSignalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListImprovementSignalsQueryKey = () => {
+    return [
+    `/api/admin/improvement/signals`
+    ] as const;
+    }
+
+
+export const getListImprovementSignalsQueryOptions = <TData = Awaited<ReturnType<typeof listImprovementSignals>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listImprovementSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListImprovementSignalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listImprovementSignals>>> = ({ signal }) => listImprovementSignals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listImprovementSignals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListImprovementSignalsQueryResult = NonNullable<Awaited<ReturnType<typeof listImprovementSignals>>>
+export type ListImprovementSignalsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List private improvement signals for admins
+ */
+
+export function useListImprovementSignals<TData = Awaited<ReturnType<typeof listImprovementSignals>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listImprovementSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListImprovementSignalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListImprovementWorkItemsUrl = () => {
+
+
+
+
+  return `/api/admin/improvement/work-items`
+}
+
+/**
+ * @summary List private improvement work items for admins
+ */
+export const listImprovementWorkItems = async ( options?: RequestInit): Promise<ImprovementWorkItem[]> => {
+
+  return customFetch<ImprovementWorkItem[]>(getListImprovementWorkItemsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListImprovementWorkItemsQueryKey = () => {
+    return [
+    `/api/admin/improvement/work-items`
+    ] as const;
+    }
+
+
+export const getListImprovementWorkItemsQueryOptions = <TData = Awaited<ReturnType<typeof listImprovementWorkItems>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listImprovementWorkItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListImprovementWorkItemsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listImprovementWorkItems>>> = ({ signal }) => listImprovementWorkItems({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listImprovementWorkItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListImprovementWorkItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listImprovementWorkItems>>>
+export type ListImprovementWorkItemsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List private improvement work items for admins
+ */
+
+export function useListImprovementWorkItems<TData = Awaited<ReturnType<typeof listImprovementWorkItems>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listImprovementWorkItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListImprovementWorkItemsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetImprovementWorkItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/improvement/work-items/${id}`
+}
+
+/**
+ * @summary Get one private improvement work item for admins
+ */
+export const getImprovementWorkItem = async (id: number, options?: RequestInit): Promise<ImprovementWorkItem> => {
+
+  return customFetch<ImprovementWorkItem>(getGetImprovementWorkItemUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetImprovementWorkItemQueryKey = (id: number,) => {
+    return [
+    `/api/admin/improvement/work-items/${id}`
+    ] as const;
+    }
+
+
+export const getGetImprovementWorkItemQueryOptions = <TData = Awaited<ReturnType<typeof getImprovementWorkItem>>, TError = ErrorType<ErrorEnvelope>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getImprovementWorkItem>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetImprovementWorkItemQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getImprovementWorkItem>>> = ({ signal }) => getImprovementWorkItem(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getImprovementWorkItem>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetImprovementWorkItemQueryResult = NonNullable<Awaited<ReturnType<typeof getImprovementWorkItem>>>
+export type GetImprovementWorkItemQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get one private improvement work item for admins
+ */
+
+export function useGetImprovementWorkItem<TData = Awaited<ReturnType<typeof getImprovementWorkItem>>, TError = ErrorType<ErrorEnvelope>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getImprovementWorkItem>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetImprovementWorkItemQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

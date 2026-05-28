@@ -5,6 +5,7 @@ import matchesRouter from "./matches";
 import storageRouter from "./storage";
 import chatRouter from "./chat";
 import feedbackRouter from "./feedback";
+import improvementRouter from "./improvement";
 import settingsRouter from "./settings";
 
 const router: IRouter = Router();
@@ -15,6 +16,7 @@ router.use(matchesRouter);
 router.use(storageRouter);
 router.use(chatRouter);
 router.use(feedbackRouter);
+router.use(improvementRouter);
 router.use(settingsRouter);
 
 export default router;

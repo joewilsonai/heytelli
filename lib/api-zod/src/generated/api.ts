@@ -1992,3 +1992,103 @@ export const CreateProductFeedbackBody = zod.object({
 })
 
 
+/**
+ * @summary Capture a private product improvement signal
+ */
+export const createImprovementSignalBodyMessageMax = 1200;
+
+
+export const createImprovementSignalBodySurfaceMax = 80;
+
+export const createImprovementSignalBodyTechnicalContextConsentDefault = true;
+
+export const CreateImprovementSignalBody = zod.object({
+  "source": zod.enum(['in_app_feedback', 'client_error', 'api_error', 'analysis_failure', 'auth_failure', 'share_failure', 'analytics', 'crash', 'system_monitor']),
+  "type": zod.enum(['Bug', 'Confusing', 'Idea', 'Safety concern', 'Love this']),
+  "message": zod.string().min(1).max(createImprovementSignalBodyMessageMax),
+  "matchId": zod.number().min(1).nullish(),
+  "surface": zod.string().max(createImprovementSignalBodySurfaceMax).nullish(),
+  "clientContext": zod.record(zod.string(), zod.unknown()).optional().describe('Client context is allowlisted server-side. Do not send screenshots, transcripts, private notes, phone numbers, or tokens.'),
+  "technicalContextConsent": zod.boolean().default(createImprovementSignalBodyTechnicalContextConsentDefault)
+})
+
+
+/**
+ * @summary List private improvement signals for admins
+ */
+export const ListImprovementSignalsResponseItem = zod.object({
+  "id": zod.number(),
+  "userId": zod.number().nullable(),
+  "matchId": zod.number().nullable(),
+  "source": zod.enum(['in_app_feedback', 'client_error', 'api_error', 'analysis_failure', 'auth_failure', 'share_failure', 'analytics', 'crash', 'system_monitor']),
+  "severity": zod.enum(['info', 'low', 'medium', 'high', 'critical']),
+  "rawPayload": zod.record(zod.string(), zod.unknown()),
+  "sanitizedSummary": zod.string().nullable(),
+  "sanitizedPayload": zod.record(zod.string(), zod.unknown()).nullable(),
+  "privacyRisk": zod.enum(['low', 'medium', 'high', 'blocked']),
+  "fingerprint": zod.string(),
+  "status": zod.enum(['new', 'triaged', 'grouped', 'actionable', 'waiting_for_signal', 'blocked', 'resolved', 'ignored']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListImprovementSignalsResponse = zod.array(ListImprovementSignalsResponseItem)
+
+
+/**
+ * @summary List private improvement work items for admins
+ */
+export const ListImprovementWorkItemsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "summary": zod.string(),
+  "category": zod.enum(['bug', 'ux_confusion', 'feature_request', 'safety_issue', 'performance', 'reliability', 'privacy', 'copy', 'docs', 'test']),
+  "priority": zod.enum(['p0', 'p1', 'p2', 'p3']),
+  "riskTier": zod.enum(['safe_auto_merge', 'guarded_auto_merge', 'extra_agent_review', 'no_auto_merge']),
+  "impactScore": zod.number(),
+  "confidenceScore": zod.number(),
+  "frequencyCount": zod.number(),
+  "signalIds": zod.array(zod.number()),
+  "githubIssueUrl": zod.string().nullable(),
+  "githubIssueNumber": zod.number().nullable(),
+  "branchName": zod.string().nullable(),
+  "pullRequestUrl": zod.string().nullable(),
+  "pullRequestNumber": zod.number().nullable(),
+  "status": zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListImprovementWorkItemsResponse = zod.array(ListImprovementWorkItemsResponseItem)
+
+
+/**
+ * @summary Get one private improvement work item for admins
+ */
+
+
+
+export const GetImprovementWorkItemParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetImprovementWorkItemResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "summary": zod.string(),
+  "category": zod.enum(['bug', 'ux_confusion', 'feature_request', 'safety_issue', 'performance', 'reliability', 'privacy', 'copy', 'docs', 'test']),
+  "priority": zod.enum(['p0', 'p1', 'p2', 'p3']),
+  "riskTier": zod.enum(['safe_auto_merge', 'guarded_auto_merge', 'extra_agent_review', 'no_auto_merge']),
+  "impactScore": zod.number(),
+  "confidenceScore": zod.number(),
+  "frequencyCount": zod.number(),
+  "signalIds": zod.array(zod.number()),
+  "githubIssueUrl": zod.string().nullable(),
+  "githubIssueNumber": zod.number().nullable(),
+  "branchName": zod.string().nullable(),
+  "pullRequestUrl": zod.string().nullable(),
+  "pullRequestNumber": zod.number().nullable(),
+  "status": zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+

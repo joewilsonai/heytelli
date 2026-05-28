@@ -20,6 +20,8 @@ tags:
     description: HeyTelli private chat operations
   - name: feedback
     description: Product feedback operations
+  - name: improvement
+    description: Autonomous product improvement operations
 paths:
   /healthz:
     get:
@@ -817,6 +819,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /improvement/signals:
+    post:
+      operationId: createImprovementSignal
+      tags: [improvement]
+      summary: Capture a private product improvement signal
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImprovementSignalInput"
+      responses:
+        "201":
+          description: Improvement signal saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImprovementSignal"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Match not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/improvement/signals:
+    get:
+      operationId: listImprovementSignals
+      tags: [improvement]
+      summary: List private improvement signals for admins
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Recent improvement signals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImprovementSignal"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/improvement/work-items:
+    get:
+      operationId: listImprovementWorkItems
+      tags: [improvement]
+      summary: List private improvement work items for admins
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Recent improvement work items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImprovementWorkItem"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/improvement/work-items/{id}:
+    get:
+      operationId: getImprovementWorkItem
+      tags: [improvement]
+      summary: Get one private improvement work item for admins
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Improvement work item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImprovementWorkItem"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Work item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   securitySchemes:
     bearerAuth:
@@ -881,6 +1004,218 @@ components:
           type: object
           additionalProperties: { type: string }
         createdAt: { type: string, format: date-time }
+    ImprovementSignalSource:
+      type: string
+      enum:
+        - in_app_feedback
+        - client_error
+        - api_error
+        - analysis_failure
+        - auth_failure
+        - share_failure
+        - analytics
+        - crash
+        - system_monitor
+    ImprovementFeedbackType:
+      type: string
+      enum:
+        - Bug
+        - Confusing
+        - Idea
+        - Safety concern
+        - Love this
+    ImprovementSeverity:
+      type: string
+      enum: [info, low, medium, high, critical]
+    ImprovementPrivacyRisk:
+      type: string
+      enum: [low, medium, high, blocked]
+    ImprovementSignalStatus:
+      type: string
+      enum:
+        - new
+        - triaged
+        - grouped
+        - actionable
+        - waiting_for_signal
+        - blocked
+        - resolved
+        - ignored
+    ImprovementCategory:
+      type: string
+      enum:
+        - bug
+        - ux_confusion
+        - feature_request
+        - safety_issue
+        - performance
+        - reliability
+        - privacy
+        - copy
+        - docs
+        - test
+    ImprovementPriority:
+      type: string
+      enum: [p0, p1, p2, p3]
+    ImprovementRiskTier:
+      type: string
+      enum:
+        - safe_auto_merge
+        - guarded_auto_merge
+        - extra_agent_review
+        - no_auto_merge
+    ImprovementWorkItemStatus:
+      type: string
+      enum:
+        - draft
+        - issue_created
+        - researching
+        - planned
+        - building
+        - reviewing
+        - changes_requested
+        - checks_running
+        - merged
+        - deployed
+        - monitoring
+        - rolled_back
+        - closed
+    ImprovementRunType:
+      type: string
+      enum: [triage, research, implementation, review, merge, deploy, monitor, rollback]
+    ImprovementRunStatus:
+      type: string
+      enum: [started, succeeded, failed, blocked]
+    ImprovementSignalInput:
+      type: object
+      required: [source, type, message]
+      properties:
+        source:
+          $ref: "#/components/schemas/ImprovementSignalSource"
+        type:
+          $ref: "#/components/schemas/ImprovementFeedbackType"
+        message: { type: string, minLength: 1, maxLength: 1200 }
+        matchId: { type: ["integer", "null"], minimum: 1 }
+        surface: { type: ["string", "null"], maxLength: 80 }
+        clientContext:
+          type: object
+          additionalProperties: true
+          description: Client context is allowlisted server-side. Do not send screenshots, transcripts, private notes, phone numbers, or tokens.
+        technicalContextConsent:
+          type: boolean
+          default: true
+    ImprovementSignal:
+      type: object
+      required:
+        - id
+        - userId
+        - matchId
+        - source
+        - severity
+        - rawPayload
+        - sanitizedSummary
+        - sanitizedPayload
+        - privacyRisk
+        - fingerprint
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id: { type: integer }
+        userId: { type: ["integer", "null"] }
+        matchId: { type: ["integer", "null"] }
+        source:
+          $ref: "#/components/schemas/ImprovementSignalSource"
+        severity:
+          $ref: "#/components/schemas/ImprovementSeverity"
+        rawPayload:
+          type: object
+          additionalProperties: true
+        sanitizedSummary: { type: ["string", "null"] }
+        sanitizedPayload:
+          type: ["object", "null"]
+          additionalProperties: true
+        privacyRisk:
+          $ref: "#/components/schemas/ImprovementPrivacyRisk"
+        fingerprint: { type: string }
+        status:
+          $ref: "#/components/schemas/ImprovementSignalStatus"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ImprovementWorkItem:
+      type: object
+      required:
+        - id
+        - title
+        - summary
+        - category
+        - priority
+        - riskTier
+        - impactScore
+        - confidenceScore
+        - frequencyCount
+        - signalIds
+        - githubIssueUrl
+        - githubIssueNumber
+        - branchName
+        - pullRequestUrl
+        - pullRequestNumber
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        summary: { type: string }
+        category:
+          $ref: "#/components/schemas/ImprovementCategory"
+        priority:
+          $ref: "#/components/schemas/ImprovementPriority"
+        riskTier:
+          $ref: "#/components/schemas/ImprovementRiskTier"
+        impactScore: { type: integer }
+        confidenceScore: { type: integer }
+        frequencyCount: { type: integer }
+        signalIds:
+          type: array
+          items: { type: integer }
+        githubIssueUrl: { type: ["string", "null"] }
+        githubIssueNumber: { type: ["integer", "null"] }
+        branchName: { type: ["string", "null"] }
+        pullRequestUrl: { type: ["string", "null"] }
+        pullRequestNumber: { type: ["integer", "null"] }
+        status:
+          $ref: "#/components/schemas/ImprovementWorkItemStatus"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ImprovementRun:
+      type: object
+      required:
+        - id
+        - workItemId
+        - runType
+        - agentName
+        - status
+        - summary
+        - logsUrl
+        - metadata
+        - createdAt
+        - completedAt
+      properties:
+        id: { type: integer }
+        workItemId: { type: integer }
+        runType:
+          $ref: "#/components/schemas/ImprovementRunType"
+        agentName: { type: string }
+        status:
+          $ref: "#/components/schemas/ImprovementRunStatus"
+        summary: { type: string }
+        logsUrl: { type: ["string", "null"] }
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
     MatchScore:
       type: object
       required: [value, rationale]

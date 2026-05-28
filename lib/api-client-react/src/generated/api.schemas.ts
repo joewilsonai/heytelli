@@ -79,6 +79,244 @@ export interface ProductFeedback {
   createdAt: string;
 }
 
+export type ImprovementSignalSource = typeof ImprovementSignalSource[keyof typeof ImprovementSignalSource];
+
+
+export const ImprovementSignalSource = {
+  in_app_feedback: 'in_app_feedback',
+  client_error: 'client_error',
+  api_error: 'api_error',
+  analysis_failure: 'analysis_failure',
+  auth_failure: 'auth_failure',
+  share_failure: 'share_failure',
+  analytics: 'analytics',
+  crash: 'crash',
+  system_monitor: 'system_monitor',
+} as const;
+
+export type ImprovementFeedbackType = typeof ImprovementFeedbackType[keyof typeof ImprovementFeedbackType];
+
+
+export const ImprovementFeedbackType = {
+  Bug: 'Bug',
+  Confusing: 'Confusing',
+  Idea: 'Idea',
+  Safety_concern: 'Safety concern',
+  Love_this: 'Love this',
+} as const;
+
+export type ImprovementSeverity = typeof ImprovementSeverity[keyof typeof ImprovementSeverity];
+
+
+export const ImprovementSeverity = {
+  info: 'info',
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export type ImprovementPrivacyRisk = typeof ImprovementPrivacyRisk[keyof typeof ImprovementPrivacyRisk];
+
+
+export const ImprovementPrivacyRisk = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  blocked: 'blocked',
+} as const;
+
+export type ImprovementSignalStatus = typeof ImprovementSignalStatus[keyof typeof ImprovementSignalStatus];
+
+
+export const ImprovementSignalStatus = {
+  new: 'new',
+  triaged: 'triaged',
+  grouped: 'grouped',
+  actionable: 'actionable',
+  waiting_for_signal: 'waiting_for_signal',
+  blocked: 'blocked',
+  resolved: 'resolved',
+  ignored: 'ignored',
+} as const;
+
+export type ImprovementCategory = typeof ImprovementCategory[keyof typeof ImprovementCategory];
+
+
+export const ImprovementCategory = {
+  bug: 'bug',
+  ux_confusion: 'ux_confusion',
+  feature_request: 'feature_request',
+  safety_issue: 'safety_issue',
+  performance: 'performance',
+  reliability: 'reliability',
+  privacy: 'privacy',
+  copy: 'copy',
+  docs: 'docs',
+  test: 'test',
+} as const;
+
+export type ImprovementPriority = typeof ImprovementPriority[keyof typeof ImprovementPriority];
+
+
+export const ImprovementPriority = {
+  p0: 'p0',
+  p1: 'p1',
+  p2: 'p2',
+  p3: 'p3',
+} as const;
+
+export type ImprovementRiskTier = typeof ImprovementRiskTier[keyof typeof ImprovementRiskTier];
+
+
+export const ImprovementRiskTier = {
+  safe_auto_merge: 'safe_auto_merge',
+  guarded_auto_merge: 'guarded_auto_merge',
+  extra_agent_review: 'extra_agent_review',
+  no_auto_merge: 'no_auto_merge',
+} as const;
+
+export type ImprovementWorkItemStatus = typeof ImprovementWorkItemStatus[keyof typeof ImprovementWorkItemStatus];
+
+
+export const ImprovementWorkItemStatus = {
+  draft: 'draft',
+  issue_created: 'issue_created',
+  researching: 'researching',
+  planned: 'planned',
+  building: 'building',
+  reviewing: 'reviewing',
+  changes_requested: 'changes_requested',
+  checks_running: 'checks_running',
+  merged: 'merged',
+  deployed: 'deployed',
+  monitoring: 'monitoring',
+  rolled_back: 'rolled_back',
+  closed: 'closed',
+} as const;
+
+export type ImprovementRunType = typeof ImprovementRunType[keyof typeof ImprovementRunType];
+
+
+export const ImprovementRunType = {
+  triage: 'triage',
+  research: 'research',
+  implementation: 'implementation',
+  review: 'review',
+  merge: 'merge',
+  deploy: 'deploy',
+  monitor: 'monitor',
+  rollback: 'rollback',
+} as const;
+
+export type ImprovementRunStatus = typeof ImprovementRunStatus[keyof typeof ImprovementRunStatus];
+
+
+export const ImprovementRunStatus = {
+  started: 'started',
+  succeeded: 'succeeded',
+  failed: 'failed',
+  blocked: 'blocked',
+} as const;
+
+/**
+ * Client context is allowlisted server-side. Do not send screenshots, transcripts, private notes, phone numbers, or tokens.
+ */
+export type ImprovementSignalInputClientContext = { [key: string]: unknown };
+
+export interface ImprovementSignalInput {
+  source: ImprovementSignalSource;
+  type: ImprovementFeedbackType;
+  /**
+     * @minLength 1
+     * @maxLength 1200
+     */
+  message: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  matchId?: number | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  surface?: string | null;
+  /** Client context is allowlisted server-side. Do not send screenshots, transcripts, private notes, phone numbers, or tokens. */
+  clientContext?: ImprovementSignalInputClientContext;
+  technicalContextConsent?: boolean;
+}
+
+export type ImprovementSignalRawPayload = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type ImprovementSignalSanitizedPayload = { [key: string]: unknown } | null;
+
+export interface ImprovementSignal {
+  id: number;
+  /** @nullable */
+  userId: number | null;
+  /** @nullable */
+  matchId: number | null;
+  source: ImprovementSignalSource;
+  severity: ImprovementSeverity;
+  rawPayload: ImprovementSignalRawPayload;
+  /** @nullable */
+  sanitizedSummary: string | null;
+  /** @nullable */
+  sanitizedPayload: ImprovementSignalSanitizedPayload;
+  privacyRisk: ImprovementPrivacyRisk;
+  fingerprint: string;
+  status: ImprovementSignalStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ImprovementWorkItem {
+  id: number;
+  title: string;
+  summary: string;
+  category: ImprovementCategory;
+  priority: ImprovementPriority;
+  riskTier: ImprovementRiskTier;
+  impactScore: number;
+  confidenceScore: number;
+  frequencyCount: number;
+  signalIds: number[];
+  /** @nullable */
+  githubIssueUrl: string | null;
+  /** @nullable */
+  githubIssueNumber: number | null;
+  /** @nullable */
+  branchName: string | null;
+  /** @nullable */
+  pullRequestUrl: string | null;
+  /** @nullable */
+  pullRequestNumber: number | null;
+  status: ImprovementWorkItemStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ImprovementRunMetadata = { [key: string]: unknown };
+
+export interface ImprovementRun {
+  id: number;
+  workItemId: number;
+  runType: ImprovementRunType;
+  agentName: string;
+  status: ImprovementRunStatus;
+  summary: string;
+  /** @nullable */
+  logsUrl: string | null;
+  metadata: ImprovementRunMetadata;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
 export interface MatchScore {
   value: number | null;
   /** @nullable */
