@@ -8,11 +8,15 @@ import {
   buildExecutorPrompt,
   buildSwarmExecutorCommandPreview,
   buildSwarmExecutorDigest,
+  acquireExecutorRunLock,
   executorPrBodyMarker,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
   removeExecutorScratchFiles,
+  runAgent,
+  runCommand,
   swarmExecutorRunShouldFail,
+  workItemStatusAfterExecutorFailure,
 } from "./executor";
 
 const safeWorkItem = {
@@ -100,6 +104,8 @@ test("builds a private-data-safe executor prompt", () => {
   assert.match(prompt, /GitHub issue: #88/);
   assert.match(prompt, /Settings copy around Trusted Circle/);
   assert.match(prompt, /Do not request or expose screenshots/);
+  assert.match(prompt, /Stay inside the assigned worktree/);
+  assert.match(prompt, /Do not run .*git commit.*gh pr/);
   assert.doesNotMatch(prompt, /555-1212|123 Main|raw transcript/i);
   assert.equal(
     executorPrBodyMarker(safeWorkItem),
@@ -195,6 +201,85 @@ test("parses executor CLI options", () => {
   assert.equal(options.allowGuardedAutoMerge, true);
   assert.equal(options.allowExtraAutoMerge, false);
   assert.equal(options.agentName, "local-executor");
+  assert.equal(options.agentTimeoutMs, 600_000);
+});
+
+test("parses executor agent timeout from CLI or env", () => {
+  assert.equal(
+    parseExecutorArgs(["--agent-timeout-ms", "120000"], {}).agentTimeoutMs,
+    120_000,
+  );
+  assert.equal(
+    parseExecutorArgs([], {
+      IMPROVEMENT_EXECUTOR_AGENT_TIMEOUT_MS: "90000",
+    }).agentTimeoutMs,
+    90_000,
+  );
+});
+
+test("passes a timeout to child agent execution", async () => {
+  const calls: Array<{ command: string; timeoutMs?: number }> = [];
+  const options = {
+    ...parseExecutorArgs([], {}),
+    agentCommand: "echo ok",
+    agentTimeoutMs: 1234,
+  };
+
+  await runAgent(
+    "/tmp/worktree",
+    "prompt",
+    "/tmp/prompt.md",
+    options,
+    async (command, _args, runOptions) => {
+      calls.push({ command, timeoutMs: runOptions?.timeoutMs });
+      return { stdout: "", stderr: "" };
+    },
+  );
+
+  assert.deepEqual(calls, [{ command: "/bin/zsh", timeoutMs: 1234 }]);
+});
+
+test("kills child commands that exceed their timeout", async () => {
+  await assert.rejects(
+    runCommand(process.execPath, ["-e", "setTimeout(() => {}, 5000)"], {
+      timeoutMs: 50,
+    }),
+    /timed out after 50ms/,
+  );
+});
+
+test("serializes live executor runs with a lock directory", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "heytelli-executor-lock-"));
+  try {
+    const release = await acquireExecutorRunLock(tempDir);
+
+    await assert.rejects(acquireExecutorRunLock(tempDir), /already running/);
+
+    await release();
+    const releaseAgain = await acquireExecutorRunLock(tempDir);
+    await releaseAgain();
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("retryable executor failures return work items to planned", () => {
+  assert.equal(
+    workItemStatusAfterExecutorFailure(
+      new Error("codex exec timed out after 600000ms"),
+    ),
+    "planned",
+  );
+  assert.equal(
+    workItemStatusAfterExecutorFailure(
+      new Error('Auth(TokenRefreshFailed("Failed to parse server response"))'),
+    ),
+    "planned",
+  );
+  assert.equal(
+    workItemStatusAfterExecutorFailure(new Error("typecheck failed")),
+    "changes_requested",
+  );
 });
 
 test("executor digest reports PR and merge progress", () => {

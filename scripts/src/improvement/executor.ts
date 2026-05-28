@@ -68,6 +68,7 @@ export type SwarmExecutorOptions = {
   repoRoot: string;
   worktreeRoot: string;
   agentCommand: string | null;
+  agentTimeoutMs: number;
   keepWorktree: boolean;
   allowGuardedAutoMerge: boolean;
   allowExtraAutoMerge: boolean;
@@ -114,11 +115,14 @@ type CommandRunner = (
     stdin?: string;
     env?: NodeJS.ProcessEnv;
     allowFailure?: boolean;
+    timeoutMs?: number;
   },
 ) => Promise<CommandResult>;
 
 const DEFAULT_LIMIT = 3;
+const DEFAULT_AGENT_TIMEOUT_MS = 600_000;
 export const EXECUTOR_PROMPT_FILE_NAME = ".heytelli-swarm-prompt.md";
+export const EXECUTOR_LOCK_DIR_NAME = ".executor.lock";
 
 function envFlag(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === "") return defaultValue;
@@ -235,6 +239,12 @@ export function parseExecutorArgs(
       argValue(argv, "--agent-command") ||
       env.HEYTELLI_SWARM_EXECUTOR_COMMAND ||
       null,
+    agentTimeoutMs: numericArg(
+      argv,
+      "--agent-timeout-ms",
+      env.IMPROVEMENT_EXECUTOR_AGENT_TIMEOUT_MS,
+      DEFAULT_AGENT_TIMEOUT_MS,
+    ),
     keepWorktree:
       argv.includes("--keep-worktree") ||
       envFlag(env.IMPROVEMENT_EXECUTOR_KEEP_WORKTREE, false),
@@ -328,6 +338,8 @@ export function buildExecutorPrompt(
     "- Add or update focused tests before changing behavior.",
     "- Run relevant tests and typecheck before finishing.",
     "- Do not commit; the executor owns commit, PR, and merge steps.",
+    "- Stay inside the assigned worktree.",
+    "- Do not run psql, railway, gh, git worktree, git branch, git reset, git push, git commit, or gh pr commands; the parent executor owns infrastructure, branches, commits, PRs, and database state.",
     "- Do not request or expose screenshots, transcripts, names beyond first name, phone numbers, exact addresses, or private dating details.",
     "- If the issue cannot be resolved safely from the sanitized summary, leave a short BLOCKED note in your final response and do not invent private context.",
   ].join("\n");
@@ -478,7 +490,7 @@ export function swarmExecutorRunShouldFail(
   return counts.failed > 0;
 }
 
-async function runCommand(
+export async function runCommand(
   command: string,
   args: string[],
   options: {
@@ -486,9 +498,13 @@ async function runCommand(
     stdin?: string;
     env?: NodeJS.ProcessEnv;
     allowFailure?: boolean;
+    timeoutMs?: number;
   } = {},
 ): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeout: NodeJS.Timeout | undefined;
+    let forceKillTimeout: NodeJS.Timeout | undefined;
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env ?? process.env,
@@ -506,13 +522,47 @@ async function runCommand(
       stderr += text;
       process.stderr.write(text);
     });
-    child.on("error", reject);
+    const clearTimers = () => {
+      if (timeout) clearTimeout(timeout);
+      if (forceKillTimeout) clearTimeout(forceKillTimeout);
+    };
+    const rejectOnce = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      reject(err);
+    };
+    const resolveOnce = (result: CommandResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      resolve(result);
+    };
+    if (options.timeoutMs && options.timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        if (timeout) clearTimeout(timeout);
+        child.kill("SIGTERM");
+        forceKillTimeout = setTimeout(() => {
+          child.kill("SIGKILL");
+        }, 5_000);
+        reject(
+          new Error(
+            `${command} ${args.join(" ")} timed out after ${options.timeoutMs}ms`,
+          ),
+        );
+      }, options.timeoutMs);
+    }
+    child.on("error", rejectOnce);
     child.on("close", (code) => {
+      clearTimers();
+      if (settled) return;
       if (code === 0 || options.allowFailure) {
-        resolve({ stdout, stderr });
+        resolveOnce({ stdout, stderr });
         return;
       }
-      reject(
+      rejectOnce(
         new Error(
           `${command} ${args.join(" ")} failed with exit code ${code ?? "unknown"}`,
         ),
@@ -525,7 +575,7 @@ async function runCommand(
   });
 }
 
-async function runAgent(
+export async function runAgent(
   worktreePath: string,
   prompt: string,
   promptPath: string,
@@ -540,6 +590,7 @@ async function runAgent(
         HEYTELLI_SWARM_PROMPT_FILE: promptPath,
         HEYTELLI_SWARM_WORKTREE: worktreePath,
       },
+      timeoutMs: options.agentTimeoutMs,
     });
     return;
   }
@@ -553,8 +604,52 @@ async function runAgent(
       worktreePath,
       "-",
     ],
-    { cwd: worktreePath, stdin: prompt },
+    { cwd: worktreePath, stdin: prompt, timeoutMs: options.agentTimeoutMs },
   );
+}
+
+export async function acquireExecutorRunLock(
+  worktreeRoot: string,
+): Promise<() => Promise<void>> {
+  await mkdir(worktreeRoot, { recursive: true });
+  const lockDir = path.join(worktreeRoot, EXECUTOR_LOCK_DIR_NAME);
+  try {
+    await mkdir(lockDir);
+  } catch (err) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      err.code === "EEXIST"
+    ) {
+      throw new Error(
+        `Swarm executor already running; lock exists at ${lockDir}`,
+      );
+    }
+    throw err;
+  }
+
+  await writeFile(
+    path.join(lockDir, "owner"),
+    [`pid=${process.pid}`, `startedAt=${new Date().toISOString()}`, ""].join(
+      "\n",
+    ),
+    "utf8",
+  );
+
+  return async () => {
+    await rm(lockDir, { recursive: true, force: true });
+  };
+}
+
+export function workItemStatusAfterExecutorFailure(
+  err: unknown,
+): Extract<ImprovementWorkItemStatus, "planned" | "changes_requested"> {
+  const message = errorMessage(err).toLowerCase();
+  if (message.includes("timed out") || message.includes("tokenrefreshfailed")) {
+    return "planned";
+  }
+  return "changes_requested";
 }
 
 async function worktreeHasHeadCommit(
@@ -835,6 +930,7 @@ export async function runSwarmExecutor(
     counts.executable += 1;
     if (options.dryRun) continue;
 
+    let runId: number | null = null;
     try {
       const [claimed] = await db
         .update(improvementWorkItems)
@@ -872,6 +968,9 @@ export async function runSwarmExecutor(
           },
         })
         .returning();
+      if (run) {
+        runId = run.id;
+      }
 
       const executed = await executeWorkItem(workItem, plan, options, runner);
       counts.branchesCreated += executed.branchCreated ? 1 : 0;
@@ -909,26 +1008,42 @@ export async function runSwarmExecutor(
       }
     } catch (err) {
       counts.failed += 1;
+      const failureStatus = workItemStatusAfterExecutorFailure(err);
+      const retryable = failureStatus === "planned";
+      const message = errorMessage(err);
+      const summary = retryable
+        ? `Swarm executor failed and returned issue #${plan.issueNumber} to planned: ${message}`
+        : `Swarm executor failed and needs changes for issue #${plan.issueNumber}: ${message}`;
       await db
         .update(improvementWorkItems)
         .set({
-          status: "changes_requested",
+          status: failureStatus,
           updatedAt: new Date(),
         })
         .where(eq(improvementWorkItems.id, workItem.id));
-      await db.insert(improvementRuns).values({
+      const runFailure = {
         workItemId: workItem.id,
         runType: "implementation",
         agentName: options.agentName,
         status: "failed",
-        summary: `Swarm executor failed: ${errorMessage(err)}`,
+        summary,
         metadata: {
           issueNumber: plan.issueNumber,
           branchName: plan.branchName,
-          retryable: true,
+          retryable,
+          nextStatus: failureStatus,
+          errorMessage: message,
         },
         completedAt: new Date(),
-      });
+      } as const;
+      if (runId != null) {
+        await db
+          .update(improvementRuns)
+          .set(runFailure)
+          .where(eq(improvementRuns.id, runId));
+      } else {
+        await db.insert(improvementRuns).values(runFailure);
+      }
     }
   }
 
@@ -937,6 +1052,9 @@ export async function runSwarmExecutor(
 
 async function main(): Promise<void> {
   const options = parseExecutorArgs(process.argv.slice(2));
+  const releaseLock = options.dryRun
+    ? null
+    : await acquireExecutorRunLock(options.worktreeRoot);
   try {
     const counts = await runSwarmExecutor(options);
     console.log(buildSwarmExecutorDigest(counts));
@@ -946,6 +1064,7 @@ async function main(): Promise<void> {
       );
     }
   } finally {
+    await releaseLock?.();
     if (process.env.DATABASE_URL) {
       const { pool } = await import("@workspace/db");
       await pool.end();
