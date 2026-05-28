@@ -123,10 +123,35 @@ Analyze transcripts for signals to move the conversation to WhatsApp / Telegram 
 
 **Not** a background check. Light signals only:
 - Phone-number format/region matches claimed location
-- Employer name validity (does the company exist?)
-- Public presence at the claimed employer (LinkedIn URL discoverable yes/no)
+- Employer name validity (does the company exist? — Crunchbase / OpenCorporates / domain WHOIS)
+- Public-presence yes/no signals (GitHub for tech matches, public personal site at claimed domain, etc.)
 
 All surfaced as questions, not verdicts. Fills the VET gap without taking on the FCRA-restricted, stalker-coded burden of a real background-check product.
+
+### 2.7 Vet Packet — user-facing assembly
+**Effort:** S · **Deps:** 1.1 (claim ledger), 2.4, 2.5, 2.6
+
+The moment the VET phase becomes coherent UX. A single "test what he told you" surface that pulls the underlying VET signals together and auto-generates **one-tap deep-link searches** from the Story Check claim ledger.
+
+For each first-person claim he's made (employer, role, hometown, sister's school, dog's name, etc.), Vet Packet generates the search she'd run herself:
+
+- `linkedin.com/search/results/people/?keywords=Mike+Smith+Stripe`
+- `google.com/search?q=Mike+Smith+site:linkedin.com+Stripe`
+- `instagram.com/explore/tags/...` / direct profile URL when a handle is known
+- Employer careers / about page (does the company exist? is the role plausible?)
+- NSOPW search prefilled with claimed first name + state
+
+Plus the **auto-run** results from 2.4 (reverse image + AI-photo verdicts per face) and the **observations** from 2.5 (off-app pressure timing).
+
+**She investigates each link directly.** HeyTelli stores only her observations ("looked her up, all checks out" / "name didn't match LinkedIn"), never his data. No dossier, no cross-user claims, no FCRA exposure.
+
+**Why this shape (and not full automation):**
+- **LinkedIn TOS** prohibits automated lookup; programmatic LinkedIn search is a non-starter regardless of clever scraping.
+- **She seeing the evidence directly is more trustable** than HeyTelli summarizing someone's identity.
+- **PRD-aligned:** *equip the user, never make claims about the match.* Generating search URLs ≠ claims.
+- **Falls naturally out of the claim ledger** — every Story Check `key` maps to a search template.
+
+**API budget:** roughly $0.05–0.20 per match across PimEyes / Hive / Brave-or-Google Search / Crunchbase, depending on enabled checks. Cacheable per face vector.
 
 ---
 
@@ -239,15 +264,15 @@ PRD-foundational.
 |---|---|---|---|
 | **0. Foundation** | 0.1 schema deprecation | Unblocks everything | S–M |
 | **1. REMEMBER** | 1.1 Story Check, 1.2 Green flags, 1.3 Cross-match | "Smartest friend who remembers everything" | M + S + L |
-| **2. VET** | 2.4 Reverse-image, 2.5 Off-app detector, 2.6 Light identity | "We actually checked he's real" | M + S + S |
+| **2. VET** | 2.4 Reverse-image, 2.5 Off-app detector, 2.6 Light identity, 2.7 Vet Packet | "We actually checked he's real" | M + S + S + S |
 | **3. Safe Date Flow primitives** | 3.7 Evidence packet, 3.8 Check In prompt, 3.9 Code word, 3.10 Drink awareness, 3.11 Angel Shot ref | Date Mode goes from a screen to a kit | 5× S |
 | **4. Date Mode advanced** | 4.12 Rescue call, 4.13 Auto-escalating check-in, 4.14 SOS | "She isn't alone if it goes wrong" | 3× M |
 
 ## Build sequence
 
-`0.1` → `1.1` → `1.2` → `2.4` → `2.5` → `3.7` → `3.8` → `1.3` → `2.6` → `3.9` → `3.10` → `3.11` → `4.12` → `4.13` → `4.14`
+`0.1` → `1.1` → `1.2` → `2.4` → `2.5` → `3.7` → `3.8` → `1.3` → `2.6` → `2.7` → `3.9` → `3.10` → `3.11` → `4.12` → `4.13` → `4.14`
 
-The mid-sequence return to `1.3` (cross-match detector) is intentional: it benefits from having a few VET signals (`2.4`, `2.5`) and the foundational REMEMBER pieces (`1.1`, `1.2`) to incorporate, but it doesn't block the smaller Phase 3 wins from shipping in parallel. Phase 3 primitives are independently shippable in any order once started.
+The mid-sequence return to `1.3` (cross-match detector) is intentional: it benefits from having a few VET signals (`2.4`, `2.5`) and the foundational REMEMBER pieces (`1.1`, `1.2`) to incorporate, but it doesn't block the smaller Phase 3 wins from shipping in parallel. `2.7` follows `2.6` because Vet Packet is the *assembly* of the VET signals — it only earns its keep once `2.4`, `2.5`, and `2.6` exist. Phase 3 primitives are independently shippable in any order once started.
 
 ## Source of the priorities
 
