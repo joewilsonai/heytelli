@@ -110,6 +110,17 @@ test("summarizes selectable context without raw screenshots", () => {
   assert.equal(preview.circleLabel, "Mona, Terry");
 });
 
+test("gut check preview preserves relationship labels for circle contacts", () => {
+  const preview = getGutCheckContextPreview({
+    ...match,
+    dateSafetyPlan: {
+      trustedCircleName: "older sister, roommate, best friend",
+    },
+  });
+
+  assert.equal(preview.circleLabel, "older sister, roommate, best friend");
+});
+
 test("builds a private note append after sharing to the user's circle", () => {
   const note = buildGutCheckNoteAppend({
     note: "Mona said to slow down.",

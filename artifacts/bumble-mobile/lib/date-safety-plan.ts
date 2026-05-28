@@ -1,3 +1,5 @@
+import { circleLabelsFromPlanValue } from "./circle-card-labels.ts";
+
 export type SafeDateChecklist = {
   publicPlace: boolean;
   ownTransport: boolean;
@@ -163,14 +165,6 @@ function firstName(name: string): string {
   return trimmed.split(/\s+/)[0] ?? trimmed;
 }
 
-function circleFirstNames(value: string | null | undefined): string[] {
-  const names = clean(value)
-    ?.split(",")
-    .map((name) => firstName(name))
-    .filter(Boolean);
-  return Array.from(new Set(names ?? [])).slice(0, 3);
-}
-
 function clean(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -290,7 +284,7 @@ export function getDateSafetyPlanStatus(
 export function buildDateCardMessage(match: DateSafetyPlanMatch): string {
   const plan = match.dateSafetyPlan;
   const lines = [`HeyTelli Date Card`, `Date with: ${firstName(match.name)}`];
-  const circleNames = circleFirstNames(plan?.trustedCircleName);
+  const circleNames = circleLabelsFromPlanValue(plan?.trustedCircleName);
   if (circleNames.length === 1) {
     lines.push(`Circle contact: ${circleNames[0]}`);
   } else if (circleNames.length > 1) {

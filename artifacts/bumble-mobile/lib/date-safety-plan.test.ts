@@ -247,6 +247,18 @@ test("date card supports three circle contacts by first name", () => {
   assert.doesNotMatch(message, /Wilson|Hart|Stone/);
 });
 
+test("date card can list circle contacts by relationship label", () => {
+  const message = buildDateCardMessage({
+    ...baseMatch,
+    dateSafetyPlan: {
+      ...baseMatch.dateSafetyPlan!,
+      trustedCircleName: "older sister, roommate, best friend",
+    },
+  });
+
+  assert.match(message, /Circle contacts: older sister, roommate, best friend/);
+});
+
 test("builds circle check messages for safe and completed states", () => {
   assert.equal(
     buildCircleCheckMessage(baseMatch, "safe"),

@@ -30,6 +30,10 @@ import {
 import { pickTrustedCircleContact } from "@/lib/trusted-circle-contacts";
 import { useUserSettings } from "@/lib/use-user-settings";
 import {
+  getCirclePersonCardLabel,
+  type CircleCardLabelPreference,
+} from "@/lib/circle-card-labels";
+import {
   MAX_TRUSTED_CIRCLE_PEOPLE,
   buildProfileReview,
   sanitizeCircleContact,
@@ -224,6 +228,30 @@ export default function SettingsScreen() {
         },
       };
     });
+  };
+
+  const updateCirclePerson = (
+    id: string,
+    next: Partial<
+      Pick<TrustedCirclePerson, "relationship" | "cardLabelPreference">
+    >,
+  ) => {
+    setDraftDirty(true);
+    setDraft((current) => ({
+      ...current,
+      trustedCircle: current.trustedCircle.map((person) =>
+        person.id === id
+          ? {
+              ...person,
+              ...next,
+              relationship:
+                next.relationship === undefined
+                  ? person.relationship
+                  : next.relationship?.trim() || null,
+            }
+          : person,
+      ),
+    }));
   };
 
   const pickProfileScreenshots = async () => {
@@ -495,6 +523,12 @@ export default function SettingsScreen() {
                 onSelect={() =>
                   updateDateDefaults({ primaryCirclePersonId: person.id })
                 }
+                onRelationshipChange={(relationship) =>
+                  updateCirclePerson(person.id, { relationship })
+                }
+                onLabelPreferenceChange={(cardLabelPreference) =>
+                  updateCirclePerson(person.id, { cardLabelPreference })
+                }
                 onRemove={() => removePerson(person.id)}
               />
             ))
@@ -718,14 +752,21 @@ function CirclePersonRow({
   person,
   selected,
   onSelect,
+  onRelationshipChange,
+  onLabelPreferenceChange,
   onRemove,
 }: {
   person: TrustedCirclePerson;
   selected: boolean;
   onSelect: () => void;
+  onRelationshipChange: (relationship: string) => void;
+  onLabelPreferenceChange: (preference: CircleCardLabelPreference) => void;
   onRemove: () => void;
 }) {
   const c = useColors();
+  const cardLabel = getCirclePersonCardLabel(person);
+  const preference = person.cardLabelPreference ?? "name";
+  const canUseRelationship = Boolean(person.relationship?.trim());
   return (
     <View
       style={{
@@ -770,6 +811,35 @@ function CirclePersonRow({
           <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
             {person.relationship ?? "Circle person"} · {person.source}
           </Text>
+        </View>
+      </View>
+      <View style={{ gap: 8 }}>
+        <Input
+          placeholder="Relationship, e.g. sister, roommate"
+          value={person.relationship ?? ""}
+          onChangeText={onRelationshipChange}
+        />
+        <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+          Listed on cards as {cardLabel}
+        </Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button
+            label="First name"
+            icon={preference === "name" ? "check" : "user"}
+            onPress={() => onLabelPreferenceChange("name")}
+            variant={preference === "name" ? "secondary" : "ghost"}
+            small
+            style={{ flex: 1 }}
+          />
+          <Button
+            label="Relationship"
+            icon={preference === "relationship" ? "check" : "heart"}
+            onPress={() => onLabelPreferenceChange("relationship")}
+            variant={preference === "relationship" ? "secondary" : "ghost"}
+            disabled={!canUseRelationship}
+            small
+            style={{ flex: 1 }}
+          />
         </View>
       </View>
       <View style={{ flexDirection: "row", gap: 8 }}>

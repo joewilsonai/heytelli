@@ -1,3 +1,5 @@
+import { circleLabelsFromPlanValue } from "./circle-card-labels.ts";
+
 export type GutCheckTimelineEvent = {
   id?: number;
   title?: string | null;
@@ -63,17 +65,6 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
-function circleNames(value: string | null | undefined): string[] {
-  return Array.from(
-    new Set(
-      clean(value)
-        ?.split(",")
-        .map((name) => firstName(name))
-        .filter(Boolean) ?? [],
-    ),
-  ).slice(0, 3);
-}
-
 function timelineTime(event: GutCheckTimelineEvent): number {
   const time = event.occurredAt ? new Date(event.occurredAt).getTime() : 0;
   return Number.isNaN(time) ? 0 : time;
@@ -98,7 +89,9 @@ export function getGutCheckContextPreview(
   match: GutCheckMatch,
   options: Pick<GutCheckOptions, "maskName"> = {},
 ): GutCheckContextPreview {
-  const circle = circleNames(match.dateSafetyPlan?.trustedCircleName);
+  const circle = circleLabelsFromPlanValue(
+    match.dateSafetyPlan?.trustedCircleName,
+  );
   return {
     displayName: options.maskName ? "Someone" : firstName(match.name),
     circleLabel: circle.length > 0 ? circle.join(", ") : null,
