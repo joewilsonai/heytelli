@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Founding Members — HeyTelli</title>
+    <meta
+      name="description"
+      content="Lock in your founding-member rate before HeyTelli launches. Three quick questions, one card on file — we don't charge until launch."
+    />
+    <meta name="theme-color" content="#FAF7F3" />
+
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+
+    <style>
+      :root {
+        --cream: #faf7f3;
+        --surface: #ffffff;
+        --ink: #2e2632;
+        --muted: #756e78;
+        --accent: #e07a5f;
+        --accent-hover: #cf6549;
+        --line: #e7e0d8;
+        --focus: rgba(224, 122, 95, 0.28);
+        --ok: #3f7d5b;
+        --err: #b4543e;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+
+      body {
+        margin: 0;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        max-width: 540px;
+        margin: 0 auto;
+        padding: 48px 22px 80px;
+      }
+
+      .brand { text-align: center; margin: 0 0 48px; }
+      .mark {
+        display: block;
+        width: 56px; height: 56px;
+        margin: 0 auto 14px;
+        border-radius: 14px;
+      }
+      .wordmark {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        margin: 0;
+      }
+      .wordmark .dot { color: var(--accent); }
+
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 14px;
+        text-align: center;
+      }
+
+      h1 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(28px, 6vw, 38px);
+        line-height: 1.15;
+        letter-spacing: -0.3px;
+        margin: 0 0 18px;
+        text-align: center;
+      }
+
+      .lede {
+        font-size: 16px;
+        color: var(--muted);
+        margin: 0 0 32px;
+        text-align: center;
+      }
+
+      .offer {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 22px;
+        margin: 0 0 28px;
+        text-align: center;
+      }
+      .offer .price {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-size: 38px;
+        font-weight: 600;
+        color: var(--ink);
+        line-height: 1;
+        margin: 0 0 4px;
+      }
+      .offer .price .accent { color: var(--accent); }
+      .offer .price .per { font-size: 16px; color: var(--muted); font-family: inherit; font-weight: 400; }
+      .offer .label {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 6px 0 0;
+      }
+
+      .preamble {
+        background: #f3ede4;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 13.5px;
+        color: var(--muted);
+        margin: 0 0 28px;
+        line-height: 1.5;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        max-width: 460px;
+        margin: 0 auto;
+      }
+
+      .field-group label {
+        display: block;
+        font-size: 14.5px;
+        color: var(--ink);
+        margin: 0 0 8px;
+        font-weight: 500;
+      }
+
+      .price-input {
+        display: flex;
+        align-items: center;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .price-input:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--focus);
+      }
+      .price-input .currency {
+        padding: 14px 0 14px 16px;
+        font-size: 17px;
+        color: var(--muted);
+      }
+      .price-input input {
+        flex: 1;
+        padding: 14px 16px 14px 6px;
+        font-size: 16px;
+        font-family: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 0;
+        outline: 0;
+        min-width: 0;
+      }
+      .price-input .suffix {
+        padding-right: 16px;
+        font-size: 15px;
+        color: var(--muted);
+      }
+
+      .field {
+        width: 100%;
+        padding: 15px 16px;
+        font-size: 16px;
+        font-family: inherit;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .field::placeholder { color: #a59ea8; }
+      .field:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--focus);
+      }
+
+      button {
+        padding: 16px 18px;
+        font-size: 16px;
+        font-weight: 600;
+        font-family: inherit;
+        color: #fff;
+        background: var(--accent);
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        margin-top: 8px;
+        transition: background 0.15s, transform 0.05s;
+      }
+      button:hover { background: var(--accent-hover); }
+      button:active { transform: translateY(1px); }
+      button:disabled { opacity: 0.6; cursor: default; }
+
+      .status {
+        min-height: 20px;
+        margin-top: 14px;
+        font-size: 14px;
+        text-align: center;
+      }
+      .status.ok { color: var(--ok); }
+      .status.err { color: var(--err); }
+
+      .success {
+        display: none;
+        animation: rise 0.4s ease;
+        text-align: center;
+        padding: 32px 0 0;
+      }
+      .success h2 {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 28px;
+        margin: 0 0 12px;
+      }
+      .success p {
+        color: var(--muted);
+        margin: 0 auto;
+        max-width: 380px;
+      }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .success { animation: none; }
+        button:active { transform: none; }
+      }
+
+      .reassure {
+        margin: 32px auto 0;
+        max-width: 420px;
+        font-size: 13px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      footer {
+        text-align: center;
+        padding: 28px 22px 0;
+        font-size: 12px;
+        color: #a59ea8;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="brand">
+        <img class="mark" src="icon.svg" width="56" height="56" alt="HeyTelli logo" />
+        <p class="wordmark">HeyTelli<span class="dot">.</span></p>
+      </div>
+
+      <div id="signup-view">
+        <p class="eyebrow">Founding members</p>
+        <h1>Lock in your rate before launch.</h1>
+        <p class="lede">
+          Three quick questions help us land on a fair price. Reserve your
+          founding-member rate at the bottom — we won't charge anything until
+          launch.
+        </p>
+
+        <div class="offer">
+          <div class="price">
+            <span class="accent">$7.99</span><span class="per">/mo</span>
+          </div>
+          <p class="label">Founding member rate, locked for as long as you stay subscribed.</p>
+        </div>
+
+        <p class="preamble">
+          Past research shows people tend to overstate what they'd pay by about
+          2×. Please be as realistic as you can.
+        </p>
+
+        <form id="signup-form" novalidate>
+          <div class="field-group">
+            <label for="email">Your email</label>
+            <input
+              class="field"
+              type="email"
+              id="email"
+              name="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="you@email.com"
+              required
+            />
+          </div>
+
+          <div class="field-group">
+            <label for="q1">
+              At what monthly price would HeyTelli feel expensive — but you'd
+              still pay because the value is worth it to you?
+            </label>
+            <div class="price-input">
+              <span class="currency">$</span>
+              <input
+                type="number"
+                id="q1"
+                name="q1_expensive_worth_it"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="9.99"
+                required
+              />
+              <span class="suffix">/mo</span>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="q2">
+              At what monthly price would it be so expensive you'd walk away?
+            </label>
+            <div class="price-input">
+              <span class="currency">$</span>
+              <input
+                type="number"
+                id="q2"
+                name="q2_walkaway"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="19.99"
+                required
+              />
+              <span class="suffix">/mo</span>
+            </div>
+          </div>
+
+          <button type="submit">Reserve my founding-member rate</button>
+        </form>
+
+        <p class="status" id="status" role="alert" aria-live="polite"></p>
+
+        <p class="reassure">
+          We won't charge until launch. Your responses help us land on a fair
+          price. Private by default — your screenshots and reflections stay
+          yours.
+        </p>
+      </div>
+
+      <div class="success" id="success-view">
+        <h2>You're a founding member.</h2>
+        <p>
+          We'll email when launch is near. Your $7.99/mo rate is locked in for
+          as long as you stay subscribed.
+        </p>
+      </div>
+    </main>
+
+    <footer>
+      Private by default · © <span id="year"></span> HeyTelli
+    </footer>
+
+    <script>
+      // ---------------------------------------------------------------------
+      // CONFIG
+      //
+      // Phase 1 (now): captures via GetWaitlist with a `founding_member` tag in
+      // the referral_link query param so this cohort can be segmented from the
+      // main waitlist downstream. Behavioral commitment is strong-intent (the
+      // user reserved at a stated price), but NOT a real card-on-file capture.
+      //
+      // Phase 2 (when Stripe is wired): replace the GetWaitlist submit with a
+      // Stripe Checkout session in `setup` mode and tag metadata.tier =
+      // 'founding_member'. The card-capture rate then becomes the
+      // un-inflateable behavioral signal per the WTP survey kit spec.
+      // ---------------------------------------------------------------------
+      const WAITLIST_ID = 32856;
+      const SIGNUP_ENDPOINT = "https://api.getwaitlist.com/api/v1/signup";
+
+      const form = document.getElementById("signup-form");
+      const emailInput = document.getElementById("email");
+      const q1Input = document.getElementById("q1");
+      const q2Input = document.getElementById("q2");
+      const submitBtn = form.querySelector("button[type=submit]");
+      const statusEl = document.getElementById("status");
+      const signupView = document.getElementById("signup-view");
+      const successView = document.getElementById("success-view");
+
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      function setStatus(msg, kind) {
+        statusEl.textContent = msg;
+        statusEl.className = "status" + (kind ? " " + kind : "");
+      }
+
+      function isValidEmail(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      }
+
+      function isPositiveNumber(value) {
+        const n = Number(value);
+        return Number.isFinite(n) && n > 0;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = emailInput.value.trim();
+        const q1 = q1Input.value.trim();
+        const q2 = q2Input.value.trim();
+
+        if (!isValidEmail(email)) {
+          setStatus("Please enter a valid email address.", "err");
+          emailInput.focus();
+          return;
+        }
+        if (!isPositiveNumber(q1)) {
+          setStatus("Please enter a price for the first question.", "err");
+          q1Input.focus();
+          return;
+        }
+        if (!isPositiveNumber(q2)) {
+          setStatus("Please enter a price for the second question.", "err");
+          q2Input.focus();
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Reserving…";
+        setStatus("", "");
+
+        // Encode WTP answers into the referral_link query string. GetWaitlist
+        // stores referral_link verbatim, so the price answers will appear in
+        // the dashboard alongside each signup for later analysis.
+        const params = new URLSearchParams({
+          source: "founding_member",
+          q1_expensive: q1,
+          q2_walkaway: q2,
+        });
+        const referralLink = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+
+        try {
+          const res = await fetch(SIGNUP_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: email,
+              waitlist_id: WAITLIST_ID,
+              referral_link: referralLink,
+            }),
+          });
+          if (!res.ok) {
+            throw new Error("Signup failed with status " + res.status);
+          }
+          signupView.style.display = "none";
+          successView.style.display = "block";
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Reserve my founding-member rate";
+          setStatus(
+            "Something went wrong. Please try again in a moment.",
+            "err",
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
