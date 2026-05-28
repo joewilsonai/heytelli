@@ -62,6 +62,7 @@ export type GutCheckMoment = {
 
 export type GutCheckOptions = {
   selectedMoment?: GutCheckMoment | null;
+  selectedMoments?: GutCheckMoment[];
   note?: string;
   question?: string;
   includeDate?: boolean;
@@ -149,6 +150,15 @@ function compactMoments(
   values: Array<GutCheckMoment | null>,
 ): GutCheckMoment[] {
   return values.filter((moment): moment is GutCheckMoment => moment != null);
+}
+
+export function toggleGutCheckMomentId(
+  selectedMomentIds: string[],
+  momentId: string,
+): string[] {
+  return selectedMomentIds.includes(momentId)
+    ? selectedMomentIds.filter((id) => id !== momentId)
+    : [...selectedMomentIds, momentId];
 }
 
 function redFlagMoments(match: GutCheckMatch): GutCheckMoment[] {
@@ -315,13 +325,23 @@ export function buildGutCheckMessage(
   const preview = getGutCheckContextPreview(match, {
     maskName: options.maskName,
   });
-  const selectedMoment = options.selectedMoment ?? null;
+  const selectedMoments = (
+    options.selectedMoments ??
+    (options.selectedMoment ? [options.selectedMoment] : [])
+  ).filter((moment): moment is GutCheckMoment => moment != null);
   const note = clean(options.note);
-  const question = clean(options.question) ?? selectedMoment?.suggestedQuestion;
+  const question =
+    clean(options.question) ??
+    (selectedMoments.length === 1
+      ? selectedMoments[0]?.suggestedQuestion
+      : selectedMoments.length > 1
+        ? "Can you gut check these together and tell me what you notice?"
+        : undefined);
   const lines = ["HeyTelli Gut Check", `About: ${preview.displayName}`];
 
   if (preview.circleLabel) lines.push(`Circle: ${preview.circleLabel}`);
-  if (selectedMoment) {
+  if (selectedMoments.length === 1) {
+    const selectedMoment = selectedMoments[0]!;
     lines.push(
       "",
       "Gut check item:",
@@ -330,13 +350,27 @@ export function buildGutCheckMessage(
     if (clean(selectedMoment.evidence)) {
       lines.push("Why it stood out:", clean(selectedMoment.evidence)!);
     }
+  } else if (selectedMoments.length > 1) {
+    lines.push("", "Gut check items:");
+    for (const moment of selectedMoments) {
+      lines.push(`${moment.label}: ${moment.title}`);
+      if (clean(moment.evidence)) {
+        lines.push(`Why it stood out: ${clean(moment.evidence)!}`);
+      }
+    }
   }
   if (note)
-    lines.push("", selectedMoment ? "My instinct:" : "What happened:", note);
+    lines.push(
+      "",
+      selectedMoments.length > 0 ? "My instinct:" : "What happened:",
+      note,
+    );
   if (question) {
     lines.push(
       "",
-      selectedMoment ? "What I want from you:" : "What I want checked:",
+      selectedMoments.length > 0
+        ? "What I want from you:"
+        : "What I want checked:",
       question,
     );
   }

@@ -18,6 +18,7 @@ import {
   buildGutCheckMessage,
   buildGutCheckNoteAppend,
   getGutCheckContextPreview,
+  toggleGutCheckMomentId,
   type GutCheckMoment,
 } from "@/lib/gut-check-card";
 import { updateMatch } from "@workspace/api-client-react";
@@ -34,7 +35,7 @@ export function GutCheckCard({
   const [note, setNote] = useState("");
   const [question, setQuestion] = useState("");
   const [circleNote, setCircleNote] = useState("");
-  const [selectedMomentId, setSelectedMomentId] = useState("manual-instinct");
+  const [selectedMomentIds, setSelectedMomentIds] = useState<string[]>([]);
   const [maskName, setMaskName] = useState(false);
   const [includeDate, setIncludeDate] = useState(Boolean(match.nextDateAt));
   const [includeTimeline, setIncludeTimeline] = useState(true);
@@ -47,12 +48,20 @@ export function GutCheckCard({
     [maskName, match],
   );
   const moments = useMemo(() => buildGutCheckMoments(match), [match]);
-  const selectedMoment =
-    moments.find((moment) => moment.id === selectedMomentId) ?? moments[0];
+  const selectedMoments = useMemo(
+    () => moments.filter((moment) => selectedMomentIds.includes(moment.id)),
+    [moments, selectedMomentIds],
+  );
+  const selectedQuestionPlaceholder =
+    selectedMoments.length === 1
+      ? (selectedMoments[0]?.suggestedQuestion ?? "What do you want checked?")
+      : selectedMoments.length > 1
+        ? "What do you want checked across these moments?"
+        : "What do you want checked?";
   const message = useMemo(
     () =>
       buildGutCheckMessage(match, {
-        selectedMoment,
+        selectedMoments,
         note,
         question,
         includeDate,
@@ -66,13 +75,13 @@ export function GutCheckCard({
       match,
       note,
       question,
-      selectedMoment,
+      selectedMoments,
     ],
   );
   const hasTimeline = preview.timelineHighlights.length > 0;
   const hasDate = preview.hasDateContext;
   const canShare =
-    selectedMoment?.kind !== "manual" ||
+    selectedMoments.length > 0 ||
     note.trim().length > 0 ||
     question.trim().length > 0;
   const canSaveCircleNote = circleNote.trim().length > 0;
@@ -81,7 +90,7 @@ export function GutCheckCard({
     if (!canShare) {
       Alert.alert(
         "Add a gut check",
-        "Pick a moment HeyTelli found or write what feels off.",
+        "Pick one or more moments HeyTelli found, or write what feels off.",
       );
       return;
     }
@@ -149,7 +158,7 @@ export function GutCheckCard({
 
       <View style={{ gap: 8 }}>
         <Body muted style={{ fontSize: 12 }}>
-          Choose something HeyTelli noticed, or start from your own read.
+          Choose any moments HeyTelli noticed, or start from your own read.
           Something feels off is always enough.
         </Body>
         <View style={{ gap: 8 }}>
@@ -157,8 +166,12 @@ export function GutCheckCard({
             <GutCheckMomentOption
               key={moment.id}
               moment={moment}
-              selected={moment.id === selectedMoment?.id}
-              onPress={() => setSelectedMomentId(moment.id)}
+              selected={selectedMomentIds.includes(moment.id)}
+              onPress={() =>
+                setSelectedMomentIds((ids) =>
+                  toggleGutCheckMomentId(ids, moment.id),
+                )
+              }
             />
           ))}
         </View>
@@ -167,7 +180,8 @@ export function GutCheckCard({
       <View style={{ gap: 8 }}>
         <TextInput
           placeholder={
-            selectedMoment?.kind === "manual"
+            selectedMoments.length === 0 ||
+            selectedMoments.some((moment) => moment.kind === "manual")
               ? "What feels off?"
               : "Add your instinct or extra context"
           }
@@ -190,9 +204,7 @@ export function GutCheckCard({
           }}
         />
         <TextInput
-          placeholder={
-            selectedMoment?.suggestedQuestion ?? "What do you want checked?"
-          }
+          placeholder={selectedQuestionPlaceholder}
           placeholderTextColor={c.mutedForeground}
           value={question}
           onChangeText={setQuestion}
@@ -327,9 +339,9 @@ function GutCheckMomentOption({
   const c = useColors();
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="checkbox"
       accessibilityLabel={`${moment.label}: ${moment.title}`}
-      accessibilityState={{ selected }}
+      accessibilityState={{ checked: selected }}
       onPress={() => {
         Haptics.selectionAsync().catch(() => {});
         onPress();
