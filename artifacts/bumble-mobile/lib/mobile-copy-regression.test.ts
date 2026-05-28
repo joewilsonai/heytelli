@@ -31,3 +31,13 @@ test("mobile copy avoids old product and verdict language", () => {
   assert.match(combined, /Telli noticed/);
   assert.match(combined, /My dating OS/);
 });
+
+test("home dashboard does not expose tag filtering controls", () => {
+  const home = readFileSync(
+    fileURLToPath(new NodeURL("../app/index.tsx", import.meta.url)),
+    "utf8",
+  );
+
+  assert.doesNotMatch(home, /tagFilter|setTagFilter|allTags/);
+  assert.doesNotMatch(home, /All tags|#\{/);
+});

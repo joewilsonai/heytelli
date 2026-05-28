@@ -61,18 +61,11 @@ export default function MatchesScreen() {
   const [filter, setFilter] = useState<StatusFilter>("active");
   const [sort, setSort] = useState<SortKey>("attention");
   const [sortOpen, setSortOpen] = useState(false);
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const { photos: localMatchPhotos } = useLocalMatchPhotos();
   const matchData = useMemo<Match[]>(
     () => (Array.isArray(data) ? data : []),
     [data],
   );
-
-  const allTags = useMemo(() => {
-    const s = new Set<string>();
-    matchData.forEach((m) => (m.tags ?? []).forEach((t) => s.add(t)));
-    return Array.from(s).sort();
-  }, [matchData]);
 
   const counts = useMemo(() => {
     const c = { active: 0, archived: 0, ghosted: 0 };
@@ -83,11 +76,7 @@ export default function MatchesScreen() {
   }, [matchData]);
 
   const matches = useMemo(() => {
-    const list = matchData.filter(
-      (m) =>
-        m.status === filter &&
-        (!tagFilter || (m.tags ?? []).includes(tagFilter)),
-    );
+    const list = matchData.filter((m) => m.status === filter);
     list.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "recent") return lastActivity(b) - lastActivity(a);
@@ -100,7 +89,7 @@ export default function MatchesScreen() {
       return lastActivity(b) - lastActivity(a);
     });
     return list;
-  }, [matchData, filter, sort, tagFilter]);
+  }, [matchData, filter, sort]);
 
   const dailyBrief = useMemo(
     () => getHomeDailyBriefModel(matchData),
@@ -260,29 +249,6 @@ export default function MatchesScreen() {
             />
           )}
         </ScrollView>
-
-        {allTags.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginTop: 8, marginHorizontal: -20 }}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 6 }}
-          >
-            <Chip
-              label="All tags"
-              active={tagFilter === null}
-              onPress={() => setTagFilter(null)}
-            />
-            {allTags.map((t) => (
-              <Chip
-                key={t}
-                label={`#${t}`}
-                active={tagFilter === t}
-                onPress={() => setTagFilter(tagFilter === t ? null : t)}
-              />
-            ))}
-          </ScrollView>
-        )}
 
         {/* Sort row */}
         <View
