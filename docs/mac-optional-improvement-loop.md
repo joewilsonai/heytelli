@@ -168,18 +168,12 @@ Uninstall the Mac runner:
 ./scripts/uninstall-local-swarm-launchd.sh
 ```
 
-The current Mac should stay reachable over Tailscale at:
-
-```text
-joes-macbook-pro-3-1.tailc35824.ts.net
-100.97.186.33
-```
-
-Tailscale SSH should be enabled on the Mac host. From another trusted tailnet
-machine, connect with:
+The current Mac should stay reachable over Tailscale. Keep the exact MagicDNS
+name and tailnet IP in the private runner setup notes or secret store, not in
+repo documentation. From another trusted tailnet machine, connect with:
 
 ```bash
-tailscale ssh joewilson@joes-macbook-pro-3-1.tailc35824.ts.net
+tailscale ssh <user>@<mac-magicdns-name>
 ```
 
 ## Cloud/Linux Swarm Fallback

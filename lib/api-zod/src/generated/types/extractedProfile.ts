@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ExtractedProfileVisibleMediaItem } from './extractedProfileVisibleMediaItem';
 import type { MatchScores } from './matchScores';
 
 export interface ExtractedProfile {
@@ -16,5 +17,6 @@ export interface ExtractedProfile {
   mentionedTopics: string[];
   /** @nullable */
   conversationTone: string | null;
+  visibleMedia: ExtractedProfileVisibleMediaItem[];
   scores: MatchScores;
 }

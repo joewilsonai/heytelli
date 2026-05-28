@@ -13,7 +13,8 @@
 ## Beta Access
 
 Beta testers sign in with their email address and the beta invite code configured
-on the API service. The current first-pass code is `heytelli-beta`.
+on the API service. Do not commit or publish the active invite code; store it in
+the API service environment.
 
 Each tester gets an isolated user record. Matches, screenshots, reads, tags,
 date cards, profile analysis, and debrief history are scoped by user id on the
@@ -91,9 +92,13 @@ Then test from the app:
 
 ## Privacy Checks
 
+- Review `docs/beta-privacy-terms.md` before expanding the tester pool.
 - Keep screenshots in private object storage.
 - Raw screenshots should be purged after extraction once the purge path is fully
   verified in production.
+- Product feedback stays text-first. Do not enable feedback screenshot uploads
+  until the app has explicit consent copy, local redaction/crop guidance,
+  private owner-scoped storage, short retention, and a tested delete path.
 - Do not create hosted public share pages for user data.
 - Circle contacts should remain user-scoped and should not expose private notes
   to the contact until an explicit send/check-in action exists.

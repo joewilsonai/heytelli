@@ -1,4 +1,11 @@
-#Here is your fully updated, comprehensive Product Requirements Document (PRD). It has been completely rewritten to weave the **women’s safety-first online dating clarity** thesis directly into every feature, database table, visual cue, and AI prompt while keeping development lean and achievable for a solo founder on Expo.
+# Historical Scaffold PRD
+
+> This document is preserved for historical context from the earlier
+> Bumble/Haystack scaffold. It is not the current HeyTelli product source of
+> truth and may describe removed concepts such as hosted share links,
+> score-based reads, older database tables, or legacy package names. Use
+> `docs/heytelli-prd.md` for current product direction and privacy constraints.
+
 # Product Requirements Document: HeyTelli
 **Product:** HeyTelli
 **Category:** Private AI-Assisted Dating Safety & Clarity Journal
@@ -132,9 +139,12 @@ A functional safety tool completed prior to a real-world encounter. It avoids co
  * **The Checkpoints:** The user manually writes down the venue location, anticipated start time, and a safety check-in window (e.g., 3 hours).
  * **Native Alerts:** Leverages expo-notifications locally to prompt a silent status check-in when the timer concludes.
  * **The Guardrail Option:** If the safety timer expires without user confirmation or extension, a push message is sent out to designated emergency numbers via the web sharing mechanism.
-### 5.5 Tokenized Web-View Vibe Checks (/circle)
-Building an intricate internal social ecosystem within an MVP adds immense codebase friction and creates acquisition drops. HeyTelli bypasses this entirely using secure link deployment.
- * **The Workflow:** When a user wants feedback or wants a contact to watch over them on a date, they click "Share Vibe Check." The backend spins up a unique cryptographically signed, unindexed link: [hey-telli.com/shared/](https://hey-telli.com/shared/)[secure_token].
+### 5.5 Historical Tokenized Web-View Vibe Checks (/circle)
+This hosted sharing model is preserved only as legacy context. Current HeyTelli
+direction removes hosted connection pages and uses native, user-initiated
+sharing instead.
+ * **The Workflow:** The older scaffold proposed a cryptographically signed,
+   unindexed share link. Do not implement this for the current product.
  * **The Group Chat Surface:** Friends open this secure URL inside iOS Safari or Android Chrome straight from their group text threads. They see a clean web view summarizing connection highlights, timeline notes, and active Date Brief statuses.
  * **Frictionless Feedback Controls:** To guarantee zero moderation issues during Apple App Review, friends **cannot** input free-form text comments. Instead, they interact via one-tap utility reactions:
 | Functional Option | Direct Outcome for the User Inside the Mobile App |

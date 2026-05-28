@@ -13,6 +13,7 @@ const profile = {
   interests: ["coffee", "live music"],
   mentionedTopics: ["Sunday plans"],
   conversationTone: "Warm, curious, and a little inconsistent.",
+  visibleMedia: [],
   scores: {
     sexPotential: { value: null, rationale: null },
     conversionAbility: {
@@ -43,7 +44,8 @@ test("prefers an explicit model read over fallback profile text", () => {
   const read = buildMatchReadSnapshot({
     profile,
     transcript: [],
-    explicitRead: "He is keeping the thread alive, but planning energy is still unclear.",
+    explicitRead:
+      "He is keeping the thread alive, but planning energy is still unclear.",
     screenshotCountAt: 1,
     generatedAt: new Date("2026-05-26T12:00:00.000Z"),
   });

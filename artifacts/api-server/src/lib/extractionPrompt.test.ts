@@ -30,6 +30,28 @@ test("extraction prompt keeps deprecated score fields neutral", async () => {
   );
 });
 
+test("extraction prompt preserves image-in-image context", async () => {
+  const { EXTRACTION_SYSTEM_PROMPT } = await import("./extraction");
+
+  assert.match(EXTRACTION_SYSTEM_PROMPT, /Visible media inside screenshots/);
+  assert.match(EXTRACTION_SYSTEM_PROMPT, /screenshot-within-a-screenshot/);
+  assert.match(EXTRACTION_SYSTEM_PROMPT, /\[photo: person hiking/);
+  assert.match(EXTRACTION_SYSTEM_PROMPT, /\[shared screenshot: restaurant/);
+  assert.match(EXTRACTION_SYSTEM_PROMPT, /visibleMedia/);
+  assert.match(
+    EXTRACTION_SYSTEM_PROMPT,
+    /Do not put profile-only visual observations into interests or mentionedTopics/,
+  );
+  assert.match(
+    EXTRACTION_SYSTEM_PROMPT,
+    /Do not infer identity, attractiveness, intent, safety, or private facts/,
+  );
+  assert.match(
+    EXTRACTION_SYSTEM_PROMPT,
+    /Do not include full names, handles, phone numbers, addresses, license plates/,
+  );
+});
+
 test("merge extraction clears legacy score values", async () => {
   const { mergeExtraction } = await import("./extraction");
 
@@ -40,6 +62,7 @@ test("merge extraction clears legacy score values", async () => {
       interests: [],
       mentionedTopics: [],
       conversationTone: "warm",
+      visibleMedia: [],
       scores: {
         sexPotential: { value: 9, rationale: "legacy" },
         conversionAbility: { value: 8, rationale: "legacy" },
@@ -52,6 +75,20 @@ test("merge extraction clears legacy score values", async () => {
       interests: [],
       mentionedTopics: [],
       conversationTone: "consistent and kind",
+      visibleMedia: [
+        {
+          kind: "profile_photo",
+          description: "person at a climbing gym",
+          source: "profile",
+          speaker: null,
+        },
+        {
+          kind: "profile_photo",
+          description: "person at a climbing gym",
+          source: "profile",
+          speaker: null,
+        },
+      ],
       scores: {
         sexPotential: { value: 10, rationale: "ignored" },
         conversionAbility: { value: 10, rationale: "ignored" },
@@ -65,4 +102,12 @@ test("merge extraction clears legacy score values", async () => {
     conversionAbility: { value: null, rationale: null },
     chemistry: { value: null, rationale: null },
   });
+  assert.deepEqual(merged.visibleMedia, [
+    {
+      kind: "profile_photo",
+      description: "person at a climbing gym",
+      source: "profile",
+      speaker: null,
+    },
+  ]);
 });

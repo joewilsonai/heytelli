@@ -100,6 +100,10 @@ const FORBIDDEN_KEY_PARTS = [
   "imagedata",
   "image",
   "dataurl",
+  "attachment",
+  "thumbnail",
+  "objectpath",
+  "objecturl",
   "auth",
   "token",
 ];
@@ -112,8 +116,7 @@ const MAX_CLIENT_CONTEXT_RAW_VALUE_LENGTH = 500;
 
 const DATA_IMAGE_RE = /data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+/gi;
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const PHONE_RE =
-  /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+const PHONE_RE = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
 const ADDRESS_RE =
   /\b\d{2,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,4}\s+(?:st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard)\b/gi;
 const PRIVATE_CONTENT_RE = /\b(?:screenshot|transcript|raw conversation)\b/gi;
@@ -139,9 +142,7 @@ function matches(regex: RegExp, value: string): boolean {
 function normalizeFeedbackType(value: unknown): ImprovementFeedbackType | null {
   const cleaned = cleanText(value, 40)?.toLowerCase();
   if (!cleaned) return null;
-  return (
-    FEEDBACK_TYPES.find((type) => type.toLowerCase() === cleaned) ?? null
-  );
+  return FEEDBACK_TYPES.find((type) => type.toLowerCase() === cleaned) ?? null;
 }
 
 function normalizeSource(value: unknown): ImprovementSignalSource | null {
@@ -308,7 +309,10 @@ export function sanitizeImprovementPayload(
   };
   const surface = cleanText(rawPayload.surface, MAX_SURFACE_LENGTH);
   if (surface) sanitizedPayload.surface = surface;
-  if (rawPayload.clientContext && typeof rawPayload.clientContext === "object") {
+  if (
+    rawPayload.clientContext &&
+    typeof rawPayload.clientContext === "object"
+  ) {
     const context = cleanClientContext(rawPayload.clientContext, true);
     Object.assign(sanitizedPayload, context);
   }
