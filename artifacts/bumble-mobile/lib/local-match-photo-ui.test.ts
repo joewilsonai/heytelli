@@ -30,8 +30,9 @@ test("match photos are stored locally and never use backend upload", () => {
   assert.match(detail, /useLocalMatchPhotos/);
   assert.match(detail, /chooseLocalMatchPhoto/);
   assert.match(detail, /clearMatchPhoto/);
-  assert.match(detail, /Stored on this phone only/);
-  assert.match(detail, /localPhotoUri\s*\?\?/);
+  assert.match(detail, /Private match photo/);
+  assert.match(detail, /const photo = localPhotoUri/);
+  assert.doesNotMatch(detail, /localPhotoUri\s*\?\?\s*objectPathToUrl/);
 
   assert.match(home, /useLocalMatchPhotos/);
   assert.match(home, /localPhotoUri/);
@@ -39,4 +40,5 @@ test("match photos are stored locally and never use backend upload", () => {
 
   assert.match(staleNudges, /useLocalMatchPhotos/);
   assert.match(staleNudges, /localMatchPhotos\[String\(nudge\.matchId\)\]/);
+  assert.doesNotMatch(staleNudges, /objectPathToUrl/);
 });

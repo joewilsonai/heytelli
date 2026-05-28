@@ -1214,7 +1214,7 @@ function HeaderCard({
   const [name, setName] = useState(match.name);
   const [saving, setSaving] = useState(false);
   const [photoSaving, setPhotoSaving] = useState(false);
-  const photo = localPhotoUri ?? objectPathToUrl(match.photoObjectPath);
+  const photo = localPhotoUri;
 
   const saveName = async () => {
     if (!name.trim() || name === match.name) {
@@ -1454,8 +1454,8 @@ function HeaderCard({
               }}
             >
               {localPhotoUri
-                ? "Stored on this phone only. Not sent to HeyTelli servers."
-                : "Add a private photo. It will be stored on this phone only and not sent to HeyTelli servers."}
+                ? "Private match photo. Not sent to HeyTelli servers."
+                : "Add a private match photo. It will not be sent to HeyTelli servers."}
             </Text>
           </View>
         </View>

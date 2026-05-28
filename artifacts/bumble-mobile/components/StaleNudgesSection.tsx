@@ -9,7 +9,6 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useGetStaleNudges } from "@workspace/api-client-react";
 
-import { objectPathToUrl } from "@/lib/image";
 import { useLocalMatchPhotos } from "@/lib/local-match-photos";
 
 export function StaleNudgesSection() {
@@ -40,9 +39,7 @@ export function StaleNudgesSection() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 12, paddingRight: 20 }}>
           {nudges.map((nudge) => {
-            const photo =
-              localMatchPhotos[String(nudge.matchId)] ??
-              objectPathToUrl(nudge.photoObjectPath);
+            const photo = localMatchPhotos[String(nudge.matchId)] ?? null;
             const opener = nudge.openers[0] ?? "";
             return (
               <View
