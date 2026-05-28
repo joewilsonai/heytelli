@@ -61,6 +61,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 20
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -75,6 +77,59 @@ jobs:
 
       - name: Typecheck workspace
         run: pnpm run typecheck
+
+      - name: Generate in-app build changelog
+        env:
+          HEYTELLI_EVENT_BEFORE: ${{ github.event.before }}
+          HEYTELLI_EVENT_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const { execFileSync } = require("node:child_process");
+          const { appendFileSync, readFileSync } = require("node:fs");
+
+          function clean(value, maxLength = 160) {
+            return String(value || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, maxLength);
+          }
+
+          function gitSubjects(range) {
+            try {
+              return execFileSync("git", ["log", "--format=%s", "--no-merges", range], {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "ignore"],
+              })
+                .split("\n")
+                .map((line) => clean(line))
+                .filter(Boolean);
+            } catch {
+              return [];
+            }
+          }
+
+          const sha = process.env.HEYTELLI_EVENT_SHA || "";
+          const before = process.env.HEYTELLI_EVENT_BEFORE || "";
+          const zeroBefore = before && /^0+$/.test(before);
+          const range = before && sha && !zeroBefore ? `${before}..${sha}` : "-1";
+          const rangeSubjects = gitSubjects(range);
+          const subjects = rangeSubjects.length > 0 ? rangeSubjects : gitSubjects("-1");
+          const message = clean(process.env.EAS_MESSAGE || `Beta build ${sha.slice(0, 7)}`, 80);
+          const highlights = subjects.length > 0 ? subjects.slice(0, 5) : [message];
+          const appJson = JSON.parse(readFileSync("artifacts/bumble-mobile/app.json", "utf8"));
+          const version = clean(appJson.expo?.version || "1.0.0", 24);
+          const date = new Date().toISOString().slice(0, 10);
+
+          appendFileSync(
+            process.env.GITHUB_ENV,
+            [
+              `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_VERSION=${version}`,
+              `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE=${date}`,
+              `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE=${message}`,
+              `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS=${JSON.stringify(highlights)}`,
+            ].join("\n") + "\n",
+          );
+          NODE
 
       - name: Check Expo token
         id: expo-token

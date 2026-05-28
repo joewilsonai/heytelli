@@ -56,6 +56,16 @@ test("settings changelog has detailed latest build notes", () => {
   assert.match(changelog, /Feedback now confirms/);
 });
 
+test("ios beta workflow injects build changelog metadata", () => {
+  const workflow = read("../../../.github/workflows/ios-beta-build.yml");
+
+  assert.match(workflow, /Generate in-app build changelog/);
+  assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE/);
+  assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE/);
+  assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS/);
+  assert.match(workflow, /GITHUB_ENV/);
+});
+
 test("settings profile screenshots allow ten and analyze into profile fields", () => {
   const screen = read("../app/settings.tsx");
   const localScreenshots = read("./local-profile-screenshots.ts");
