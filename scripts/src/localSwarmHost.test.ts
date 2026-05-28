@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   parsePmsetCustom,
   summarizePowerSettings,
@@ -135,4 +138,17 @@ AC Power:
   assert.match(summary.warnings.join("\n"), /AC sleep is 15/);
   assert.match(summary.warnings.join("\n"), /Wake-on-network is not enabled/);
   assert.match(summary.warnings.join("\n"), /TCP keepalive is not enabled/);
+});
+
+test("local swarm host script prevents overlapping launchd runs", async () => {
+  const scriptPath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../run-local-swarm-host.sh",
+  );
+  const source = await readFile(scriptPath, "utf8");
+
+  assert.match(source, /local-swarm\.lock/);
+  assert.match(source, /mkdir "\$LOCK_DIR"/);
+  assert.match(source, /already running/);
+  assert.match(source, /trap 'rm -rf "\$LOCK_DIR"' EXIT/);
 });

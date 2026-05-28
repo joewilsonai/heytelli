@@ -8,6 +8,21 @@ timestamp() {
   date +"%Y-%m-%dT%H:%M:%S%z"
 }
 
+LOCK_PARENT="$HOME/Library/Caches/heytelli"
+LOCK_DIR="$LOCK_PARENT/local-swarm.lock"
+mkdir -p "$LOCK_PARENT"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  existing_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+  if [[ -n "$existing_pid" ]]; then
+    echo "[$(timestamp)] HeyTelli local swarm host already running with pid $existing_pid"
+  else
+    echo "[$(timestamp)] HeyTelli local swarm host already running"
+  fi
+  exit 0
+fi
+printf '%s\n' "$$" > "$LOCK_DIR/pid"
+trap 'rm -rf "$LOCK_DIR"' EXIT
+
 echo "[$(timestamp)] HeyTelli local swarm host starting"
 
 if [[ -f "$HOME/.luna/secrets/keys.env" ]]; then

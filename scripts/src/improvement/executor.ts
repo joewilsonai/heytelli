@@ -68,6 +68,7 @@ export type SwarmExecutorOptions = {
   repoRoot: string;
   worktreeRoot: string;
   agentCommand: string | null;
+  agentTimeoutMs: number;
   keepWorktree: boolean;
   allowGuardedAutoMerge: boolean;
   allowExtraAutoMerge: boolean;
@@ -114,10 +115,12 @@ type CommandRunner = (
     stdin?: string;
     env?: NodeJS.ProcessEnv;
     allowFailure?: boolean;
+    timeoutMs?: number;
   },
 ) => Promise<CommandResult>;
 
 const DEFAULT_LIMIT = 3;
+export const DEFAULT_AGENT_TIMEOUT_MS = 20 * 60 * 1000;
 export const EXECUTOR_PROMPT_FILE_NAME = ".heytelli-swarm-prompt.md";
 
 function envFlag(value: string | undefined, defaultValue: boolean): boolean {
@@ -235,6 +238,12 @@ export function parseExecutorArgs(
       argValue(argv, "--agent-command") ||
       env.HEYTELLI_SWARM_EXECUTOR_COMMAND ||
       null,
+    agentTimeoutMs: numericArg(
+      argv,
+      "--agent-timeout-ms",
+      env.IMPROVEMENT_EXECUTOR_AGENT_TIMEOUT_MS,
+      DEFAULT_AGENT_TIMEOUT_MS,
+    ),
     keepWorktree:
       argv.includes("--keep-worktree") ||
       envFlag(env.IMPROVEMENT_EXECUTOR_KEEP_WORKTREE, false),
@@ -478,7 +487,7 @@ export function swarmExecutorRunShouldFail(
   return counts.failed > 0;
 }
 
-async function runCommand(
+export async function runCommand(
   command: string,
   args: string[],
   options: {
@@ -486,9 +495,11 @@ async function runCommand(
     stdin?: string;
     env?: NodeJS.ProcessEnv;
     allowFailure?: boolean;
+    timeoutMs?: number;
   } = {},
 ): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
+    const renderedCommand = [command, ...args].join(" ");
     const child = spawn(command, args, {
       cwd: options.cwd,
       env: options.env ?? process.env,
@@ -496,6 +507,34 @@ async function runCommand(
     });
     let stdout = "";
     let stderr = "";
+    let settled = false;
+    let timedOut = false;
+    let timeout: NodeJS.Timeout | null = null;
+    let forceKillTimeout: NodeJS.Timeout | null = null;
+
+    const clearTimeouts = () => {
+      if (timeout) clearTimeout(timeout);
+      if (forceKillTimeout) clearTimeout(forceKillTimeout);
+    };
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeouts();
+      callback();
+    };
+
+    if (options.timeoutMs && options.timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        timedOut = true;
+        child.kill("SIGTERM");
+        forceKillTimeout = setTimeout(() => {
+          child.kill("SIGKILL");
+        }, 5_000);
+        forceKillTimeout.unref?.();
+      }, options.timeoutMs);
+      timeout.unref?.();
+    }
+
     child.stdout.on("data", (chunk) => {
       const text = String(chunk);
       stdout += text;
@@ -506,15 +545,27 @@ async function runCommand(
       stderr += text;
       process.stderr.write(text);
     });
-    child.on("error", reject);
+    child.on("error", (err) => finish(() => reject(err)));
     child.on("close", (code) => {
-      if (code === 0 || options.allowFailure) {
-        resolve({ stdout, stderr });
+      if (timedOut) {
+        finish(() =>
+          reject(
+            new Error(
+              `${renderedCommand} timed out after ${options.timeoutMs}ms`,
+            ),
+          ),
+        );
         return;
       }
-      reject(
-        new Error(
-          `${command} ${args.join(" ")} failed with exit code ${code ?? "unknown"}`,
+      if (code === 0 || options.allowFailure) {
+        finish(() => resolve({ stdout, stderr }));
+        return;
+      }
+      finish(() =>
+        reject(
+          new Error(
+            `${renderedCommand} failed with exit code ${code ?? "unknown"}`,
+          ),
         ),
       );
     });
@@ -540,6 +591,7 @@ async function runAgent(
         HEYTELLI_SWARM_PROMPT_FILE: promptPath,
         HEYTELLI_SWARM_WORKTREE: worktreePath,
       },
+      timeoutMs: options.agentTimeoutMs,
     });
     return;
   }
@@ -553,7 +605,7 @@ async function runAgent(
       worktreePath,
       "-",
     ],
-    { cwd: worktreePath, stdin: prompt },
+    { cwd: worktreePath, stdin: prompt, timeoutMs: options.agentTimeoutMs },
   );
 }
 

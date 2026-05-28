@@ -8,10 +8,12 @@ import {
   buildExecutorPrompt,
   buildSwarmExecutorCommandPreview,
   buildSwarmExecutorDigest,
+  DEFAULT_AGENT_TIMEOUT_MS,
   executorPrBodyMarker,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
   removeExecutorScratchFiles,
+  runCommand,
   swarmExecutorRunShouldFail,
 } from "./executor";
 
@@ -181,6 +183,8 @@ test("parses executor CLI options", () => {
       "--base-branch",
       "main",
       "--allow-guarded-auto-merge",
+      "--agent-timeout-ms",
+      "45000",
       "--agent-name",
       "local-executor",
     ],
@@ -192,9 +196,37 @@ test("parses executor CLI options", () => {
   assert.equal(options.owner, "joewilsonai");
   assert.equal(options.repo, "heytelli");
   assert.equal(options.baseBranch, "main");
+  assert.equal(options.agentTimeoutMs, 45000);
   assert.equal(options.allowGuardedAutoMerge, true);
   assert.equal(options.allowExtraAutoMerge, false);
   assert.equal(options.agentName, "local-executor");
+});
+
+test("parses executor agent timeout from env with a safe default", () => {
+  assert.equal(
+    parseExecutorArgs([], {}).agentTimeoutMs,
+    DEFAULT_AGENT_TIMEOUT_MS,
+  );
+
+  assert.equal(
+    parseExecutorArgs([], {
+      IMPROVEMENT_EXECUTOR_AGENT_TIMEOUT_MS: "90000",
+    }).agentTimeoutMs,
+    90000,
+  );
+});
+
+test("times out hung child commands cleanly", async () => {
+  const startedAt = Date.now();
+
+  await assert.rejects(
+    runCommand(process.execPath, ["-e", "setTimeout(() => {}, 10000);"], {
+      timeoutMs: 50,
+    }),
+    /timed out after 50ms/,
+  );
+
+  assert.ok(Date.now() - startedAt < 2_000);
 });
 
 test("executor digest reports PR and merge progress", () => {
