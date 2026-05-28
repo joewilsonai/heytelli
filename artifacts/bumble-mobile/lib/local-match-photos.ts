@@ -37,6 +37,31 @@ function canReadLocalPhoto(uri: string): boolean {
   }
 }
 
+function localPhotoFileName(uri: string): string | null {
+  const withoutQuery = uri.split(/[?#]/)[0] ?? "";
+  const fileName = withoutQuery.split("/").filter(Boolean).pop();
+  if (!fileName || !/^match_[^/]+\.(?:jpe?g|png|webp|heic)$/i.test(fileName)) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(fileName);
+  } catch {
+    return fileName;
+  }
+}
+
+function remapLocalMatchPhotoUri(uri: string): string | null {
+  if (canReadLocalPhoto(uri)) return uri;
+  const fileName = localPhotoFileName(uri);
+  if (!fileName) return null;
+  try {
+    const file = new File(matchPhotoDir(), fileName);
+    return file.exists ? file.uri : null;
+  } catch {
+    return null;
+  }
+}
+
 function deleteLocalMatchPhotoFile(uri: string | null | undefined): void {
   if (!uri) return;
   const directory = matchPhotoDir();
@@ -60,8 +85,9 @@ export function pruneMissingLocalMatchPhotos(
 ): LocalMatchPhotoMap {
   const next: LocalMatchPhotoMap = {};
   for (const [id, uri] of Object.entries(photos)) {
-    if (uri && canReadLocalPhoto(uri)) {
-      next[id] = uri;
+    const currentUri = uri ? remapLocalMatchPhotoUri(uri) : null;
+    if (currentUri) {
+      next[id] = currentUri;
     }
   }
   return next;
