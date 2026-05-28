@@ -5,6 +5,8 @@ export type BuildChangelogEntry = {
   highlights: string[];
 };
 
+type BuildChangelogEnv = Record<string, string | undefined>;
+
 export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
   {
     version: "1.0.0",
@@ -18,8 +20,60 @@ export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
   },
 ];
 
-export function getLatestBuildChangelog(): BuildChangelogEntry {
-  return BUILD_CHANGELOG_ENTRIES[0]!;
+const FALLBACK_CHANGELOG = BUILD_CHANGELOG_ENTRIES[0]!;
+const MAX_HIGHLIGHTS = 5;
+
+function clean(value: string | undefined, maxLength: number): string | null {
+  const cleaned = value?.trim().replace(/\s+/g, " ");
+  return cleaned ? cleaned.slice(0, maxLength) : null;
+}
+
+function cleanDate(value: string | undefined): string | null {
+  const cleaned = clean(value, 20);
+  return cleaned && /^\d{4}-\d{2}-\d{2}$/.test(cleaned) ? cleaned : null;
+}
+
+function parseHighlights(value: string | undefined): string[] {
+  if (!value?.trim()) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed
+        .flatMap((item) => (typeof item === "string" ? [clean(item, 160)] : []))
+        .filter((item): item is string => item != null)
+        .slice(0, MAX_HIGHLIGHTS);
+    }
+  } catch {
+    // Fall through to delimiter parsing for local/manual builds.
+  }
+
+  return value
+    .split(/\s*(?:\|\||\n|;)\s*/)
+    .map((item) => clean(item, 160))
+    .filter((item): item is string => item != null)
+    .slice(0, MAX_HIGHLIGHTS);
+}
+
+export function getLatestBuildChangelog(
+  env: BuildChangelogEnv = process.env,
+): BuildChangelogEntry {
+  const title = clean(env.EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE, 80);
+  const highlights = parseHighlights(
+    env.EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS,
+  );
+  if (!title || highlights.length === 0) {
+    return FALLBACK_CHANGELOG;
+  }
+  return {
+    version:
+      clean(env.EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_VERSION, 24) ??
+      FALLBACK_CHANGELOG.version,
+    date:
+      cleanDate(env.EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE) ??
+      FALLBACK_CHANGELOG.date,
+    title,
+    highlights,
+  };
 }
 
 export function formatBuildChangelogVersion(
