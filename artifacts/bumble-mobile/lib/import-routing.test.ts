@@ -16,7 +16,7 @@ test("selects a single active match when the extracted first name matches", () =
   ]);
 
   assert.equal(result.mode, "existing");
-  assert.equal(result.match?.id, 1);
+  assert.equal(result.match.id, 1);
 });
 
 test("requires a choice when more than one active match has the same first name", () => {
