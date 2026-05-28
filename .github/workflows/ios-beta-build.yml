@@ -51,6 +51,7 @@ jobs:
     timeout-minutes: 60
     env:
       CI: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS_STATUS: 1
       EAS_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'beta' }}
