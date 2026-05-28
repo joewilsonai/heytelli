@@ -37,12 +37,7 @@ export function buildMatchReadBody(input: {
       : null,
   ]);
 
-  const body = joinParts([
-    profile.conversationTone,
-    profile.scores.chemistry.rationale,
-    profile.scores.conversionAbility.rationale,
-    profileDetails,
-  ]);
+  const body = joinParts([profile.conversationTone, profileDetails]);
 
   if (body) return body;
   if (input.transcript.length > 0) {
@@ -72,11 +67,13 @@ export function normalizeMatchReadSnapshot(
   const obj = raw as Record<string, unknown>;
   const body = cleanText(typeof obj.body === "string" ? obj.body : null);
   const generatedAt =
-    typeof obj.generatedAt === "string" && !Number.isNaN(new Date(obj.generatedAt).getTime())
+    typeof obj.generatedAt === "string" &&
+    !Number.isNaN(new Date(obj.generatedAt).getTime())
       ? obj.generatedAt
       : null;
   const screenshotCountAt =
-    typeof obj.screenshotCountAt === "number" && Number.isFinite(obj.screenshotCountAt)
+    typeof obj.screenshotCountAt === "number" &&
+    Number.isFinite(obj.screenshotCountAt)
       ? Math.max(0, Math.floor(obj.screenshotCountAt))
       : null;
 

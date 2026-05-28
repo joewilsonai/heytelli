@@ -83,7 +83,7 @@ Respond with ONLY a JSON object (no markdown, no extra text) with this shape:
   "chemistryScore":         { "value": null, "rationale": null }
 }
 
-If a field cannot be determined, use null (for scalars) or [] (for arrays). Keep lists short and high-signal. Be honest with the scores — don't inflate them.`;
+If a field cannot be determined, use null (for scalars) or [] (for arrays). Keep lists short and high-signal. Leave the deprecated score fields null.`;
 
 const SYSTEM_PROMPT = EXTRACTION_SYSTEM_PROMPT;
 
@@ -259,26 +259,14 @@ export async function extractFromScreenshots(
   };
 }
 
-function mergeScore(existing: MatchScore, incoming: MatchScore): MatchScore {
-  // Prefer the latest non-null reading, since later screenshots reflect more of the conversation.
-  if (incoming.value === null && incoming.rationale === null) return existing;
-  return {
-    value: incoming.value ?? existing.value,
-    rationale: incoming.rationale ?? existing.rationale,
-  };
-}
-
 function mergeScores(
-  existing: MatchScores,
-  incoming: MatchScores,
+  _existing: MatchScores,
+  _incoming: MatchScores,
 ): MatchScores {
   return {
-    sexPotential: mergeScore(existing.sexPotential, incoming.sexPotential),
-    conversionAbility: mergeScore(
-      existing.conversionAbility,
-      incoming.conversionAbility,
-    ),
-    chemistry: mergeScore(existing.chemistry, incoming.chemistry),
+    sexPotential: { ...emptyScore },
+    conversionAbility: { ...emptyScore },
+    chemistry: { ...emptyScore },
   };
 }
 

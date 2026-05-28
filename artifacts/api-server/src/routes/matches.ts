@@ -1027,27 +1027,6 @@ router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
       if (!prev || s.uploadedAt > prev)
         lastActivity.set(s.matchId, s.uploadedAt);
     }
-    const scoreRows = ids.length
-      ? await db
-          .select()
-          .from(matchScoreHistory)
-          .where(inArray(matchScoreHistory.matchId, ids))
-          .orderBy(desc(matchScoreHistory.createdAt))
-      : [];
-    const latestScores = new Map<
-      number,
-      { sex: number | null; conv: number | null; chem: number | null }
-    >();
-    for (const s of scoreRows) {
-      if (!latestScores.has(s.matchId)) {
-        latestScores.set(s.matchId, {
-          sex: s.sexPotential,
-          conv: s.conversionAbility,
-          chem: s.chemistry,
-        });
-      }
-    }
-
     const now = Date.now();
     const input = active.map((m) => {
       const turns = normalizeTranscript(m.transcript);
@@ -1060,7 +1039,6 @@ router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
       return {
         matchId: m.id,
         name: m.name,
-        scores: latestScores.get(m.id) ?? { sex: null, conv: null, chem: null },
         hoursSinceLastActivity: last
           ? (now - last.getTime()) / 3_600_000
           : null,

@@ -41,26 +41,13 @@ import {
 import { useLocalMatchPhotos } from "@/lib/local-match-photos";
 
 type StatusFilter = "active" | "archived" | "ghosted";
-type SortKey = "recent" | "attention" | "name" | "connection" | "momentum";
+type SortKey = "recent" | "attention" | "name";
 
 const SORT_LABELS: Record<SortKey, string> = {
   recent: "Recent",
   attention: "Needs attention",
   name: "Name",
-  connection: "Connection",
-  momentum: "Momentum",
 };
-
-function scoreOf(m: Match, key: SortKey): number {
-  switch (key) {
-    case "connection":
-      return m.extractedProfile.scores.chemistry.value ?? -1;
-    case "momentum":
-      return m.extractedProfile.scores.conversionAbility.value ?? -1;
-    default:
-      return 0;
-  }
-}
 
 function lastActivity(m: Match): number {
   return m.lastActivityAt ? new Date(m.lastActivityAt).getTime() : 0;
@@ -110,7 +97,7 @@ export default function MatchesScreen() {
           getHomeMatchCardModel(a).attentionRank;
         return rank || lastActivity(b) - lastActivity(a);
       }
-      return scoreOf(b, sort) - scoreOf(a, sort);
+      return lastActivity(b) - lastActivity(a);
     });
     return list;
   }, [matchData, filter, sort, tagFilter]);
