@@ -1,14 +1,24 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useMemo, useState } from "react";
-import { Alert, Share, Switch, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  Share,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { Body, Button, Card, SectionLabel } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import {
+  buildGutCheckMoments,
   buildGutCheckMessage,
   buildGutCheckNoteAppend,
   getGutCheckContextPreview,
+  type GutCheckMoment,
 } from "@/lib/gut-check-card";
 import { updateMatch } from "@workspace/api-client-react";
 import type { MatchDetail } from "@workspace/api-client-react";
@@ -24,6 +34,7 @@ export function GutCheckCard({
   const [note, setNote] = useState("");
   const [question, setQuestion] = useState("");
   const [circleNote, setCircleNote] = useState("");
+  const [selectedMomentId, setSelectedMomentId] = useState("manual-instinct");
   const [maskName, setMaskName] = useState(false);
   const [includeDate, setIncludeDate] = useState(Boolean(match.nextDateAt));
   const [includeTimeline, setIncludeTimeline] = useState(true);
@@ -35,27 +46,42 @@ export function GutCheckCard({
     () => getGutCheckContextPreview(match, { maskName }),
     [maskName, match],
   );
+  const moments = useMemo(() => buildGutCheckMoments(match), [match]);
+  const selectedMoment =
+    moments.find((moment) => moment.id === selectedMomentId) ?? moments[0];
   const message = useMemo(
     () =>
       buildGutCheckMessage(match, {
+        selectedMoment,
         note,
         question,
         includeDate,
         includeTimeline,
         maskName,
       }),
-    [includeDate, includeTimeline, maskName, match, note, question],
+    [
+      includeDate,
+      includeTimeline,
+      maskName,
+      match,
+      note,
+      question,
+      selectedMoment,
+    ],
   );
   const hasTimeline = preview.timelineHighlights.length > 0;
   const hasDate = preview.hasDateContext;
-  const canShare = note.trim().length > 0 || question.trim().length > 0;
+  const canShare =
+    selectedMoment?.kind !== "manual" ||
+    note.trim().length > 0 ||
+    question.trim().length > 0;
   const canSaveCircleNote = circleNote.trim().length > 0;
 
   const shareGutCheck = async () => {
     if (!canShare) {
       Alert.alert(
         "Add a gut check",
-        "Write what happened or what you want your circle to weigh in on.",
+        "Pick a moment HeyTelli found or write what feels off.",
       );
       return;
     }
@@ -116,14 +142,35 @@ export function GutCheckCard({
           <Text
             style={{ color: c.foreground, fontSize: 16, fontWeight: "700" }}
           >
-            Send this to your circle
+            Pick what needs a second read
           </Text>
         </View>
       </View>
 
       <View style={{ gap: 8 }}>
+        <Body muted style={{ fontSize: 12 }}>
+          Choose something HeyTelli noticed, or start from your own read.
+          Something feels off is always enough.
+        </Body>
+        <View style={{ gap: 8 }}>
+          {moments.map((moment) => (
+            <GutCheckMomentOption
+              key={moment.id}
+              moment={moment}
+              selected={moment.id === selectedMoment?.id}
+              onPress={() => setSelectedMomentId(moment.id)}
+            />
+          ))}
+        </View>
+      </View>
+
+      <View style={{ gap: 8 }}>
         <TextInput
-          placeholder="What happened?"
+          placeholder={
+            selectedMoment?.kind === "manual"
+              ? "What feels off?"
+              : "Add your instinct or extra context"
+          }
           placeholderTextColor={c.mutedForeground}
           value={note}
           onChangeText={setNote}
@@ -143,7 +190,9 @@ export function GutCheckCard({
           }}
         />
         <TextInput
-          placeholder="What do you want checked?"
+          placeholder={
+            selectedMoment?.suggestedQuestion ?? "What do you want checked?"
+          }
           placeholderTextColor={c.mutedForeground}
           value={question}
           onChangeText={setQuestion}
@@ -251,6 +300,97 @@ export function GutCheckCard({
         </View>
       )}
     </Card>
+  );
+}
+
+function iconForMoment(
+  kind: GutCheckMoment["kind"],
+): keyof typeof Feather.glyphMap {
+  if (kind === "pattern") return "alert-triangle";
+  if (kind === "green-flag") return "check-circle";
+  if (kind === "date") return "calendar";
+  if (kind === "tag") return "tag";
+  if (kind === "read") return "book-open";
+  if (kind === "timeline") return "clock";
+  return "heart";
+}
+
+function GutCheckMomentOption({
+  moment,
+  selected,
+  onPress,
+}: {
+  moment: GutCheckMoment;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${moment.label}: ${moment.title}`}
+      accessibilityState={{ selected }}
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        borderWidth: 1,
+        borderColor: selected ? c.primary : c.border,
+        borderRadius: 12,
+        backgroundColor: selected ? c.secondary : c.background,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        opacity: pressed ? 0.75 : 1,
+        gap: 8,
+      })}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: selected ? c.primary : c.muted,
+          }}
+        >
+          <Feather
+            name={iconForMoment(moment.kind)}
+            size={14}
+            color={selected ? c.primaryForeground : c.foreground}
+          />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text
+            style={{
+              color: c.mutedForeground,
+              fontSize: 11,
+              fontWeight: "700",
+              textTransform: "uppercase",
+            }}
+          >
+            {moment.label}
+          </Text>
+          <Text
+            numberOfLines={2}
+            style={{ color: c.foreground, fontSize: 14, fontWeight: "700" }}
+          >
+            {moment.title}
+          </Text>
+        </View>
+        {selected && <Feather name="check" size={18} color={c.primary} />}
+      </View>
+      {moment.evidence && (
+        <Text
+          numberOfLines={2}
+          style={{ color: c.mutedForeground, fontSize: 12, lineHeight: 17 }}
+        >
+          {moment.evidence}
+        </Text>
+      )}
+    </Pressable>
   );
 }
 
