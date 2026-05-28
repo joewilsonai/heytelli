@@ -106,6 +106,7 @@ import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 import { buildDateSafetyPlanFromSettings } from "@/lib/user-settings";
 import { useUserSettings } from "@/lib/use-user-settings";
+import { useLocalMatchPhotos } from "@/lib/local-match-photos";
 
 export default function MatchDetailScreen() {
   const c = useColors();
@@ -119,6 +120,11 @@ export default function MatchDetailScreen() {
   const [errorFeedbackOpen, setErrorFeedbackOpen] = useState(false);
   const { data, isLoading, refetch, isRefetching, error } =
     useGetMatch(matchId);
+  const {
+    photos: localMatchPhotos,
+    setLocalMatchPhoto,
+    removeLocalMatchPhoto,
+  } = useLocalMatchPhotos();
   const activeDateMode = Boolean(
     data?.dateSafetyPlan &&
     isDateModeActive(data.dateSafetyPlan.dateModeStatus) &&
@@ -271,7 +277,13 @@ export default function MatchDetailScreen() {
           />
         }
       >
-        <HeaderCard match={data} onChange={() => refetch()} />
+        <HeaderCard
+          match={data}
+          localPhotoUri={localMatchPhotos[String(data.id)] ?? null}
+          setLocalMatchPhoto={setLocalMatchPhoto}
+          removeLocalMatchPhoto={removeLocalMatchPhoto}
+          onChange={() => refetch()}
+        />
         <SectionIntro
           icon="eye"
           title="Read"
@@ -1183,16 +1195,26 @@ function NextStepCard({ match }: { match: MatchDetail }) {
 
 function HeaderCard({
   match,
+  localPhotoUri,
+  setLocalMatchPhoto,
+  removeLocalMatchPhoto,
   onChange,
 }: {
   match: MatchDetail;
+  localPhotoUri?: string | null;
+  setLocalMatchPhoto: (
+    matchId: number | string,
+    sourceUri: string,
+  ) => Promise<string>;
+  removeLocalMatchPhoto: (matchId: number | string) => Promise<void>;
   onChange: () => void;
 }) {
   const c = useColors();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(match.name);
   const [saving, setSaving] = useState(false);
-  const photo = objectPathToUrl(match.photoObjectPath);
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const photo = localPhotoUri;
 
   const saveName = async () => {
     if (!name.trim() || name === match.name) {
@@ -1209,6 +1231,53 @@ function HeaderCard({
       Alert.alert("Couldn't rename", e?.message ?? "Try again.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const chooseLocalMatchPhoto = async () => {
+    if (photoSaving) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        "Photos access needed",
+        "Allow photo library access to add a private match photo.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+    if (result.canceled) return;
+
+    const uri = result.assets[0]?.uri;
+    if (!uri) return;
+
+    setPhotoSaving(true);
+    try {
+      await setLocalMatchPhoto(match.id, uri);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+    } catch (e: any) {
+      Alert.alert("Couldn't save photo", e?.message ?? "Try again.");
+    } finally {
+      setPhotoSaving(false);
+    }
+  };
+
+  const clearMatchPhoto = async () => {
+    if (photoSaving || !localPhotoUri) return;
+    setPhotoSaving(true);
+    try {
+      await removeLocalMatchPhoto(match.id);
+    } catch (e: any) {
+      Alert.alert("Couldn't remove photo", e?.message ?? "Try again.");
+    } finally {
+      setPhotoSaving(false);
     }
   };
 
@@ -1304,6 +1373,90 @@ function HeaderCard({
                   : ""}
               </Text>
             )}
+          </View>
+          <View style={{ gap: 8, marginTop: 6 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  localPhotoUri ? "Replace match photo" : "Add match photo"
+                }
+                onPress={chooseLocalMatchPhoto}
+                disabled={photoSaving}
+                style={({ pressed }) => ({
+                  minHeight: 34,
+                  paddingHorizontal: 10,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  backgroundColor: c.muted,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  opacity: pressed || photoSaving ? 0.65 : 1,
+                })}
+              >
+                <Feather name="camera" size={13} color={c.foreground} />
+                <Text
+                  style={{
+                    color: c.foreground,
+                    fontSize: 12,
+                    fontWeight: "700",
+                  }}
+                >
+                  {localPhotoUri ? "Replace photo" : "Add photo"}
+                </Text>
+              </Pressable>
+              {localPhotoUri && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove match photo"
+                  onPress={clearMatchPhoto}
+                  disabled={photoSaving}
+                  style={({ pressed }) => ({
+                    minHeight: 34,
+                    paddingHorizontal: 10,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: c.border,
+                    backgroundColor: c.card,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    opacity: pressed || photoSaving ? 0.65 : 1,
+                  })}
+                >
+                  <Feather name="x" size={13} color={c.mutedForeground} />
+                  <Text
+                    style={{
+                      color: c.mutedForeground,
+                      fontSize: 12,
+                      fontWeight: "700",
+                    }}
+                  >
+                    Remove
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+            <Text
+              style={{
+                color: c.mutedForeground,
+                fontSize: 11,
+                lineHeight: 15,
+              }}
+            >
+              {localPhotoUri
+                ? "Private match photo. Not sent to HeyTelli servers."
+                : "Add a private match photo. It will not be sent to HeyTelli servers."}
+            </Text>
           </View>
         </View>
       </View>

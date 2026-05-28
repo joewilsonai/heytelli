@@ -9,12 +9,13 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useGetStaleNudges } from "@workspace/api-client-react";
 
-import { objectPathToUrl } from "@/lib/image";
+import { useLocalMatchPhotos } from "@/lib/local-match-photos";
 
 export function StaleNudgesSection() {
   const c = useColors();
   const router = useRouter();
   const { data } = useGetStaleNudges();
+  const { photos: localMatchPhotos } = useLocalMatchPhotos();
   const nudges = Array.isArray(data) ? data : [];
 
   if (nudges.length === 0) return null;
@@ -38,7 +39,7 @@ export function StaleNudgesSection() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: "row", gap: 12, paddingRight: 20 }}>
           {nudges.map((nudge) => {
-            const photo = objectPathToUrl(nudge.photoObjectPath);
+            const photo = localMatchPhotos[String(nudge.matchId)] ?? null;
             const opener = nudge.openers[0] ?? "";
             return (
               <View
@@ -58,12 +59,21 @@ export function StaleNudgesSection() {
                     Haptics.selectionAsync().catch(() => {});
                     router.push(`/match/${nudge.matchId}`);
                   }}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
                 >
                   {photo ? (
                     <Image
                       source={photo}
-                      style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.muted }}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: c.muted,
+                      }}
                       contentFit="cover"
                     />
                   ) : (
@@ -77,7 +87,11 @@ export function StaleNudgesSection() {
                         justifyContent: "center",
                       }}
                     >
-                      <Feather name="user" size={16} color={c.mutedForeground} />
+                      <Feather
+                        name="user"
+                        size={16}
+                        color={c.mutedForeground}
+                      />
                     </View>
                   )}
                   <View style={{ flex: 1 }}>
@@ -126,7 +140,9 @@ export function StaleNudgesSection() {
                     })}
                   >
                     <Feather name="copy" size={11} color={c.foreground} />
-                    <Text style={{ fontSize: 11, color: c.foreground }}>Copy</Text>
+                    <Text style={{ fontSize: 11, color: c.foreground }}>
+                      Copy
+                    </Text>
                   </Pressable>
                   {nudge.openers.length > 1 && (
                     <Pressable

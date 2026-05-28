@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -37,6 +38,7 @@ import {
   type HomeTrendSnapshot,
   type HomeSignalTone,
 } from "@/lib/home-match-card";
+import { useLocalMatchPhotos } from "@/lib/local-match-photos";
 
 type StatusFilter = "active" | "archived" | "ghosted";
 type SortKey = "recent" | "attention" | "name" | "connection" | "momentum";
@@ -73,6 +75,7 @@ export default function MatchesScreen() {
   const [sort, setSort] = useState<SortKey>("attention");
   const [sortOpen, setSortOpen] = useState(false);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const { photos: localMatchPhotos } = useLocalMatchPhotos();
   const matchData = useMemo<Match[]>(
     () => (Array.isArray(data) ? data : []),
     [data],
@@ -122,7 +125,11 @@ export default function MatchesScreen() {
   );
 
   const renderRow = ({ item }: { item: Match }) => (
-    <MatchRow match={item} onPress={() => router.push(`/match/${item.id}`)} />
+    <MatchRow
+      match={item}
+      localPhotoUri={localMatchPhotos[String(item.id)] ?? null}
+      onPress={() => router.push(`/match/${item.id}`)}
+    />
   );
 
   return (
@@ -799,7 +806,15 @@ function ShareSheetOnboardingCard() {
   );
 }
 
-function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
+function MatchRow({
+  match,
+  localPhotoUri,
+  onPress,
+}: {
+  match: Match;
+  localPhotoUri?: string | null;
+  onPress: () => void;
+}) {
   const c = useColors();
   const model = getHomeMatchCardModel(match);
   const isStale =
@@ -844,15 +859,23 @@ function MatchRow({ match, onPress }: { match: Match; onPress: () => void }) {
             justifyContent: "center",
           }}
         >
-          <Text
-            style={{
-              color: actionColors.fg,
-              fontSize: 18,
-              fontWeight: "700",
-            }}
-          >
-            {model.name.slice(0, 1).toUpperCase()}
-          </Text>
+          {localPhotoUri ? (
+            <Image
+              source={localPhotoUri}
+              style={{ width: 56, height: 56, borderRadius: 28 }}
+              contentFit="cover"
+            />
+          ) : (
+            <Text
+              style={{
+                color: actionColors.fg,
+                fontSize: 18,
+                fontWeight: "700",
+              }}
+            >
+              {model.name.slice(0, 1).toUpperCase()}
+            </Text>
+          )}
         </View>
         {isStale && (
           <View
