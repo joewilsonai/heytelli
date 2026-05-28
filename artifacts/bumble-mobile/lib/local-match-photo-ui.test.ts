@@ -20,6 +20,8 @@ test("match photos are stored locally and never use backend upload", () => {
   assert.match(localPhotos, /heytelli-match-photos/);
   assert.match(localPhotos, /Paths\.document/);
   assert.match(localPhotos, /AsyncStorage/);
+  assert.match(localPhotos, /resolveStoredLocalMatchPhotoUri/);
+  assert.match(localPhotos, /serializeLocalMatchPhotoUriForStorage/);
   assert.match(localPhotos, /saveLocalMatchPhoto/);
   assert.match(localPhotos, /clearLocalMatchPhoto/);
   assert.doesNotMatch(localPhotos, /uploadImage/);
