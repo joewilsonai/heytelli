@@ -13,8 +13,10 @@ GitHub Actions remains a manual fallback, not the primary scheduled runner.
    `improvement_signals`, groups them into `improvement_work_items`, and opens
    GitHub issues only when the summary is safe.
 3. GitHub labels are the public handoff. `agent-ready` means a trusted runner
-   can plan work; `swarm-active` is a temporary claim; `swarm-planned` is the
-   idempotent planning marker.
+   can plan work; `needs-breakdown`, `scope:large`, `multi-pr`, or
+   `multi-pr-needed` tells the runner to split a broad parent into child
+   issues before implementation; `swarm-active` is a temporary claim;
+   `swarm-planned` is the idempotent planning marker.
 4. Joe's Mac is the default trusted runner. It checks Tailscale and power
    readiness, reads `agent-ready` issues plus the private DB queue, comments
    with a checklist-only plan, executes planned low/medium-risk work in local
@@ -110,7 +112,10 @@ Run the live local swarm planner and executor:
 The wrapper runs two steps in order:
 
 1. `run-improvement-swarm.sh` turns safe `agent-ready` issues into private DB
-   work items with `planned` status.
+   work items with `planned` status. If a parent issue is too broad, the runner
+   creates PR-sized child work items and child GitHub issues, comments back on
+   the parent, removes `agent-ready` from the parent, and lets the child issues
+   continue through the normal swarm flow.
 2. `run-swarm-executor.sh` claims `planned` work, creates an isolated worktree,
    installs dependencies in that worktree, asks the local agent to implement
    from sanitized context, typechecks, opens a PR, comments back on the source
