@@ -1,0 +1,80 @@
+name: Improvement Swarm
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Run as a dry run or create/update live swarm records.
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - live
+      limit:
+        description: Maximum number of agent-ready issues to plan.
+        required: true
+        default: "5"
+        type: string
+  schedule:
+    - cron: "17 15 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: improvement-swarm
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Typecheck and run swarm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      HEYTELLI_GITHUB_TOKEN: ${{ github.token }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.HEYTELLI_DATABASE_URL }}
+      HEYTELLI_DATABASE_URL: ${{ secrets.HEYTELLI_DATABASE_URL }}
+      IMPROVEMENT_SWARM_AGENT_NAME: github-actions-improvement-swarm
+      IMPROVEMENT_SWARM_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '5' }}
+      IMPROVEMENT_SWARM_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.mode != 'live' && 'true' || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate swarm secrets
+        run: |
+          if [[ -z "${DATABASE_URL}" ]]; then
+            echo "::error::Set DATABASE_URL or HEYTELLI_DATABASE_URL to a public-reachable Railway Postgres URL."
+            exit 1
+          fi
+
+      - name: Typecheck scripts
+        run: pnpm --filter @workspace/scripts run typecheck
+
+      - name: Test improvement scripts
+        run: pnpm --filter @workspace/scripts run test:improvement
+
+      - name: Run improvement swarm
+        run: |
+          mode_arg="--dry-run"
+          if [[ "${IMPROVEMENT_SWARM_DRY_RUN}" == "false" ]]; then
+            mode_arg="--live"
+          fi
+
+          pnpm --filter @workspace/scripts run improvement:swarm -- "$mode_arg" --limit "$IMPROVEMENT_SWARM_LIMIT"

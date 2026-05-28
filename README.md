@@ -46,11 +46,13 @@ pnpm --filter @workspace/bumble-mobile run dev
 pnpm --filter @workspace/bumble-reply run dev
 ```
 
-Backend deployment setup lives in `docs/backend-setup.md`.
+Backend deployment setup lives in `docs/backend-setup.md`. The autonomous
+feedback-to-PR runbook lives in `docs/mac-optional-improvement-loop.md`.
 
 ## Required Environment
 
-Secrets live outside the repo. Load API keys from:
+Secrets live outside the repo. Cloud runners should use GitHub, Railway, and
+EAS secret stores. For local development, load API keys from:
 
 ```bash
 source ~/.luna/secrets/keys.env
