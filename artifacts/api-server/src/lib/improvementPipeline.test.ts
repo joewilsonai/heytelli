@@ -134,6 +134,18 @@ test("does not persist match ids for date-card or share feedback", () => {
   assert.ok(shareFailure);
   assert.equal(shareFailure.matchId, null);
   assert.equal("matchId" in shareFailure.rawPayload, false);
+
+  const matchRead = normalizeImprovementSignalInput({
+    source: "in_app_feedback",
+    type: "Bug",
+    message: "The match read screen failed.",
+    matchId: 42,
+    surface: "match-read",
+    technicalContextConsent: true,
+  });
+  assert.ok(matchRead);
+  assert.equal(matchRead.matchId, 42);
+  assert.equal(matchRead.rawPayload.matchId, 42);
 });
 
 test("stores sanitized message text in raw payload", () => {

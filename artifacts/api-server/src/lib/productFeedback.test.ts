@@ -25,6 +25,14 @@ test("normalizes product feedback without accepting arbitrary sensitive context"
       prompt: "Would you send this to a friend?",
     },
   });
+
+  const ordinaryFeedback = normalizeProductFeedback({
+    event: "match-read-feedback",
+    answer: "bug",
+    matchId: 42,
+    context: { surface: "match-read" },
+  });
+  assert.equal(ordinaryFeedback?.matchId, 42);
 });
 
 test("rejects empty feedback events and answers", async () => {

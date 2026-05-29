@@ -66,8 +66,7 @@ export function normalizeProductFeedback(
     event,
     answer,
     matchId:
-      isDateCardOrShareRecord(event) ||
-      isDateCardOrShareRecord(context.surface)
+      isDateCardOrShareRecord(event) || isDateCardOrShareRecord(context.surface)
         ? null
         : cleanMatchId(input.matchId),
     context,
