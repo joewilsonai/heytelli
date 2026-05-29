@@ -74,6 +74,11 @@ export type ListAgentReadyIssuesOptions = GitHubRequestOptions & {
   limit?: number;
 };
 
+export type ListOpenIssuesByLabelOptions = GitHubRequestOptions & {
+  label: string;
+  limit?: number;
+};
+
 function normalizeApiUrl(value: string | undefined): string {
   return (value ?? "https://api.github.com").replace(/\/+$/, "");
 }
@@ -392,17 +397,18 @@ export async function fetchGitHubIssue({
   return issueSummaryFromResponse(data);
 }
 
-export async function listAgentReadyIssues({
+export async function listOpenIssuesByLabel({
   owner,
   repo,
   token,
+  label,
   limit = 10,
   apiUrl,
   fetchImpl = fetch,
-}: ListAgentReadyIssuesOptions): Promise<GitHubIssueSummary[]> {
+}: ListOpenIssuesByLabelOptions): Promise<GitHubIssueSummary[]> {
   const perPage = Math.max(1, Math.min(limit, 100));
   const query = encodeURIComponent(
-    `repo:${owner}/${repo} is:issue is:open label:agent-ready`,
+    `repo:${owner}/${repo} is:issue is:open label:${label}`,
   );
   const data = (await githubJsonRequest({
     owner,
@@ -428,6 +434,18 @@ export async function listAgentReadyIssues({
       },
     ),
   );
+}
+
+export async function listAgentReadyIssues(
+  options: ListAgentReadyIssuesOptions,
+): Promise<GitHubIssueSummary[]> {
+  return listOpenIssuesByLabel({ ...options, label: "agent-ready" });
+}
+
+export async function listSwarmBlockedIssues(
+  options: ListAgentReadyIssuesOptions,
+): Promise<GitHubIssueSummary[]> {
+  return listOpenIssuesByLabel({ ...options, label: "swarm-blocked" });
 }
 
 export async function createGitHubIssue({
