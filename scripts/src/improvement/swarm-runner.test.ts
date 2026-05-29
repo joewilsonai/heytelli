@@ -228,22 +228,27 @@ test("builds a sanitized recovery issue for blocked swarm work", () => {
     recovery.githubIssueDraft.title,
     "Recovery: blocked swarm issue #53",
   );
-  assert.equal(recovery.riskTier, "no_auto_merge");
+  assert.equal(recovery.riskTier, "extra_agent_review");
   assert.equal(recovery.githubIssueDraft.labels.includes("agent-ready"), true);
   assert.equal(
-    recovery.githubIssueDraft.labels.includes("risk:no_auto_merge"),
+    recovery.githubIssueDraft.labels.includes("risk:extra_agent_review"),
     true,
   );
   assert.equal(
-    recovery.githubIssueDraft.labels.includes("risk:extra_agent_review"),
+    recovery.githubIssueDraft.labels.includes("risk:no_auto_merge"),
     false,
   );
   assert.equal(
     recovery.githubIssueDraft.labels.includes("swarm-blocked"),
     false,
   );
+  assert.equal(
+    recovery.githubIssueDraft.labels.includes("swarm-recovery"),
+    true,
+  );
   assert.match(recovery.githubIssueDraft.body, /Do not store match_id/);
   assert.match(recovery.githubIssueDraft.body, /recipient PII/);
+  assert.match(recovery.githubIssueDraft.body, /must be executable/i);
   assert.doesNotMatch(
     recovery.githubIssueDraft.body,
     /raw transcript|screenshot text|555-1212|123 Main/i,

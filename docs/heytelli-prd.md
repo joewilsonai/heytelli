@@ -63,12 +63,14 @@ Tone is protective, emotionally sharp, calm, grounded, observant. It must
 never become hysterical, accusatory, fear-driven, punitive, or exploitative.
 
 **Acceptable product language:**
+
 - "Communication became noticeably more intense after date 2."
 - "Your recent reflections repeatedly mention feeling emotionally drained."
 - "Response cadence changed significantly over the last week."
 - "Follow-through became less consistent after exclusivity came up."
 
 **Unacceptable language:**
+
 - "This person is dangerous." / "This person is manipulative."
 - "High-risk match." / "Toxicity score." / "Likely narcissist."
 
@@ -79,22 +81,25 @@ never become hysterical, accusatory, fear-driven, punitive, or exploitative.
 **HeyTelli has exactly one account holder per workspace: the user.**
 
 Friends, trusted-circle members, and anyone else never log in, never post,
-never hold an account, and never interact with the app directly. They
-interact with *the user* — in the user's own group chat, over text, in
-person. HeyTelli is the user's private memory layer, not a meeting place.
+and never hold an account. They mostly interact with _the user_ — in the
+user's own group chat, over text, in person. The one allowed exception is a
+temporary, unauthenticated Date Card / Check-In Link that shows only the
+user's safety-plan status and expires quickly. HeyTelli is the user's private
+memory layer, not a meeting place.
 
 This is a permanent architectural constraint, not a Phase 1 simplification.
 It closes three failure modes at once:
 
 1. **User-generated-content moderation** (App Review Guideline 1.2) — there
    is no UGC, because no second person can post.
-2. **Hosted profiles of non-consenting people** — there is no shared,
-   hosted, or commentable page about anyone.
+2. **Hosted profiles of non-consenting people** — there is no shared hosted
+   profile, dossier, or commentable page about anyone. Date Card links are
+   temporary status pages about the user's plan, not the match.
 3. **An unoperatable social graph** — a solo founder cannot safely run a
    multi-user social product. HeyTelli never becomes one.
 
 **Forcing rule:** any feature that would require a second person to have an
-account is out of scope — not deferred, *out*.
+account is out of scope — not deferred, _out_.
 
 ---
 
@@ -104,7 +109,9 @@ The product is sequenced. Each phase has a validation gate: do not begin a
 phase until the prior one has proven demand.
 
 ### Phase 1 — Mobile MVP (this document's primary scope)
-Validation question: *do women want this at all?* Answered on mobile alone.
+
+Validation question: _do women want this at all?_ Answered on mobile alone.
+
 - Screenshot import + AI extraction
 - "Share to HeyTelli" screenshot intake from the iOS share sheet, if the
   Expo/EAS implementation passes the Phase 1 technical spike. This is the
@@ -121,14 +128,17 @@ Validation question: *do women want this at all?* Answered on mobile alone.
   surface.
 
 ### Phase 2 — Web App (see §17)
-Validation question: *will users stay for years?* Begins only after Phase 1
+
+Validation question: _will users stay for years?_ Begins only after Phase 1
 retention is proven.
+
 - Timeline replay, semantic reflection search, pattern visualization
 - Circle Notes (single-tenant — see §17)
 - Adds the **Premium** tier
 - Requires a deliberate shift to durable cloud storage (§11)
 
 ### Phase 3 — Relationship Mode & Specialist-Review Features (see §18)
+
 - Relationship continuity / shared milestone memory (still single-tenant)
 - Automated overdue alerts (requires SMS infrastructure + specialist review)
 - Temporary Check-In Links (strictly scoped date-status pages; see §8.5.1)
@@ -185,12 +195,14 @@ chat. HeyTelli does not host it — it feeds it and remembers it.
 ## 8. Core Features (Mobile — Phase 1)
 
 ### 8.1 Home Workspace
+
 A calm operational snapshot of active connections: connection list, recent
 activity, stale-conversation nudges, vibe tags, recent reflection highlights,
 gentle pattern indicators. Tone: warm, minimal, uncluttered. Avoid dashboard
 energy, aggressive warning colors, "operator mode" aesthetics.
 
 ### 8.2 Bulk Screenshot Import
+
 Multi-select upload via `expo-image-picker`, plus a Phase 1 technical spike
 for **Share to HeyTelli** from the iOS Photos/share sheet. The best user flow
 is: user screenshots a dating app or chat, taps iOS Share, chooses HeyTelli,
@@ -210,6 +222,7 @@ the mobile app closer to a bare/native setup. Screenshot intake friction is a
 product-critical requirement, not polish.
 
 ### 8.3 Connection Timeline
+
 The emotional center of the app. Combines **events** (neutral facts) and
 **reflections** (first-person user notes), plus interaction-rhythm changes,
 voice reflections, and AI grounding observations. The system may describe
@@ -218,9 +231,11 @@ emotional themes — but may never diagnose, label, rank, score, or declare
 danger.
 
 ### 8.4 Grounding Pulses
+
 Calm intervention cards. **Triggers are anchored in the user's own
 reflections and in neutral, fact-based events** — never in a behavior the
 system "detects" in the match:
+
 - repeated reflections mentioning uncertainty, anxiety, or feeling drained
 - a measurable change in message cadence (a neutral fact derived from
   timestamps)
@@ -230,13 +245,15 @@ system "detects" in the match:
 > **Grounding Pulse — A Pattern Worth Noticing**
 > Your last three reflections about this connection each mention feeling
 > emotionally drained afterward.
-> *Sometimes clarity comes from slowing the timeline down, not speeding up.*
+> _Sometimes clarity comes from slowing the timeline down, not speeding up._
+>
 > - 🔒 Pause this connection
 > - 💬 Boundary language options
 > - 🔗 Create a Vibe Check card
 > - 📝 Add another reflection
 
 ### 8.5 Date Brief
+
 Lightweight pre-date prep. The user fills in venue, time, an optional
 check-in window, and an optional trusted friend. The app generates prep
 reminders, calming prompts, a logistics summary, and a pre-composed check-in
@@ -248,13 +265,15 @@ one-tap "Running late, +60 min" prevents false alarms.
 > emergency service, a live safety-monitoring platform, or a guarantee of
 > physical safety. (True automated overdue alerts: Phase 3 — see §18.)
 
-### 8.5.1 Temporary Check-In Link (Phase 3 Candidate)
-The product may later support a temporary **Check-In Link** for trusted
+### 8.5.1 Temporary Date Card / Check-In Link
+
+The product supports a temporary **Date Card / Check-In Link** for trusted
 friends to view the user's date status without needing an account. This is
 not a "web circle," not a hosted profile, and not a place to discuss or assess
 the other person. The page tracks the user's safety plan, not the date.
 
 If built, the link must follow these constraints:
+
 - Shows the user's first name only, or "Your friend" by default.
 - Shows date status only: planned, checked in, extended +60, home safe,
   expired, or revoked.
@@ -264,31 +283,37 @@ If built, the link must follow these constraints:
   reactions, friend accounts, or friend posting.
 - Includes "Text her" and "Call her" actions that open the friend's native
   phone/messaging app.
-- Expires automatically within 12-24 hours and can be revoked manually.
+- Expires automatically at `date_end + 24h` and can be revoked manually.
 - If the user misses a check-in, the page may say "No check-in yet" but must
   not imply danger, blame, or emergency certainty.
 
-This feature is intentionally excluded from the Phase 1 MVP. It requires
-careful privacy, abuse, forwarding, revocation, and false-positive design.
+This feature is allowed only under the Date Card rollout guardrails in
+[`docs/specs/date-card.md`](specs/date-card.md): Railway API/web route,
+Railway Postgres structured records, recipient-scoped expiring tokens, no
+screenshots, no transcripts, no AI read content, no `match_id`, and no
+recipient PII unless the recipient explicitly opts into reminders.
 
 ### 8.6 Vibe Check Sharing
+
 The user exports a rendered **image card** (selected screenshots, timeline
 highlights, summaries, reflections, date plans) via the native iOS/Android
 share sheet — `react-native-view-shot` → PNG → `expo-sharing`. No hosted
 connection pages, no public pages, no searchable database. Optional face blur,
 name masking, watermarking. Sharing is one-way; friends respond in the user's
-group chat, as they already do. A future Check-In Link is allowed only under
-§8.5.1 and may contain date-status information only.
+group chat, as they already do. A Date Card / Check-In Link is allowed only
+under §8.5.1 and may contain date-status information only.
 
 ### 8.7 Voice Debriefs
+
 Post-date reflections recorded locally (`expo-av`), transcribed via Whisper,
 and convertible into first-person reflections. Purpose: preserve emotional
 nuance, reduce memory drift, help the user reconnect with instinct.
 
 ### 8.8 AI Reflection Assistant
+
 A scoped assistant for one connection. Helps the user summarize long threads,
 compare earlier vs. later interaction energy, prep date questions, phrase
-boundaries, and identify recurring themes *in her own reflections*. It offers
+boundaries, and identify recurring themes _in her own reflections_. It offers
 contextual observations, summaries, and reflection prompts — never verdicts,
 diagnoses, or certainty claims about another person's intent or character.
 
@@ -297,6 +322,7 @@ diagnoses, or certainty claims about another person's intent or character.
 ## 9. AI Guardrails
 
 System-prompt principles:
+
 1. Never apply psychological labels.
 2. Never classify anyone as safe/unsafe.
 3. Extract events as neutral facts.
@@ -368,10 +394,11 @@ engine, or a crowdsourced accusation platform.
 ## 12. App Store Strategy
 
 HeyTelli stays App Store-safe by structural design, not just tone:
+
 - No ratings, verdicts, or behavioral profiling — enforced by the data model.
 - No user-generated content — enforced by the Single-Tenant Principle (§3).
 - Sharing is private and native-first (image cards, no hosted connection
-  dossiers). A future Check-In Link may show temporary user status only.
+  dossiers). A Date Card / Check-In Link may show temporary user status only.
 - AI is framed and constrained as reflection support.
 - Stored data is the user's own reflections, not third-party assessments.
 
@@ -388,9 +415,9 @@ would be bad ethics and bad PR. The paywall wraps depth and clarity.
 
 **Phase 1 (mobile MVP) — two tiers, each viable on mobile alone:**
 
-| Tier | Price | Includes |
-|---|---|---|
-| **Free** | $0 | Limited connections, basic timeline, manual notes, Date Brief + check-in reminder |
+| Tier     | Price    | Includes                                                                                                                               |
+| -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Free** | $0       | Limited connections, basic timeline, manual notes, Date Brief + check-in reminder                                                      |
 | **Plus** | $9.99/mo | Unlimited connections, voice debriefs, AI Reflection Assistant, weekly debrief, premium Vibe Check cards, full mobile timeline history |
 
 **Phase 2 — adds the Premium tier ($14.99–$19.99/mo):** semantic reflection
@@ -454,20 +481,24 @@ energy, surveillance vibes, dashboard/operator aesthetics, gossip aesthetics.
 > This is separate from the internal/admin console in §15.
 
 ### 17.1 Timeline Replay
+
 Replay a connection's progression chronologically; compare early vs. later
 interactions; view cadence changes; revisit reflections in sequence. Purpose:
 help the user reconnect with reality over emotional momentum.
 
 ### 17.2 Semantic Reflection Search
+
 Search the user's own reflections: "every time I mentioned feeling anxious,"
 "when did communication start feeling different." A core Premium feature.
 
 ### 17.3 Pattern Visualization
+
 Elegant, non-clinical visualization of communication frequency, emotional
 trend shifts, reflection themes, and periods of consistency vs. uncertainty.
 No risk dashboards, no surveillance or law-enforcement aesthetics.
 
 ### 17.4 Circle Notes (replaces the former "Trusted Circle Workspace")
+
 The old multi-user workspace — threaded comments, voice reactions — is
 **removed**. It violated the Single-Tenant Principle and recreated a
 commentable hosted page about a named person.
@@ -490,9 +521,10 @@ group chat never had: what she brings to it, and what she carries back.
 - **Relationship Mode** — shared memory timelines, recurring-conflict
   reflection, milestone memory, continuity tools. Reduces the
   "find a relationship = churn" problem. Still single-tenant.
-- **Temporary Check-In Links** — date-status pages for trusted friends that
-  show only the user's check-in state and expire quickly. No photos,
-  screenshots, transcripts, ratings, comments, or hosted connection dossiers.
+- **Temporary Date Card / Check-In Links** — date-status pages for trusted
+  friends that show only the user's check-in state and expire quickly. No
+  photos, screenshots, transcripts, ratings, comments, or hosted connection
+  dossiers.
 - Share-extension hardening, screenshot stitching, on-device OCR, on-device
   redaction, smart duplicate detection.
 - **Specialist-review features** (do not ship casually):

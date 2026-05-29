@@ -3,7 +3,8 @@
 HeyTelli is a private AI-assisted dating clarity app for women navigating
 modern online dating. It helps users import dating screenshots, reconstruct
 conversation timelines, record reflections, prepare for dates, and optionally
-share Vibe Check or Date Card image/messages through the native iOS share sheet.
+share Vibe Check cards or private, expiring Date Card links through the native
+iOS share sheet.
 
 The product is not a public review board, a "rate men" platform, a
 crowdsourced accusation network, a surveillance product, an emergency service,
@@ -29,15 +30,16 @@ truth lives in `docs/heytelli-prd.md`, not in older scaffold language.
 - Supports voice or text debriefs so the user can remember how an interaction
   felt over time.
 - Generates grounding prompts, date prep, and reflection support.
-- Creates optional Vibe Check and Date Card shares through native sharing.
+- Creates optional Vibe Check shares and private, expiring Date Card links
+  through native sharing.
 - Keeps trusted-circle collaboration outside HeyTelli, in the user's existing
   messages or group chat.
 
 ## Product Rules
 
 - One account holder per workspace: the user.
-- No friend accounts, hosted dossiers, comments, reactions, public pages, or
-  multi-user workspaces.
+- No friend accounts, hosted dossiers, comments, reactions, public profile
+  pages, or multi-user workspaces.
 - No ratings, risk scores, diagnoses, toxicity labels, or verdicts about
   another person.
 - AI may summarize, extract neutral facts, surface interaction patterns, and
@@ -45,7 +47,8 @@ truth lives in `docs/heytelli-prd.md`, not in older scaffold language.
 - AI must not declare anyone safe, unsafe, dangerous, manipulative, narcissistic,
   abusive, or otherwise clinically or morally labeled.
 - Sharing must be user-initiated and native-first. HeyTelli does not create
-  hosted connection pages for matches.
+  hosted connection pages for matches; Date Card links are temporary status
+  pages about the user's safety plan.
 - Safety features should equip the user and preserve agency; they are not a
   substitute for emergency services, professional advice, or personal judgment.
 

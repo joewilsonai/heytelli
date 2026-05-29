@@ -101,8 +101,9 @@ to send it through iOS sharing or messaging.
 
 Shares should avoid screenshots by default. Vibe Check and Date Card shares
 should use minimal, user-controlled context such as first names or labels, date
-time, venue text, check-in time, exit plan, and user-written notes. The app
-should not create public pages, searchable links, hosted match profiles, or
+time, venue text, check-in time, exit plan, and user-written notes. Date Card
+recipient links may be hosted only as private, expiring safety-plan pages. The
+app should not create public pages, searchable links, hosted match profiles, or
 comment threads about another person.
 
 ## AI Output Boundaries

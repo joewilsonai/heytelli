@@ -396,8 +396,9 @@ function recoveryLabels(
   });
   return uniqueLabels([
     "agent-ready",
+    "swarm-recovery",
     `priority:${priority}`,
-    "risk:no_auto_merge",
+    "risk:extra_agent_review",
     ...kept,
   ]);
 }
@@ -428,11 +429,12 @@ export function buildBlockedSwarmRecoveryWorkItem(
     "",
     "Non-negotiable guardrails:",
     "- Do not store screenshots, transcripts, or raw dating details.",
-    "- Do not create public bearer URLs for safety content.",
+    "- Do not create public bearer URLs for safety content; use recipient-scoped, expiring tokens only.",
     "- Do not store recipient PII for trusted-circle contacts.",
     "- Do not store match_id on server-side Date Card or share records.",
     "- Prefer an event/idempotency foundation first; keep Date Card payloads local until a recipient-scoped model exists.",
     "- Add focused tests that prove the guardrails hold.",
+    "- This recovery work must be executable by the swarm, but it must stay review-gated until the safety architecture is proven.",
   ].join("\n");
   const recovery = {
     fingerprint,
@@ -440,7 +442,7 @@ export function buildBlockedSwarmRecoveryWorkItem(
     summary,
     category: parent.category,
     priority: parent.priority,
-    riskTier: "no_auto_merge" as const,
+    riskTier: "extra_agent_review" as const,
     impactScore: parent.impactScore ?? 1,
     confidenceScore: parent.confidenceScore ?? 1,
     frequencyCount: parent.frequencyCount ?? 1,
@@ -467,6 +469,8 @@ export function buildBlockedSwarmRecoveryWorkItem(
         "",
         "## Guardrails",
         "- Recovery issue created because the original swarm path was blocked.",
+        "- Recovery issues must be executable by the swarm so blocked work does not stall permanently.",
+        "- Keep the PR review-gated; do not auto-merge safety/privacy recovery changes.",
         "- Use only sanitized issue metadata and this guardrail list.",
         "- Keep user-identifying and sensitive context out of GitHub.",
         "",

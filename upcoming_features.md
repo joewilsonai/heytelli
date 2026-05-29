@@ -87,7 +87,9 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
   - Optional user note
 - Do not include profile photos.
 - Do not include screenshots.
-- Do not create a hosted public web page.
+- Create a private, expiring Date Card link for selected circle recipients when web access is needed.
+- The link must show only first names, date logistics, check-in status, and sender-written safety notes.
+- Do not create a public profile, hosted dossier, comment thread, searchable page, or anything that exposes screenshots, transcripts, ratings, tags, or AI analysis.
 
 ### Step 5: Date Mode
 
@@ -127,7 +129,8 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
 ### Success Criteria
 
 - A beta tester can enter a date and understand exactly what to do next.
-- A tester can share a Date Card with a trusted person in under 60 seconds.
+- A tester can share a private Date Card link with a trusted person in under 60 seconds.
+- A trusted person can open the link without an account, tap Got it, and have that status appear back in the sender's app.
 - A tester can turn on Date Mode without hunting through settings.
 - The app preserves the post-date memory in the timeline.
 

@@ -96,9 +96,13 @@ test("blocks no-auto-merge and issue-less work items", () => {
   );
 });
 
-test("blocks executor work when the source issue is in a recovery lane", () => {
+test("allows review-gated recovery work but blocks unsafe recovery labels", () => {
   assert.equal(
-    issueLabelsAllowExecutor(["swarm-planned", "risk:extra_agent_review"]),
+    issueLabelsAllowExecutor([
+      "swarm-planned",
+      "swarm-recovery",
+      "risk:extra_agent_review",
+    ]),
     true,
   );
   assert.equal(

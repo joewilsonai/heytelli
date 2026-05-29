@@ -99,7 +99,9 @@ Then test from the app:
 - Product feedback stays text-first. Do not enable feedback screenshot uploads
   until the app has explicit consent copy, local redaction/crop guidance,
   private owner-scoped storage, short retention, and a tested delete path.
-- Do not create hosted public share pages for user data.
+- Do not create hosted public share pages for user data. Date Card recipient
+  access is the only allowed web share surface, and it must stay private,
+  expiring, first-name/logistics-only, and scoped to the user's safety plan.
 - Circle contacts should remain user-scoped and should not expose private notes
   to the contact until an explicit send/check-in action exists.
 - Any historical red flag or saved concern remains surfaced even if the latest
