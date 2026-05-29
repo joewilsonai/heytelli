@@ -15,6 +15,7 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
   const matchDetail = read("../app/match/[id].tsx");
   const sheet = read("../components/FeedbackSheet.tsx");
   const helper = read("./improvement-feedback.ts");
+  const upload = read("./upload.ts");
 
   assert.match(settings, /FeedbackSheet/);
   assert.match(settings, /Send feedback/);
@@ -28,21 +29,20 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
   assert.match(sheet, /Include basic app context/);
   assert.match(sheet, /buildFeedbackReceiptMessage/);
   assert.match(sheet, /Feedback saved/);
-  assert.match(sheet, /ImagePicker/);
-  assert.match(sheet, /Attach private image/);
-  assert.match(sheet, /Remove attachment/);
-  assert.match(sheet, /uploadFeedbackAttachment/);
-  assert.match(helper, /feedbackAttachment/);
+  assert.match(sheet, /Feedback is text-only during beta/);
+  assert.doesNotMatch(sheet, /ImagePicker/);
+  assert.doesNotMatch(sheet, /Attach private image/);
+  assert.doesNotMatch(sheet, /Remove attachment/);
+  assert.doesNotMatch(sheet, /uploadFeedbackAttachment/);
+  assert.doesNotMatch(helper, /feedbackAttachment/);
+  assert.doesNotMatch(upload, /uploadFeedbackAttachment|FeedbackAttachment/);
   assert.match(helper, /feedbackFollowUpStages/);
   assert.match(helper, /Settings build notes/);
   assert.match(
     sheet,
     /We do not include screenshots or private\s+conversations in engineering issues\./,
   );
-  assert.match(
-    sheet,
-    /Attachments stay private and are not copied into GitHub/,
-  );
+  assert.doesNotMatch(sheet, /Attachments stay private/);
   assert.match(helper, /createImprovementSignal/);
   assert.doesNotMatch(
     helper,

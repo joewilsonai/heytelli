@@ -22,11 +22,6 @@ export type SubmitImprovementFeedbackInput = {
   matchId?: number | null;
   technicalContextConsent: boolean;
   context?: Record<string, string | number | boolean | null | undefined>;
-  feedbackAttachment?: {
-    objectPath: string;
-    contentType: string;
-    size: number;
-  } | null;
 };
 
 export const feedbackFollowUpStages = [
@@ -65,14 +60,10 @@ export async function submitImprovementFeedback({
   matchId = null,
   technicalContextConsent,
   context,
-  feedbackAttachment,
 }: SubmitImprovementFeedbackInput) {
-  const clientContext = {
-    ...(technicalContextConsent
-      ? buildFeedbackTechnicalContext(surface, context)
-      : {}),
-    ...(feedbackAttachment ? { feedbackAttachment } : {}),
-  };
+  const clientContext = technicalContextConsent
+    ? buildFeedbackTechnicalContext(surface, context)
+    : {};
   return createImprovementSignal({
     source: "in_app_feedback",
     type,

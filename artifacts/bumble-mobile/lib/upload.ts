@@ -1,17 +1,5 @@
 import { requestUploadUrl } from "@workspace/api-client-react";
 
-export type FeedbackAttachmentUploadInput = {
-  uri: string;
-  contentType?: string | null;
-  size?: number | null;
-};
-
-export type FeedbackAttachment = {
-  objectPath: string;
-  contentType: string;
-  size: number;
-};
-
 function imageContentTypeForUri(
   uri: string,
   contentType?: string | null,
@@ -62,37 +50,4 @@ export async function uploadImage(uri: string): Promise<string> {
     throw new Error(`Upload failed: ${putRes.status}`);
   }
   return presigned.objectPath;
-}
-
-export async function uploadFeedbackAttachment({
-  uri,
-  contentType: inputContentType,
-  size,
-}: FeedbackAttachmentUploadInput): Promise<FeedbackAttachment> {
-  const contentType = imageContentTypeForUri(uri, inputContentType);
-  const ext = extensionForImageContentType(contentType);
-  const name = `feedback-attachment-${Date.now()}.${ext}`;
-  const fileRes = await fetch(uri);
-  const blob = await fileRes.blob();
-  const uploadedSize = blob.size || size || 1;
-
-  const presigned = await requestUploadUrl({
-    name,
-    size: uploadedSize,
-    contentType,
-  });
-
-  const putRes = await fetch(presigned.uploadURL, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob,
-  });
-  if (!putRes.ok) {
-    throw new Error(`Attachment upload failed: ${putRes.status}`);
-  }
-  return {
-    objectPath: presigned.objectPath,
-    contentType,
-    size: uploadedSize,
-  };
 }

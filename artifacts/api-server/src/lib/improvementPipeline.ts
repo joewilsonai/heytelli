@@ -35,12 +35,6 @@ export type NormalizedImprovementSignal = {
   rawPayload: Record<string, unknown>;
 };
 
-export type FeedbackAttachmentMetadata = {
-  objectPath: string;
-  contentType: string;
-  size: number;
-};
-
 export type SanitizedImprovementPayload = {
   summary: string;
   sanitizedPayload: Record<string, unknown>;
@@ -119,7 +113,6 @@ const MAX_SURFACE_LENGTH = 80;
 const MAX_CONTEXT_LENGTH = 120;
 const MAX_CLIENT_CONTEXT_KEYS = 12;
 const MAX_CLIENT_CONTEXT_RAW_VALUE_LENGTH = 500;
-const MAX_FEEDBACK_ATTACHMENT_SIZE = 12 * 1024 * 1024;
 
 const DATA_IMAGE_RE = /data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+/gi;
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
@@ -134,13 +127,6 @@ const SEXUAL_DETAIL_RE =
   /\b(?:sex|sexual|hookup|nudes?|naked|intimate|assault|rape|coerc(?:e|ed|ion)|pressured)\b/gi;
 const SAFETY_DETAIL_RE =
   /\b(?:abuse|abused|abusive|drugged|stalked|threatened|violence|violent)\b/gi;
-const FEEDBACK_ATTACHMENT_CONTENT_TYPES = new Set([
-  "image/heic",
-  "image/heif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
 
 function cleanText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
@@ -203,51 +189,11 @@ function cleanClientContext(
   return context;
 }
 
-function cleanFeedbackAttachmentMetadata(
-  value: unknown,
-): FeedbackAttachmentMetadata | null {
-  if (!value || typeof value !== "object") return null;
-  const input = value as Record<string, unknown>;
-  const objectPath = cleanText(input.objectPath, MAX_CONTEXT_LENGTH * 2);
-  const contentType = cleanText(input.contentType, 80)?.toLowerCase();
-  const size = input.size;
-  if (
-    !objectPath ||
-    !objectPath.startsWith("/objects/") ||
-    !contentType ||
-    !FEEDBACK_ATTACHMENT_CONTENT_TYPES.has(contentType) ||
-    typeof size !== "number" ||
-    !Number.isFinite(size) ||
-    size <= 0 ||
-    size > MAX_FEEDBACK_ATTACHMENT_SIZE
-  ) {
-    return null;
-  }
-  return {
-    objectPath,
-    contentType,
-    size: Math.round(size),
-  };
-}
-
-function feedbackAttachmentFromClientContext(
-  value: unknown,
-): FeedbackAttachmentMetadata | null {
-  if (!value || typeof value !== "object") return null;
-  return cleanFeedbackAttachmentMetadata(
-    (value as Record<string, unknown>).feedbackAttachment,
-  );
-}
-
 function clientContextIsSafe(value: unknown): boolean {
   if (!value || typeof value !== "object") return true;
   const entries = Object.entries(value as Record<string, unknown>);
   if (entries.length > MAX_CLIENT_CONTEXT_KEYS) return false;
   for (const [key, child] of entries) {
-    if (key === "feedbackAttachment") {
-      if (!cleanFeedbackAttachmentMetadata(child)) return false;
-      continue;
-    }
     if (
       typeof child === "string" &&
       child.length > MAX_CLIENT_CONTEXT_RAW_VALUE_LENGTH
@@ -293,10 +239,6 @@ function hasForbiddenKeyOrBlob(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
     const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, "");
-    if (normalizedKey === "feedbackattachment") {
-      if (cleanFeedbackAttachmentMetadata(child)) continue;
-      return true;
-    }
     if (FORBIDDEN_KEY_PARTS.some((part) => normalizedKey.includes(part))) {
       return true;
     }
@@ -335,9 +277,6 @@ export function normalizeImprovementSignalInput(
     input.clientContext,
     technicalContextConsent,
   );
-  const feedbackAttachment = feedbackAttachmentFromClientContext(
-    input.clientContext,
-  );
   const matchId = isDateCardOrShareRecord({ source, surface })
     ? null
     : cleanMatchId(input.matchId);
@@ -352,9 +291,6 @@ export function normalizeImprovementSignalInput(
   if (surface) rawPayload.surface = surface;
   if (Object.keys(clientContext).length > 0) {
     rawPayload.clientContext = clientContext;
-  }
-  if (feedbackAttachment) {
-    rawPayload.feedbackAttachment = feedbackAttachment;
   }
 
   return {
@@ -375,21 +311,16 @@ export function sanitizeImprovementPayload(
   const message = cleanText(rawPayload.message, MAX_MESSAGE_LENGTH) ?? "";
   const summary = sanitizeText(message) || "Feedback received.";
   const blocked = hasForbiddenKeyOrBlob(rawPayload);
-  const hasPrivateAttachment = Boolean(
-    cleanFeedbackAttachmentMetadata(rawPayload.feedbackAttachment),
-  );
   const privacyRisk: ImprovementPrivacyRisk = blocked
     ? "blocked"
-    : hasPrivateAttachment
+    : type === "Safety concern"
       ? "high"
-      : type === "Safety concern"
-        ? "high"
-        : /privacy|location|delete|auth|login/i.test(message) ||
-            summary !== message ||
-            matches(SEXUAL_DETAIL_RE, message) ||
-            matches(SAFETY_DETAIL_RE, message)
-          ? "medium"
-          : "low";
+      : /privacy|location|delete|auth|login/i.test(message) ||
+          summary !== message ||
+          matches(SEXUAL_DETAIL_RE, message) ||
+          matches(SAFETY_DETAIL_RE, message)
+        ? "medium"
+        : "low";
 
   const sanitizedPayload: Record<string, unknown> = {
     source: rawPayload.source,
