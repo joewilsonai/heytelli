@@ -405,7 +405,6 @@ function recoveryLabels(
 export function issueLabelsAllowRecoveryPlanning(labels: string[]): boolean {
   const normalized = normalizeLabels(labels);
   if (!normalized.includes("swarm-blocked")) return false;
-  if (normalized.includes("swarm-recovery-created")) return false;
   if (normalized.includes("swarm-done")) return false;
   if (normalized.includes("wontfix")) return false;
   if (normalized.includes("contains-private-context")) return false;
@@ -441,7 +440,7 @@ export function buildBlockedSwarmRecoveryWorkItem(
     summary,
     category: parent.category,
     priority: parent.priority,
-    riskTier: "extra_agent_review" as const,
+    riskTier: "no_auto_merge" as const,
     impactScore: parent.impactScore ?? 1,
     confidenceScore: parent.confidenceScore ?? 1,
     frequencyCount: parent.frequencyCount ?? 1,

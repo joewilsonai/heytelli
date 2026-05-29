@@ -228,7 +228,7 @@ test("builds a sanitized recovery issue for blocked swarm work", () => {
     recovery.githubIssueDraft.title,
     "Recovery: blocked swarm issue #53",
   );
-  assert.equal(recovery.riskTier, "extra_agent_review");
+  assert.equal(recovery.riskTier, "no_auto_merge");
   assert.equal(recovery.githubIssueDraft.labels.includes("agent-ready"), true);
   assert.equal(
     recovery.githubIssueDraft.labels.includes("risk:no_auto_merge"),
@@ -268,6 +268,17 @@ test("does not recover blocked issues that are known to contain private context"
       "contains-private-context",
     ]),
     false,
+  );
+});
+
+test("allows blocked recovery repair after the recovery label was added", () => {
+  assert.equal(
+    issueLabelsAllowRecoveryPlanning([
+      "swarm-blocked",
+      "swarm-recovery-created",
+      "risk:extra_agent_review",
+    ]),
+    true,
   );
 });
 

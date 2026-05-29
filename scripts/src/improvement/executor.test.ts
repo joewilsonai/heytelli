@@ -108,6 +108,10 @@ test("blocks executor work when the source issue is in a recovery lane", () => {
     issueLabelsAllowExecutor(["contains-private-context", "agent-ready"]),
     false,
   );
+  assert.equal(
+    issueLabelsAllowExecutor(["agent-ready", "risk:no_auto_merge"]),
+    false,
+  );
 });
 
 test("builds a private-data-safe executor prompt", () => {

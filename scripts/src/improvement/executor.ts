@@ -325,6 +325,7 @@ export function issueLabelsAllowExecutor(labels: string[]): boolean {
     (label) =>
       label === "swarm-blocked" ||
       label === "contains-private-context" ||
+      label === "risk:no_auto_merge" ||
       label === "wontfix",
   );
 }
