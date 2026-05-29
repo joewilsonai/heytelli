@@ -202,8 +202,7 @@ test("redacts bearer-style public links from gut check share messages", () => {
       id: "unsafe-link",
       kind: "manual",
       label: "My read",
-      title:
-        "Generated share https://heytelli.example/gut-check?bearer=secret",
+      title: "Generated share https://heytelli.example/gut-check?bearer=secret",
       evidence:
         "Authorization: Bearer abc.def.ghi opened https://heytelli.example/api/storage/objects/uploads/raw?signature=secret",
       suggestedQuestion:

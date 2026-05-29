@@ -347,11 +347,7 @@ export function buildGutCheckMessage(
     const title =
       sanitizeSafetyShareText(selectedMoment.title) ?? "Selected item";
     const evidence = sanitizeSafetyShareText(selectedMoment.evidence);
-    lines.push(
-      "",
-      "Gut check item:",
-      `${selectedMoment.label}: ${title}`,
-    );
+    lines.push("", "Gut check item:", `${selectedMoment.label}: ${title}`);
     if (evidence) {
       lines.push("Why it stood out:", evidence);
     }
