@@ -247,6 +247,37 @@ test("date card supports three circle contacts by first name", () => {
   assert.doesNotMatch(message, /Wilson|Hart|Stone/);
 });
 
+test("redacts bearer-style public links from date safety share messages", () => {
+  const unsafeLinkMatch: DateSafetyPlanMatch = {
+    ...baseMatch,
+    nextDateLocation:
+      "Paper Plane https://heytelli.example/safety/date-card?token=abc123",
+    dateSafetyPlan: {
+      ...baseMatch.dateSafetyPlan!,
+      transportPlan: "Rideshare Authorization: Bearer abc.def.ghi",
+      codeWord: "Blue https://heytelli.example/share?access_token=secret",
+      circleNote:
+        "Do not open https://heytelli.example/api/storage/objects/uploads/raw?signature=secret",
+    },
+  };
+
+  const messages = [
+    buildDateCardMessage(unsafeLinkMatch),
+    buildSoftExitMessage(unsafeLinkMatch, "call"),
+    buildCircleCheckMessage(unsafeLinkMatch, "safe"),
+  ];
+
+  for (const message of messages) {
+    assert.doesNotMatch(message, /https?:\/\//i);
+    assert.doesNotMatch(message, /(?:authorization:\s*)?bearer\s+/i);
+    assert.doesNotMatch(message, /(?:access_)?token=|signature=/i);
+  }
+  assert.match(messages[0]!, /Paper Plane/);
+  assert.match(messages[0]!, /\[private link removed\]/);
+  assert.match(messages[1]!, /Paper Plane/);
+  assert.match(messages[2]!, /Paper Plane/);
+});
+
 test("date card can list circle contacts by relationship label", () => {
   const message = buildDateCardMessage({
     ...baseMatch,
