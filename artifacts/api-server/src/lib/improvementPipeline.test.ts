@@ -127,6 +127,21 @@ test("does not persist match ids for date-card or share feedback", () => {
   assert.equal(matchRead.rawPayload.matchId, 42);
 });
 
+test("does not persist match ids for human-readable Date Card improvement surfaces", () => {
+  const dateCard = normalizeImprovementSignalInput({
+    source: "in_app_feedback",
+    type: "Bug",
+    message: "The recipient Date Card status did not update.",
+    matchId: 42,
+    surface: "Date Card",
+    technicalContextConsent: true,
+  });
+
+  assert.ok(dateCard);
+  assert.equal(dateCard.matchId, null);
+  assert.equal("matchId" in dateCard.rawPayload, false);
+});
+
 test("stores sanitized message text in raw payload", () => {
   const normalized = normalizeImprovementSignalInput({
     source: "in_app_feedback",

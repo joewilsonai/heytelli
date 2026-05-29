@@ -47,10 +47,11 @@ function cleanContext(value: unknown): Record<string, string> {
 
 function isDateCardOrShareRecord(value: string | null | undefined): boolean {
   const normalized = value?.toLowerCase() ?? "";
+  const compact = normalized.replace(/[^a-z0-9]/g, "");
   return (
-    normalized.includes("date-card") ||
-    normalized.includes("date_card") ||
-    normalized.includes("share")
+    compact.includes("datecard") ||
+    compact.includes("share") ||
+    compact.includes("sharing")
   );
 }
 
