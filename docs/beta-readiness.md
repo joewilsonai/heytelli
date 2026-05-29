@@ -27,8 +27,9 @@ share extension, so Expo Go is not a valid beta distribution path.
 
 Merges to `main` that touch the mobile app or generated API client now trigger
 the `iOS Beta Build` GitHub Actions workflow. By default, that workflow runs
-the `beta` EAS profile and uses `--auto-submit`, so successful builds are sent
-to TestFlight using the `beta` submit profile.
+the `beta` EAS profile without submitting to TestFlight, so the team does not
+burn through App Store Connect's per-app upload limit on every merge. Use a
+manual workflow run with `submit=true` when a build is ready for beta testers.
 
 The workflow needs a repository secret named `EXPO_TOKEN`. Create an Expo access
 token from the Expo dashboard and store it in GitHub Actions secrets. Until the
@@ -38,7 +39,8 @@ every merge.
 Manual runs are available from GitHub Actions with controls for:
 
 - EAS profile: `beta`, `development`, or `production`.
-- Whether to submit after build completion.
+- Whether to submit after build completion. Keep this off for ordinary smoke
+  builds; turn it on for the beta build you actually want in TestFlight.
 - Optional EAS build message.
 
 From the mobile app directory:

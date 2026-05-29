@@ -221,9 +221,11 @@ Normal beta builds do not need a Mac. The mobile package still lives at
 
 The GitHub Actions workflow `.github/workflows/ios-beta-build.yml` starts an
 EAS iOS beta build automatically on `main` pushes that touch mobile or shared
-client files. It auto-submits by default when the `EXPO_TOKEN` repository secret
-is configured. Without that secret, the workflow logs a notice and skips the EAS
-build instead of failing unrelated merges.
+client files. Push-triggered builds do not auto-submit to TestFlight by default,
+which protects the App Store Connect upload limit while the swarm is merging
+multiple small changes. Run the workflow manually with `submit=true` for the
+beta build that should go to TestFlight. Without `EXPO_TOKEN`, the workflow logs
+a notice and skips the EAS build instead of failing unrelated merges.
 
 ```bash
 cd artifacts/bumble-mobile
