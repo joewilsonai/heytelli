@@ -422,10 +422,10 @@ export default function SettingsScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen
-        options={{ title: "My dating OS", headerTintColor: c.foreground }}
+        options={{ title: "My HeyTelli", headerTintColor: c.foreground }}
       />
       <View style={{ gap: 4 }}>
-        <H1>My dating OS</H1>
+        <H1>My HeyTelli</H1>
         <Body muted>
           Your profile radar, trusted circle, and date defaults stay private on
           this phone.
