@@ -24,6 +24,10 @@ on:
         description: Optional EAS build message.
         required: false
         type: string
+      highlights:
+        description: Optional in-app changelog highlights separated by ||, semicolons, or new lines.
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -56,7 +60,8 @@ jobs:
       EAS_NO_VCS_STATUS: 1
       EAS_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'beta' }}
       EAS_SUBMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.submit || 'true' }}
-      EAS_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.message || format('Auto beta build for {0}', github.sha) }}
+      EAS_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.message || '' }}
+      HEYTELLI_CHANGELOG_HIGHLIGHTS: ${{ github.event_name == 'workflow_dispatch' && inputs.highlights || '' }}
 
     steps:
       - name: Checkout
@@ -108,34 +113,43 @@ jobs:
             }
           }
 
+          function splitHighlights(value) {
+            return String(value || "")
+              .split(/\s*(?:\|\||\n|;)\s*/)
+              .map((line) => clean(line))
+              .filter(Boolean)
+              .slice(0, 5);
+          }
+
           const sha = process.env.HEYTELLI_EVENT_SHA || "";
           const before = process.env.HEYTELLI_EVENT_BEFORE || "";
           const zeroBefore = before && /^0+$/.test(before);
           const range = before && sha && !zeroBefore ? `${before}..${sha}` : "-1";
           const rangeSubjects = gitSubjects(range);
           const subjects = rangeSubjects.length > 0 ? rangeSubjects : gitSubjects("-1");
-          const message = clean(process.env.EAS_MESSAGE || `Beta build ${sha.slice(0, 7)}`, 80);
-          const highlights = subjects.length > 0 ? subjects.slice(0, 5) : [message];
+          const message = clean(
+            process.env.EAS_MESSAGE || subjects[0] || `Beta build ${sha.slice(0, 7)}`,
+            80,
+          );
+          const explicitHighlights = splitHighlights(process.env.HEYTELLI_CHANGELOG_HIGHLIGHTS);
+          const highlights =
+            explicitHighlights.length > 0
+              ? explicitHighlights
+              : subjects.length > 0
+                ? subjects.slice(0, 5)
+                : [message];
           const appJson = JSON.parse(readFileSync("artifacts/bumble-mobile/app.json", "utf8"));
           const version = clean(appJson.expo?.version || "1.0.0", 24);
           const date = new Date().toISOString().slice(0, 10);
-          const whatToTest = [
-            message,
-            "",
-            ...highlights.map((highlight) => `- ${highlight}`),
-          ].join("\n");
-          const whatToTestDelimiter = `HEYTELLI_WHAT_TO_TEST_${Date.now()}`;
 
           appendFileSync(
             process.env.GITHUB_ENV,
             [
+              `EAS_MESSAGE=${message}`,
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_VERSION=${version}`,
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE=${date}`,
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE=${message}`,
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS=${JSON.stringify(highlights)}`,
-              `HEYTELLI_WHAT_TO_TEST<<${whatToTestDelimiter}`,
-              whatToTest,
-              whatToTestDelimiter,
             ].join("\n") + "\n",
           );
           NODE
@@ -163,10 +177,9 @@ jobs:
           )
 
           if [[ "${EAS_SUBMIT}" == "true" ]]; then
+            # `--what-to-test` is EAS Enterprise-only; keep TestFlight notes out
+            # of auto-submit until we update App Store Connect directly.
             args+=(--auto-submit)
-            if [[ -n "${HEYTELLI_WHAT_TO_TEST:-}" ]]; then
-              args+=(--what-to-test "${HEYTELLI_WHAT_TO_TEST}")
-            fi
           fi
 
           pnpm dlx eas-cli@latest "${args[@]}"

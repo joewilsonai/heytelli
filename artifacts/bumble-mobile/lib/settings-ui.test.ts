@@ -57,15 +57,16 @@ test("settings changelog has detailed latest build notes", () => {
   assert.match(changelog, /Date briefs stay available/);
 });
 
-test("ios beta workflow injects changelog metadata and TestFlight notes", () => {
+test("ios beta workflow injects changelog metadata without gated TestFlight notes", () => {
   const workflow = read("../../../.github/workflows/ios-beta-build.yml");
 
   assert.match(workflow, /Generate in-app build changelog/);
+  assert.match(workflow, /HEYTELLI_CHANGELOG_HIGHLIGHTS/);
   assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE/);
   assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE/);
   assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS/);
-  assert.match(workflow, /HEYTELLI_WHAT_TO_TEST/);
-  assert.match(workflow, /--what-to-test/);
+  assert.match(workflow, /Enterprise-only/);
+  assert.doesNotMatch(workflow, /args\+\=\(--what-to-test/);
   assert.match(workflow, /GITHUB_ENV/);
 });
 
