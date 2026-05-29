@@ -41,3 +41,22 @@ test("timeline includes analyzed screenshots as visible story moments", async ()
   assert.match(screen, /"screenshot_import"/);
   assert.match(screen, /if \(type === "screenshot_import"\) return "image"/);
 });
+
+test("new screenshots have one Analyze new action for read, patterns, and date brief", async () => {
+  const screen = await readFile(
+    path.join(root, "artifacts/bumble-mobile/app/match/[id].tsx"),
+    "utf8",
+  );
+  const handler =
+    screen.match(
+      /const runFullAnalysisUpdate = async \(\) => \{[\s\S]*?\n  \};/,
+    )?.[0] ?? "";
+
+  assert.match(screen, /AnalyzeNewScreenshotsCard/);
+  assert.match(screen, /getMatchAnalysisActionPlan/);
+  assert.match(screen, /label="Analyze new"/);
+  assert.match(handler, /await rescoreMatch\(data\.id\)/);
+  assert.match(handler, /await getRedFlagRadar\(data\.id\)/);
+  assert.match(handler, /analysisPlan\.actions\.includes\("dateBrief"\)/);
+  assert.match(handler, /await generateDateBrief\(data\.id\)/);
+});

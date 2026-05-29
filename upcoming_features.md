@@ -32,6 +32,10 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
 - A tester can resubmit a local copy for analysis if needed.
 - Home, reads, and timeline surfaces do not sort or label matches using legacy scores.
 
+### Later: Automatic Analysis Preference
+
+- Add a Settings toggle that automatically runs Analyze new after screenshot upload, once cost controls, privacy messaging, and failure recovery are clear.
+
 ## 1. Safe Date Flow
 
 **Goal:** When a user enters a date, HeyTelli should automatically guide her from "I have plans" to "I am prepared, my circle knows, and I can debrief after."
@@ -61,7 +65,7 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
 - Show top green flags.
 - Show current concerns.
 - Show relevant profile/context notes.
-- If screenshots were uploaded after the latest analysis, prompt to reanalyze before creating the Date Card.
+- If screenshots were uploaded after the latest analysis, prompt to use Analyze new before creating the Date Card.
 
 ### Step 3: Circle Setup
 

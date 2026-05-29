@@ -27,6 +27,7 @@ import {
   createChatConversation,
   deleteMatch,
   generateDateBrief,
+  getRedFlagRadar,
   getGetMatchQueryKey,
   getListMatchesQueryKey,
   getListChatConversationsQueryKey,
@@ -117,6 +118,10 @@ import {
   saveLocalMatchScreenshot,
   useLocalMatchScreenshots,
 } from "@/lib/local-match-screenshots";
+import {
+  getMatchAnalysisActionPlan,
+  type MatchAnalysisActionPlan,
+} from "@/lib/match-analysis-actions";
 
 export default function MatchDetailScreen() {
   const c = useColors();
@@ -128,6 +133,7 @@ export default function MatchDetailScreen() {
   const [coverActionBusy, setCoverActionBusy] =
     useState<CoverQuickActionId | null>(null);
   const [errorFeedbackOpen, setErrorFeedbackOpen] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
   const { data, isLoading, refetch, isRefetching, error } =
     useGetMatch(matchId);
   const {
@@ -143,10 +149,39 @@ export default function MatchDetailScreen() {
   const dateCoverActive = Boolean(
     data?.dateSafetyPlan?.coverModeEnabled && activeDateMode,
   );
+  const analysisPlan = useMemo(
+    () => (data ? getMatchAnalysisActionPlan(data) : null),
+    [data],
+  );
 
   useEffect(() => {
     if (!dateCoverActive) setDateCoverRevealed(false);
   }, [dateCoverActive]);
+
+  const runFullAnalysisUpdate = async () => {
+    if (!data || !analysisPlan?.visible || analysisLoading) return;
+
+    setAnalysisLoading(true);
+    try {
+      await rescoreMatch(data.id);
+      await getRedFlagRadar(data.id);
+      if (analysisPlan.actions.includes("dateBrief")) {
+        await generateDateBrief(data.id);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      await refetch();
+    } catch (e: any) {
+      await refetch();
+      Alert.alert(
+        "Couldn't analyze new screenshots",
+        e?.message ?? "Try again.",
+      );
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
 
   const onCoverAction = async (actionId: CoverQuickActionId) => {
     const action = getCoverQuickAction(actionId);
@@ -301,11 +336,28 @@ export default function MatchDetailScreen() {
         />
         <NextStepCard match={data} />
         <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
-        <LatestReadCard match={data} onChange={() => refetch()} />
+        <AnalyzeNewScreenshotsCard
+          plan={analysisPlan}
+          loading={analysisLoading}
+          onAnalyze={runFullAnalysisUpdate}
+        />
+        <LatestReadCard
+          match={data}
+          onAnalyzeNew={runFullAnalysisUpdate}
+          analyzingNew={analysisLoading}
+        />
         <GutCheckCard match={data} onChange={() => refetch()} />
         <RedFlagsCard
           matchId={data.id}
           promoted
+          analysisUpdate={
+            analysisPlan?.visible
+              ? {
+                  loading: analysisLoading,
+                  onPress: runFullAnalysisUpdate,
+                }
+              : undefined
+          }
           initialSummary={data.redFlagSummary}
           initialRedFlags={{
             redFlags: data.redFlags ?? [],
@@ -369,7 +421,18 @@ export default function MatchDetailScreen() {
         )}
         {data.nextDateAt && (!isPast(data.nextDateAt) || activeDateMode) && (
           <>
-            <NextDateCard match={data} onChange={() => refetch()} />
+            <NextDateCard
+              match={data}
+              onChange={() => refetch()}
+              analysisUpdate={
+                analysisPlan?.visible
+                  ? {
+                      loading: analysisLoading,
+                      onPress: runFullAnalysisUpdate,
+                    }
+                  : undefined
+              }
+            />
             <DateSafetyPlanCard
               match={data}
               onChange={() => refetch()}
@@ -506,7 +569,7 @@ function StoryOverviewCard({ match }: { match: MatchDetail }) {
     savedPatterns > 0
       ? `${savedPatterns} saved pattern${savedPatterns === 1 ? "" : "s"} stay visible here even when the next analysis changes.`
       : pending > 0
-        ? `${pending} screenshot${pending === 1 ? "" : "s"} can update the read, tags, and timeline when you reanalyze.`
+        ? `${pending} screenshot${pending === 1 ? "" : "s"} can update the read, tags, and timeline when you tap Analyze new.`
         : latestEvent
           ? `Last saved moment: ${latestEvent.title}.`
           : "Add screenshots, notes, or a debrief to build the private story over time.";
@@ -1748,43 +1811,80 @@ function ScreenshotIntakeCard({
   );
 }
 
-function LatestReadCard({
-  match,
-  onChange,
+function AnalyzeNewScreenshotsCard({
+  plan,
+  loading,
+  onAnalyze,
 }: {
-  match: MatchDetail;
-  onChange: () => void;
+  plan: MatchAnalysisActionPlan | null;
+  loading: boolean;
+  onAnalyze: () => void;
 }) {
   const c = useColors();
-  const [rescoring, setRescoring] = useState(false);
+  if (!plan?.visible) return null;
+
+  return (
+    <Card style={{ borderColor: c.warning, backgroundColor: c.warningBg }}>
+      <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: c.card,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Feather name="zap" size={18} color={c.warning} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <SectionLabel>{plan.label}</SectionLabel>
+          <Text
+            style={{ color: c.foreground, fontSize: 16, fontWeight: "700" }}
+          >
+            {plan.title}
+          </Text>
+          <Body muted style={{ fontSize: 12, lineHeight: 17 }}>
+            {plan.body}
+          </Body>
+        </View>
+      </View>
+      <Button
+        label="Analyze new"
+        icon="refresh-cw"
+        onPress={onAnalyze}
+        loading={loading}
+        style={{ marginTop: 12 }}
+      />
+    </Card>
+  );
+}
+
+function LatestReadCard({
+  match,
+  onAnalyzeNew,
+  analyzingNew,
+}: {
+  match: MatchDetail;
+  onAnalyzeNew: () => void;
+  analyzingNew: boolean;
+}) {
+  const c = useColors();
   const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
   const hasRead = Boolean(match.lastRead?.body?.trim());
+  const hasScreenshots = match.screenshots.length > 0;
   const isCurrent = match.readFreshness === "current";
   const isStale = match.readFreshness === "stale" || pending > 0;
   const statusLabel = isCurrent
     ? "Up to date"
     : pending > 0
-      ? `${pending} screenshot${pending === 1 ? "" : "s"} not analyzed`
+      ? `${pending} screenshot${pending === 1 ? "" : "s"} waiting`
       : hasRead
-        ? "Needs reanalysis"
+        ? "Analyze new"
         : "No read yet";
   const statusColor = isCurrent ? c.success : c.warning;
   const statusBg = isCurrent ? c.successBg : c.warningBg;
-
-  const doRescore = async () => {
-    setRescoring(true);
-    try {
-      await rescoreMatch(match.id);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
-      );
-      onChange();
-    } catch (e: any) {
-      Alert.alert("Couldn't reanalyze", e?.message ?? "Try again.");
-    } finally {
-      setRescoring(false);
-    }
-  };
 
   return (
     <Card style={{ borderColor: isStale ? c.warning : c.border }}>
@@ -1829,14 +1929,16 @@ function LatestReadCard({
       <Body muted={!hasRead} style={{ fontSize: 13, lineHeight: 19 }}>
         {hasRead
           ? match.lastRead!.body
-          : "Upload screenshots, then reanalyze to generate the first read."}
+          : hasScreenshots
+            ? "Tap Analyze new to generate the first read."
+            : "Upload screenshots to generate the first read."}
       </Body>
-      {!isCurrent && (
+      {!isCurrent && hasScreenshots && (
         <Button
-          label={hasRead ? "Reanalyze screenshots" : "Analyze screenshots"}
+          label="Analyze new"
           icon="refresh-cw"
-          onPress={doRescore}
-          loading={rescoring}
+          onPress={onAnalyzeNew}
+          loading={analyzingNew}
           variant="secondary"
           style={{ marginTop: 12 }}
         />
@@ -3687,9 +3789,14 @@ function DateSafetyPlanCard({
 function NextDateCard({
   match,
   onChange,
+  analysisUpdate,
 }: {
   match: MatchDetail;
   onChange: () => void;
+  analysisUpdate?: {
+    loading: boolean;
+    onPress: () => void;
+  };
 }) {
   const c = useColors();
   const [briefLoading, setBriefLoading] = useState(false);
@@ -3751,8 +3858,10 @@ function NextDateCard({
   const briefStatusColor = briefStatusWarning ? c.warning : c.success;
   const briefStatusBg = briefStatusWarning ? c.warningBg : c.successBg;
   const briefStatusIcon = briefStatusWarning ? "alert-circle" : "check";
-  const briefActionLabel =
-    freshness === "current" && savedBrief
+  const shouldAnalyzeNew = hasUnanalyzedScreens && Boolean(analysisUpdate);
+  const briefActionLabel = shouldAnalyzeNew
+    ? "Analyze new"
+    : freshness === "current" && savedBrief
       ? "Refresh brief"
       : "Generate date brief";
 
@@ -3857,9 +3966,9 @@ function NextDateCard({
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <Button
           label={briefActionLabel}
-          icon="zap"
-          onPress={loadBrief}
-          loading={briefLoading}
+          icon={shouldAnalyzeNew ? "refresh-cw" : "zap"}
+          onPress={shouldAnalyzeNew ? analysisUpdate!.onPress : loadBrief}
+          loading={shouldAnalyzeNew ? analysisUpdate!.loading : briefLoading}
           style={{ flex: 1 }}
         />
         <Button

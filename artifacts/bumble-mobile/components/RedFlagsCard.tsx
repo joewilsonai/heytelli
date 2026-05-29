@@ -25,11 +25,16 @@ import { getSafetyResources } from "@/lib/safety-resources";
 export function RedFlagsCard({
   matchId,
   promoted = false,
+  analysisUpdate,
   initialSummary,
   initialRedFlags,
 }: {
   matchId: number;
   promoted?: boolean;
+  analysisUpdate?: {
+    loading: boolean;
+    onPress: () => void;
+  };
   initialSummary?: RedFlagSummary;
   initialRedFlags?: {
     redFlags: RedFlag[];
@@ -106,6 +111,7 @@ export function RedFlagsCard({
     ...currentFlags,
     ...historicalFlags,
   ]);
+  const analyzeNewLoading = Boolean(analysisUpdate?.loading);
 
   const renderFlagList = (title: string, flags: RedFlag[], muted = false) => (
     <View style={{ gap: 6 }}>
@@ -400,16 +406,24 @@ export function RedFlagsCard({
               ))}
             </View>
           ) : null}
-          <Pressable onPress={run} disabled={loading} hitSlop={8}>
-            <Text
-              style={{
-                color: c.primary,
-                fontSize: 12,
-                fontWeight: "500",
-              }}
-            >
-              Re-analyze
-            </Text>
+          <Pressable
+            onPress={analysisUpdate ? analysisUpdate.onPress : run}
+            disabled={loading || analyzeNewLoading}
+            hitSlop={8}
+          >
+            {analyzeNewLoading ? (
+              <ActivityIndicator size="small" color={c.primary} />
+            ) : (
+              <Text
+                style={{
+                  color: c.primary,
+                  fontSize: 12,
+                  fontWeight: "500",
+                }}
+              >
+                {analysisUpdate ? "Analyze new" : "Analyze patterns"}
+              </Text>
+            )}
           </Pressable>
         </View>
       )}
