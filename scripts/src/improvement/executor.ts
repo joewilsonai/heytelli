@@ -14,6 +14,7 @@ import {
   fetchGitHubIssue,
   findIssueCommentByMarker,
   githubTokenFromEnv,
+  type GitHubIssueSummary,
 } from "./github";
 
 export type SwarmExecutorWorkItem = {
@@ -351,6 +352,18 @@ export function issueLabelsAllowExecutor(labels: string[]): boolean {
   );
 }
 
+export function sourceIssueBlockReason(
+  issue: Pick<GitHubIssueSummary, "state" | "labels">,
+): "closed" | "blocked" | null {
+  if (issue.state.toLowerCase() !== "open") {
+    return "closed";
+  }
+  if (!issueLabelsAllowExecutor(issue.labels)) {
+    return "blocked";
+  }
+  return null;
+}
+
 export function buildExecutorPrompt(
   workItem: SwarmExecutorWorkItem,
   plan: PlannedExecutorWorkItem,
@@ -368,6 +381,7 @@ export function buildExecutorPrompt(
     workItem.summary,
     "",
     "Implementation rules:",
+    "- Before editing, compare the issue against the current repository. If the current implementation already resolves or supersedes the issue, leave `RESOLVED_BY_EXISTING_IMPLEMENTATION: <short reason>` in your final response and make no code changes.",
     "- Make the smallest production change that resolves the issue.",
     "- Add or update focused tests before changing behavior.",
     "- Run relevant tests and typecheck before finishing.",
@@ -375,6 +389,7 @@ export function buildExecutorPrompt(
     "- Stay inside the assigned worktree.",
     "- Do not run psql, railway, gh, git worktree, git branch, git reset, git push, git commit, or gh pr commands; the parent executor owns infrastructure, branches, commits, PRs, and database state.",
     "- Do not request or expose screenshots, transcripts, names beyond first name, phone numbers, exact addresses, or private dating details.",
+    "- If the issue would remove, weaken, or roll back an existing shipped safety or privacy feature, leave `BLOCKED: superseded-by-current-design` in your final response and make no code changes.",
     "- If the issue cannot be resolved safely from the sanitized summary, leave a short BLOCKED note in your final response and do not invent private context.",
   ].join("\n");
 }
@@ -978,13 +993,16 @@ export async function runSwarmExecutor(
         apiUrl: options.githubApiUrl,
         issueNumber: plan.issueNumber,
       });
-      if (!issueLabelsAllowExecutor(sourceIssue.labels)) {
+      const sourceIssueBlock = sourceIssueBlockReason(sourceIssue);
+      if (sourceIssueBlock) {
         counts.skipped += 1;
         if (!options.dryRun) {
+          const nextStatus =
+            sourceIssueBlock === "closed" ? "closed" : "changes_requested";
           await db
             .update(improvementWorkItems)
             .set({
-              status: "changes_requested",
+              status: nextStatus,
               updatedAt: new Date(),
             })
             .where(eq(improvementWorkItems.id, workItem.id));
@@ -994,10 +1012,15 @@ export async function runSwarmExecutor(
             runType: "review",
             agentName: options.agentName,
             status: "blocked",
-            summary: `Swarm executor skipped issue #${plan.issueNumber} because the source issue is blocked for recovery.`,
+            summary:
+              sourceIssueBlock === "closed"
+                ? `Swarm executor skipped issue #${plan.issueNumber} because the source issue is closed.`
+                : `Swarm executor skipped issue #${plan.issueNumber} because the source issue is blocked for recovery.`,
             metadata: {
               issueNumber: plan.issueNumber,
+              issueState: sourceIssue.state,
               labels: sourceIssue.labels,
+              reason: sourceIssueBlock,
               retryable: false,
             },
             completedAt: new Date(),

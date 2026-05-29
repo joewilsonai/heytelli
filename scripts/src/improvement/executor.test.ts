@@ -17,6 +17,7 @@ import {
   removeExecutorScratchFiles,
   runAgent,
   runCommand,
+  sourceIssueBlockReason,
   swarmExecutorRunShouldFail,
   workItemStatusAfterExecutorFailure,
 } from "./executor";
@@ -119,6 +120,24 @@ test("allows review-gated recovery work but blocks unsafe recovery labels", () =
   );
 });
 
+test("blocks closed or recovery-blocked source issues before worker execution", () => {
+  assert.equal(
+    sourceIssueBlockReason({ state: "closed", labels: ["swarm-planned"] }),
+    "closed",
+  );
+  assert.equal(
+    sourceIssueBlockReason({ state: "open", labels: ["swarm-blocked"] }),
+    "blocked",
+  );
+  assert.equal(
+    sourceIssueBlockReason({
+      state: "open",
+      labels: ["swarm-planned", "risk:extra_agent_review"],
+    }),
+    null,
+  );
+});
+
 test("builds a private-data-safe executor prompt", () => {
   const plan = planSwarmExecutorWorkItem(safeWorkItem);
   assert.equal(plan.status, "executable");
@@ -131,6 +150,8 @@ test("builds a private-data-safe executor prompt", () => {
   assert.match(prompt, /Do not request or expose screenshots/);
   assert.match(prompt, /Stay inside the assigned worktree/);
   assert.match(prompt, /Do not run .*git commit.*gh pr/);
+  assert.match(prompt, /RESOLVED_BY_EXISTING_IMPLEMENTATION/);
+  assert.match(prompt, /superseded-by-current-design/);
   assert.doesNotMatch(prompt, /555-1212|123 Main|raw transcript/i);
   assert.equal(
     executorPrBodyMarker(safeWorkItem),
