@@ -52,6 +52,40 @@ test("sanitizes picked contacts to first name and does not keep phone numbers by
   assert.equal(person.relationship, "sister");
   assert.equal(person.phoneNumber, null);
   assert.equal(person.source, "contacts");
+
+  const olderOptInPerson = sanitizeCircleContact(
+    {
+      fullName: "Maya",
+      phoneNumber: "private-contact-value",
+      relationship: "roommate",
+    },
+    { storePhone: true },
+  );
+  assert.equal(olderOptInPerson.name, "Maya");
+  assert.equal(olderOptInPerson.phoneNumber, null);
+});
+
+test("merges persisted settings without retaining trusted circle contact PII", () => {
+  const settings = mergeSettings({
+    trustedCircle: [
+      {
+        id: "circle_1",
+        name: "Claire",
+        relationship: "sister",
+        cardLabelPreference: "name",
+        phoneNumber: "private-contact-value",
+        source: "contacts",
+        createdAt: "2026-05-26T07:00:00.000Z",
+      },
+    ],
+    dateSafetyDefaults: {
+      ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
+      storePhone: true,
+    },
+  });
+
+  assert.equal(settings.dateSafetyDefaults.storePhone, false);
+  assert.equal(settings.trustedCircle[0]?.phoneNumber, null);
 });
 
 test("uses selected primary circle person when building a new date card", () => {

@@ -6,12 +6,6 @@ import {
   type TrustedCirclePerson,
 } from "./user-settings.ts";
 
-function getPhoneNumber(details: any): string | null {
-  const phones = details?.phones ?? details?.phoneNumbers ?? [];
-  const first = Array.isArray(phones) ? phones[0] : null;
-  return first?.number ?? first?.digits ?? null;
-}
-
 function getFullName(details: any): string {
   return (
     details?.fullName ??
@@ -20,9 +14,7 @@ function getFullName(details: any): string {
   );
 }
 
-export async function pickTrustedCircleContact(options: {
-  storePhone?: boolean;
-}): Promise<
+export async function pickTrustedCircleContact(): Promise<
   | { status: "picked"; person: TrustedCirclePerson }
   | { status: "cancelled" }
   | { status: "unavailable"; message: string }
@@ -39,9 +31,8 @@ export async function pickTrustedCircleContact(options: {
     const person = sanitizeCircleContact(
       {
         fullName: getFullName(contact),
-        phoneNumber: getPhoneNumber(contact),
       },
-      { storePhone: options.storePhone, source: "contacts" },
+      { source: "contacts" },
     );
     return { status: "picked", person };
   } catch (error: any) {

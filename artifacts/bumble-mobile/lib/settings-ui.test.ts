@@ -41,7 +41,9 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /MAX_PROFILE_SCREENSHOTS/);
   assert.match(screen, /Analyze Profile/);
   assert.match(screen, /analyzeDatingProfileScreenshots/);
-  assert.match(screen, /stripStoredCirclePhoneNumbers/);
+  assert.doesNotMatch(screen, /Keep phone numbers/);
+  assert.doesNotMatch(screen, /toggleStorePhone/);
+  assert.doesNotMatch(screen, /storePhone: true/);
   assert.match(screen, /draftDirty/);
 });
 
@@ -105,6 +107,8 @@ test("trusted circle contact picker statically imports expo contacts", () => {
   assert.match(contacts, /import \* as Contacts from "expo-contacts"/);
   assert.doesNotMatch(contacts, /require\("expo-contacts"\)/);
   assert.doesNotMatch(contacts, /await import\("expo-contacts"\)/);
+  assert.doesNotMatch(contacts, /getPhoneNumber/);
+  assert.doesNotMatch(contacts, /storePhone/);
 });
 
 test("settings route is registered and reachable from home", () => {
