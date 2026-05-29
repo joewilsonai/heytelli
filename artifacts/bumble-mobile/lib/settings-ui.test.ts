@@ -52,9 +52,9 @@ test("settings changelog has detailed latest build notes", () => {
   assert.match(screen, /formatBuildChangelogVersion/);
   assert.match(screen, /Constants\.nativeBuildVersion/);
   assert.match(changelog, /BUILD_CHANGELOG_ENTRIES/);
-  assert.match(changelog, /Beta safety polish/);
-  assert.match(changelog, /Private match photos repair/);
-  assert.match(changelog, /Feedback now confirms/);
+  assert.match(changelog, /Screenshot analysis refresh/);
+  assert.match(changelog, /Analyze new now replaces/);
+  assert.match(changelog, /Date briefs stay available/);
 });
 
 test("ios beta workflow injects build changelog metadata", () => {

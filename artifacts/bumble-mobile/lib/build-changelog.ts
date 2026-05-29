@@ -10,6 +10,17 @@ type BuildChangelogEnv = Record<string, string | undefined>;
 export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
   {
     version: "1.0.0",
+    date: "2026-05-29",
+    title: "Screenshot analysis refresh",
+    highlights: [
+      "Analyze new now replaces stale reanalyze copy throughout the match flow.",
+      "New screenshots refresh the latest read, Pattern Radar, and date brief together when needed.",
+      "Pattern Radar clears stale in-session results after a full analysis refresh.",
+      "Date briefs stay available even when screenshot analysis needs attention.",
+    ],
+  },
+  {
+    version: "1.0.0",
     date: "2026-05-28",
     title: "Beta safety polish",
     highlights: [
