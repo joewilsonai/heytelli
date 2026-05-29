@@ -160,7 +160,7 @@ export default function MatchesScreen() {
                   justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                 })}
-                accessibilityLabel="My dating OS"
+                accessibilityLabel="My HeyTelli"
               >
                 <Feather name="settings" size={20} color={c.foreground} />
               </Pressable>

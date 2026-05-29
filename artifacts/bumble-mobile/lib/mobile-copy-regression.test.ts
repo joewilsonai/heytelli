@@ -29,7 +29,8 @@ test("mobile copy avoids old product and verdict language", () => {
     /red flags first|flags above|FLAG.*TAKE A BEAT/,
   );
   assert.match(combined, /Telli noticed/);
-  assert.match(combined, /My dating OS/);
+  assert.match(combined, /My HeyTelli/);
+  assert.doesNotMatch(combined, /dating OS/i);
 });
 
 test("home dashboard does not expose tag filtering controls", () => {
