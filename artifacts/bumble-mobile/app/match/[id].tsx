@@ -118,6 +118,7 @@ import {
   saveLocalMatchScreenshot,
   useLocalMatchScreenshots,
 } from "@/lib/local-match-screenshots";
+import { recordLocalDateCardShareEvent } from "@/lib/local-date-card-events";
 import {
   getMatchAnalysisActionPlan,
   type MatchAnalysisActionPlan,
@@ -2853,6 +2854,7 @@ function DateSafetyPlanCard({
     }
     const shared = await shareMessage(buildDateCardMessage(shareTarget));
     if (!shared) return;
+    recordLocalDateCardShareEvent(match.id, shareTarget).catch(() => {});
     const sharedChecklist = { ...safeDateChecklist, circleHasPlan: true };
     const nextDateModeStatus: DateModeStatus = "date_card_sent";
     setSafeDateChecklist(sharedChecklist);
