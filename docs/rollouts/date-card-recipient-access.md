@@ -1,5 +1,16 @@
 # Date Card Recipient Access Rollout
 
+## Status
+
+Implementation is now wired for the V1 Railway-backed flow:
+
+- Railway Postgres migration `0005_date_cards.sql` creates `date_cards`, `date_card_recipients`, and `date_card_events`.
+- The API exposes authenticated sender routes at `/api/date-cards/*`.
+- The recipient page is available at `/c/:shareToken` without requiring an account.
+- Recipient actions post to `/api/date-card-shares/:shareToken/*`.
+- The iOS Date Plan flow creates private links before opening the native share sheet.
+- The sender view can reload Date Card status and show viewed/confirmed progress.
+
 ## Product decision
 
 HeyTelli will ship Date Card recipient access as a private, expiring Railway-backed web link for selected circle people.
@@ -40,13 +51,13 @@ The recipient does not see screenshots, chat transcripts, profile photos, AI ana
 
 ## Rollout sequence
 
-1. Fix swarm recovery so blocked issues become executable `risk:extra_agent_review` work instead of dead-ended `risk:no_auto_merge` work.
-2. Add Railway Postgres migrations and backend route tests.
-3. Add mobile Date Plan editor integration: create card, pick up to 3 circle people, share links.
-4. Add recipient web route with the polished Date Card page.
-5. Add sender-side status updates and timeline events.
-6. Run focused verification for privacy, expiry, revocation, idempotency, and stale-token behavior.
-7. Build and submit TestFlight after backend and mobile routes are wired.
+1. Done: fix swarm recovery so blocked issues become executable `risk:extra_agent_review` work instead of dead-ended `risk:no_auto_merge` work.
+2. Done: add Railway Postgres migrations and backend route tests.
+3. Done: add mobile Date Plan editor integration to create card links for up to 3 circle people and share them through the native sheet.
+4. Done: add recipient web route with the polished Date Card page and Got it action.
+5. Done for V1: sender-side status reload shows viewed/confirmed progress from Railway.
+6. Done in code: focused verification covers no screenshots, no transcripts, no server-side `match_id`, no raw tokens, no recipient PII by default, expiry/revocation structure, and idempotent events.
+7. Next: apply the Railway migration, deploy the API, build iOS, and submit TestFlight.
 
 ## Swarm operating rule
 

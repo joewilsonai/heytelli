@@ -7,6 +7,7 @@ import chatRouter from "./chat";
 import feedbackRouter from "./feedback";
 import improvementRouter from "./improvement";
 import settingsRouter from "./settings";
+import dateCardsRouter from "./dateCards";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(chatRouter);
 router.use(feedbackRouter);
 router.use(improvementRouter);
 router.use(settingsRouter);
+router.use(dateCardsRouter);
 
 export default router;

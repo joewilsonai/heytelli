@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -119,6 +119,14 @@ import {
   useLocalMatchScreenshots,
 } from "@/lib/local-match-screenshots";
 import { recordLocalDateCardShareEvent } from "@/lib/local-date-card-events";
+import {
+  appendDateCardLinksToMessage,
+  createPrivateDateCardLinks,
+  findPrivateDateCardForMatch,
+  listPrivateDateCards,
+  summarizePrivateDateCardStatus,
+  type PrivateDateCard,
+} from "@/lib/date-card-links";
 import {
   getMatchAnalysisActionPlan,
   type MatchAnalysisActionPlan,
@@ -2736,6 +2744,9 @@ function DateSafetyPlanCard({
   const [dateModeStatus, setDateModeStatus] = useState<DateModeStatus>(
     plan?.dateModeStatus ?? "planning",
   );
+  const [privateDateCard, setPrivateDateCard] =
+    useState<PrivateDateCard | null>(null);
+  const [privateDateCardLoading, setPrivateDateCardLoading] = useState(false);
   const [dateModeStartedAt, setDateModeStartedAt] = useState<string | null>(
     plan?.dateModeStartedAt ?? null,
   );
@@ -2812,6 +2823,32 @@ function DateSafetyPlanCard({
   const shareTarget = previewMatch;
   const shareStatus = getDateSafetyPlanStatus(shareTarget);
 
+  const refreshPrivateDateCardStatus = useCallback(async () => {
+    if (shareStatus.state !== "ready") {
+      setPrivateDateCard(null);
+      return;
+    }
+    setPrivateDateCardLoading(true);
+    try {
+      const cards = await listPrivateDateCards();
+      setPrivateDateCard(findPrivateDateCardForMatch(cards, shareTarget));
+    } catch {
+      setPrivateDateCard(null);
+    } finally {
+      setPrivateDateCardLoading(false);
+    }
+  }, [
+    shareStatus.state,
+    match.nextDateAt,
+    trustedCircleName,
+    checkInAt,
+    expectedEndAt,
+  ]);
+
+  useEffect(() => {
+    void refreshPrivateDateCardStatus();
+  }, [refreshPrivateDateCardStatus]);
+
   const shareMessage = async (message: string): Promise<boolean> => {
     try {
       const result = await Share.share({ message });
@@ -2852,7 +2889,20 @@ function DateSafetyPlanCard({
       );
       return;
     }
-    const shared = await shareMessage(buildDateCardMessage(shareTarget));
+    let message = buildDateCardMessage(shareTarget);
+    try {
+      const privateLinks = await createPrivateDateCardLinks({
+        match: shareTarget,
+      });
+      message = appendDateCardLinksToMessage(message, privateLinks);
+    } catch (e: any) {
+      Alert.alert(
+        "Couldn't create private link",
+        e?.message ?? "Try again in a moment.",
+      );
+      return;
+    }
+    const shared = await shareMessage(message);
     if (!shared) return;
     recordLocalDateCardShareEvent(match.id, shareTarget).catch(() => {});
     const sharedChecklist = { ...safeDateChecklist, circleHasPlan: true };
@@ -2865,6 +2915,7 @@ function DateSafetyPlanCard({
           dateModeStatus: nextDateModeStatus,
         }),
       });
+      await refreshPrivateDateCardStatus();
       setPlanDirty(false);
       setOpen(false);
       onChange();
@@ -3225,6 +3276,40 @@ function DateSafetyPlanCard({
         location, transport, check-in, expected end, code word, and your note.
         No photos or screenshots are included.
       </Body>
+      {(privateDateCard || privateDateCardLoading) && (
+        <View
+          style={{
+            marginTop: 10,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: c.border,
+            backgroundColor: c.card,
+            padding: 10,
+            gap: 4,
+          }}
+        >
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 13,
+              fontWeight: "700",
+            }}
+          >
+            Circle link status
+          </Text>
+          <Text
+            style={{
+              color: c.mutedForeground,
+              fontSize: 12,
+              lineHeight: 16,
+            }}
+          >
+            {privateDateCard
+              ? summarizePrivateDateCardStatus(privateDateCard)
+              : "Checking latest Date Card status..."}
+          </Text>
+        </View>
+      )}
       {displayStatus.missing.length > 0 && !open && (
         <Body muted style={{ fontSize: 12, marginTop: 8 }}>
           Missing: {displayStatus.missing.join(", ")}

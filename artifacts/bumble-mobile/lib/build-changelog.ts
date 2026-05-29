@@ -11,6 +11,17 @@ export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
   {
     version: "1.0.0",
     date: "2026-05-29",
+    title: "Private Date Card links",
+    highlights: [
+      "Share Date Card now creates private expiring links for selected circle people.",
+      "Circle people can open the Date Card without an account and tap Got it.",
+      "The match screen shows the latest circle link status after a card is shared.",
+      "Date Card records store first names, logistics, token hashes, and events only.",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "2026-05-29",
     title: "Screenshot analysis refresh",
     highlights: [
       "Analyze new now replaces stale reanalyze copy throughout the match flow.",
