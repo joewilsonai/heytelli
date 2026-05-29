@@ -174,6 +174,19 @@ function cleanMatchId(value: unknown): number | null {
   return value;
 }
 
+function isDateCardOrShareRecord(input: {
+  source: ImprovementSignalSource;
+  surface: string | null;
+}): boolean {
+  const surface = input.surface?.toLowerCase() ?? "";
+  return (
+    input.source === "share_failure" ||
+    surface.includes("date-card") ||
+    surface.includes("date_card") ||
+    surface.includes("share")
+  );
+}
+
 function cleanClientContext(
   value: unknown,
   includeTechnicalContext: boolean,
@@ -325,7 +338,9 @@ export function normalizeImprovementSignalInput(
   const feedbackAttachment = feedbackAttachmentFromClientContext(
     input.clientContext,
   );
-  const matchId = cleanMatchId(input.matchId);
+  const matchId = isDateCardOrShareRecord({ source, surface })
+    ? null
+    : cleanMatchId(input.matchId);
   const payloadMessage = sanitizeText(message) || "Feedback received.";
   const rawPayload: Record<string, unknown> = {
     source,

@@ -110,6 +110,32 @@ test("keeps raw payload limited to allowlisted technical context", () => {
   });
 });
 
+test("does not persist match ids for date-card or share feedback", () => {
+  const dateCard = normalizeImprovementSignalInput({
+    source: "in_app_feedback",
+    type: "Confusing",
+    message: "The Date Card share flow was unclear.",
+    matchId: 42,
+    surface: "date-card",
+    technicalContextConsent: true,
+  });
+  assert.ok(dateCard);
+  assert.equal(dateCard.matchId, null);
+  assert.equal("matchId" in dateCard.rawPayload, false);
+
+  const shareFailure = normalizeImprovementSignalInput({
+    source: "share_failure",
+    type: "Bug",
+    message: "Native share failed.",
+    matchId: 42,
+    surface: "match-share",
+    technicalContextConsent: true,
+  });
+  assert.ok(shareFailure);
+  assert.equal(shareFailure.matchId, null);
+  assert.equal("matchId" in shareFailure.rawPayload, false);
+});
+
 test("stores sanitized message text in raw payload", () => {
   const normalized = normalizeImprovementSignalInput({
     source: "in_app_feedback",

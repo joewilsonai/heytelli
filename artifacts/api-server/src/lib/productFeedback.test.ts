@@ -19,7 +19,7 @@ test("normalizes product feedback without accepting arbitrary sensitive context"
   assert.deepEqual(feedback, {
     event: "date-card-shared",
     answer: "would-use",
-    matchId: 42,
+    matchId: null,
     context: {
       surface: "date-card",
       prompt: "Would you send this to a friend?",
