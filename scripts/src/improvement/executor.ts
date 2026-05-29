@@ -197,6 +197,27 @@ function githubEnv(token: string | null): NodeJS.ProcessEnv {
     : process.env;
 }
 
+export function gitEnv(token: string | null): NodeJS.ProcessEnv {
+  const env = githubEnv(token);
+  if (!token) {
+    return { ...env, GIT_TERMINAL_PROMPT: "0" };
+  }
+
+  const existingCount = Number.parseInt(env.GIT_CONFIG_COUNT ?? "0", 10);
+  const configIndex =
+    Number.isFinite(existingCount) && existingCount >= 0 ? existingCount : 0;
+
+  return {
+    ...env,
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_CONFIG_COUNT: String(configIndex + 1),
+    [`GIT_CONFIG_KEY_${configIndex}`]: `url.https://x-access-token:${encodeURIComponent(
+      token,
+    )}@github.com/.insteadOf`,
+    [`GIT_CONFIG_VALUE_${configIndex}`]: "https://github.com/",
+  };
+}
+
 export function parseExecutorArgs(
   argv: string[],
   env = process.env,
@@ -659,7 +680,12 @@ export function workItemStatusAfterExecutorFailure(
   err: unknown,
 ): Extract<ImprovementWorkItemStatus, "planned" | "changes_requested"> {
   const message = errorMessage(err).toLowerCase();
-  if (message.includes("timed out") || message.includes("tokenrefreshfailed")) {
+  if (
+    message.includes("timed out") ||
+    message.includes("tokenrefreshfailed") ||
+    message.includes("could not read username") ||
+    message.includes("authentication failed")
+  ) {
     return "planned";
   }
   return "changes_requested";
@@ -847,6 +873,7 @@ async function executeWorkItem(
   await mkdir(options.worktreeRoot, { recursive: true });
   await runner("git", ["fetch", "origin", options.baseBranch], {
     cwd: options.repoRoot,
+    env: gitEnv(options.token),
   });
   await removeWorktree(options.repoRoot, worktreePath, runner);
   await runner(
@@ -870,6 +897,7 @@ async function executeWorkItem(
   await commitIfNeeded(worktreePath, workItem, options.baseBranch, runner);
   await runner("git", ["push", "-u", "origin", plan.branchName], {
     cwd: worktreePath,
+    env: gitEnv(options.token),
   });
   const pr = await createOrReusePullRequest(
     worktreePath,
