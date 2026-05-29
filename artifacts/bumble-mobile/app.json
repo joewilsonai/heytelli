@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAF7F3"
+      "backgroundColor": "#F2F2F7"
     },
     "ios": {
       "bundleIdentifier": "ai.joewilson.heytelli",
@@ -81,12 +81,8 @@
           },
           "android": {
             "enabled": true,
-            "singleShareMimeTypes": [
-              "image/*"
-            ],
-            "multipleShareMimeTypes": [
-              "image/*"
-            ]
+            "singleShareMimeTypes": ["image/*"],
+            "multipleShareMimeTypes": ["image/*"]
           }
         }
       ],

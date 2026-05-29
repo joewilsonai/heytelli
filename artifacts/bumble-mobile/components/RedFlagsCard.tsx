@@ -133,7 +133,7 @@ export function RedFlagsCard({
           fontSize: 12,
           color: muted ? c.mutedForeground : c.destructive,
           fontWeight: "600",
-          letterSpacing: 0.5,
+          letterSpacing: 0,
         }}
       >
         {title}
@@ -296,7 +296,7 @@ export function RedFlagsCard({
                   color: c.warning,
                   fontSize: 12,
                   fontWeight: "600",
-                  letterSpacing: 0.5,
+                  letterSpacing: 0,
                 }}
               >
                 OPTIONS TO CONSIDER
@@ -345,7 +345,7 @@ export function RedFlagsCard({
                   color: c.destructive,
                   fontSize: 12,
                   fontWeight: "600",
-                  letterSpacing: 0.5,
+                  letterSpacing: 0,
                 }}
               >
                 SUPPORT OPTIONS
@@ -398,7 +398,7 @@ export function RedFlagsCard({
                   fontSize: 12,
                   color: c.success,
                   fontWeight: "600",
-                  letterSpacing: 0.5,
+                  letterSpacing: 0,
                 }}
               >
                 💚 GREEN FLAGS

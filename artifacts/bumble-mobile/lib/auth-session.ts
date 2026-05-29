@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { getApiBaseUrl } from "./api-base";
+import { getApiBaseUrl } from "./api-base.ts";
 
 export const AUTH_STORAGE_KEY = "heytelli.auth.v1";
 
@@ -64,11 +64,7 @@ export async function loadAndValidateAuthSession(): Promise<AuthSession | null> 
 
     const body = await response.json().catch(() => null);
     const user = body?.user;
-    if (
-      user &&
-      typeof user === "object" &&
-      typeof user.email === "string"
-    ) {
+    if (user && typeof user === "object" && typeof user.email === "string") {
       const session = {
         token: stored.token,
         user: {

@@ -29,7 +29,7 @@ export function StaleNudgesSection() {
             fontSize: 11,
             fontWeight: "600",
             color: c.mutedForeground,
-            letterSpacing: 1.2,
+            letterSpacing: 0,
             textTransform: "uppercase",
           }}
         >

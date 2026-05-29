@@ -23,10 +23,7 @@ import {
   useListMatches,
   useListChatConversations,
 } from "@workspace/api-client-react";
-import type {
-  Match,
-  ChatConversation,
-} from "@workspace/api-client-react";
+import type { Match, ChatConversation } from "@workspace/api-client-react";
 
 import {
   Body,
@@ -43,8 +40,7 @@ export default function ChatListScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
-  const { data, isLoading, refetch, isRefetching } =
-    useListChatConversations();
+  const { data, isLoading, refetch, isRefetching } = useListChatConversations();
   const { data: matches = [] } = useListMatches();
   const [composerOpen, setComposerOpen] = useState(false);
 
@@ -118,7 +114,7 @@ export default function ChatListScreen() {
               matchName={
                 item.matchId == null
                   ? null
-                  : matches.find((m) => m.id === item.matchId)?.name ?? null
+                  : (matches.find((m) => m.id === item.matchId)?.name ?? null)
               }
               onPress={() => router.push(`/chat/${item.id}`)}
             />
@@ -290,7 +286,11 @@ function NewChatModal({
           <IconButton icon="x" onPress={onClose} hint="Close" />
         </View>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 16, paddingBottom: insets.bottom + 24 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            gap: 16,
+            paddingBottom: insets.bottom + 24,
+          }}
           keyboardShouldPersistTaps="handled"
         >
           <View>
@@ -299,7 +299,7 @@ function NewChatModal({
                 fontSize: 12,
                 fontWeight: "600",
                 color: c.mutedForeground,
-                letterSpacing: 1.2,
+                letterSpacing: 0,
                 textTransform: "uppercase",
                 marginBottom: 8,
               }}
@@ -328,7 +328,7 @@ function NewChatModal({
                 fontSize: 12,
                 fontWeight: "600",
                 color: c.mutedForeground,
-                letterSpacing: 1.2,
+                letterSpacing: 0,
                 textTransform: "uppercase",
                 marginBottom: 8,
               }}

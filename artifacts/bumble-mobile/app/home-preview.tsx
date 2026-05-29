@@ -23,7 +23,14 @@ import { useColors } from "@/hooks/useColors";
 import { useListMatches } from "@workspace/api-client-react";
 import type { Match } from "@workspace/api-client-react";
 
-import { Body, Chip, EmptyState, H1, IconButton, Skeleton } from "@/components/ui";
+import {
+  Body,
+  Chip,
+  EmptyState,
+  H1,
+  IconButton,
+  Skeleton,
+} from "@/components/ui";
 import { StaleNudgesSection } from "@/components/StaleNudgesSection";
 import { AutoArchiveBanner } from "@/components/AutoArchiveBanner";
 import { formatTimeAgo, formatDateShort } from "@/lib/format";
@@ -158,7 +165,10 @@ export default function HomeScreenPreview() {
     () => matchData.filter((m) => m.status === "active"),
     [matchData],
   );
-  const focus = useMemo(() => buildFocus(activeMatches, now), [activeMatches, now]);
+  const focus = useMemo(
+    () => buildFocus(activeMatches, now),
+    [activeMatches, now],
+  );
 
   const rows = useMemo(() => {
     const list = matchData.filter((m) => m.status === filter);
@@ -201,7 +211,7 @@ export default function HomeScreenPreview() {
               style={{
                 fontSize: 12,
                 fontFamily: "Inter_600SemiBold",
-                letterSpacing: 1.4,
+                letterSpacing: 0,
                 textTransform: "uppercase",
                 color: c.mutedForeground,
               }}
@@ -377,7 +387,9 @@ export default function HomeScreenPreview() {
           ListEmptyComponent={
             <EmptyState
               icon="heart"
-              title={filter === "active" ? "No connections yet" : "Nothing here"}
+              title={
+                filter === "active" ? "No connections yet" : "Nothing here"
+              }
               hint={
                 filter === "active"
                   ? "Share a screenshot from your dating app to start your first private read."
@@ -399,7 +411,13 @@ export default function HomeScreenPreview() {
   );
 }
 
-function FocusCard({ items, onChat }: { items: FocusItem[]; onChat: () => void }) {
+function FocusCard({
+  items,
+  onChat,
+}: {
+  items: FocusItem[];
+  onChat: () => void;
+}) {
   const c = useColors();
   const router = useRouter();
 
@@ -416,7 +434,11 @@ function FocusCard({ items, onChat }: { items: FocusItem[]; onChat: () => void }
     >
       <View>
         <Text
-          style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: c.foreground }}
+          style={{
+            fontSize: 18,
+            fontFamily: "Inter_700Bold",
+            color: c.foreground,
+          }}
         >
           {items.length > 0 ? "Where to look first" : "You're all caught up"}
         </Text>
@@ -551,7 +573,11 @@ function ShareIntakeCard() {
             Start from a screenshot
           </Text>
           <Text
-            style={{ fontSize: 12, lineHeight: 17, color: c.secondaryForeground }}
+            style={{
+              fontSize: 12,
+              lineHeight: 17,
+              color: c.secondaryForeground,
+            }}
           >
             Share a profile or chat straight from Photos — it becomes a private
             read.
@@ -606,7 +632,13 @@ function toneStyle(tone: HomeSignalTone, c: ReturnType<typeof useColors>) {
   }
 }
 
-function ConnectionRow({ match, onPress }: { match: Match; onPress: () => void }) {
+function ConnectionRow({
+  match,
+  onPress,
+}: {
+  match: Match;
+  onPress: () => void;
+}) {
   const c = useColors();
   const model = getHomeMatchCardModel(match);
   const photo = objectPathToUrl(match.photoObjectPath);
@@ -615,7 +647,10 @@ function ConnectionRow({ match, onPress }: { match: Match; onPress: () => void }
 
   // Neutral one-line read — the user's saved read or a factual profile line.
   // Deliberately avoids surfacing any score or verdict about the person.
-  const profileLine = [match.extractedProfile.job, match.extractedProfile.location]
+  const profileLine = [
+    match.extractedProfile.job,
+    match.extractedProfile.location,
+  ]
     .filter(Boolean)
     .join(" · ");
   const read =
@@ -695,7 +730,11 @@ function ConnectionRow({ match, onPress }: { match: Match; onPress: () => void }
             }}
           >
             <Text
-              style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold" }}
+              style={{
+                color: "#fff",
+                fontSize: 10,
+                fontFamily: "Inter_700Bold",
+              }}
             >
               {waiting}
             </Text>
@@ -760,7 +799,12 @@ function ConnectionRow({ match, onPress }: { match: Match; onPress: () => void }
           }}
         >
           <View
-            style={{ flexDirection: "row", alignItems: "center", gap: 5, flex: 1 }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              flex: 1,
+            }}
           >
             <Feather name="arrow-right-circle" size={13} color={c.primary} />
             <Text

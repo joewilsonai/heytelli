@@ -36,7 +36,8 @@ function classify(d: {
       label: "Love-bombing",
       tint: "#C2410C",
       icon: "alert-octagon",
-      blurb: "Replying within minutes and dominating the thread. Calibrate carefully.",
+      blurb:
+        "Replying within minutes and dominating the thread. Calibrate carefully.",
     };
   }
   // Going dark
@@ -72,7 +73,8 @@ function classify(d: {
       label: "Leading",
       tint: "#B45309",
       icon: "arrow-up-right",
-      blurb: "You're initiating more than he is. Worth a beat to see if he leans in.",
+      blurb:
+        "You're initiating more than he is. Worth a beat to see if he leans in.",
     };
   }
   // Healthy
@@ -100,7 +102,15 @@ function classify(d: {
   };
 }
 
-function Stat({ label, value, tint }: { label: string; value: string; tint?: string }) {
+function Stat({
+  label,
+  value,
+  tint,
+}: {
+  label: string;
+  value: string;
+  tint?: string;
+}) {
   const c = useColors();
   return (
     <View style={{ flex: 1, gap: 2 }}>
@@ -109,12 +119,14 @@ function Stat({ label, value, tint }: { label: string; value: string; tint?: str
           fontSize: 10,
           color: c.mutedForeground,
           textTransform: "uppercase",
-          letterSpacing: 0.5,
+          letterSpacing: 0,
         }}
       >
         {label}
       </Text>
-      <Text style={{ fontSize: 16, fontWeight: "700", color: tint ?? c.foreground }}>
+      <Text
+        style={{ fontSize: 16, fontWeight: "700", color: tint ?? c.foreground }}
+      >
         {value}
       </Text>
     </View>
@@ -162,7 +174,13 @@ export function ResponseStatsCard({ matchId }: { matchId: number }) {
           <Stat label="Your avg" value={fmt(data.meAvgReplyHours)} />
           <Stat label="Longest gap" value={fmt(data.longestHerSilenceHours)} />
         </View>
-        <Text style={{ fontSize: 10, color: c.mutedForeground, fontStyle: "italic" }}>
+        <Text
+          style={{
+            fontSize: 10,
+            color: c.mutedForeground,
+            fontStyle: "italic",
+          }}
+        >
           Timing is approximated from screenshot upload gaps.
         </Text>
       </View>

@@ -111,3 +111,24 @@ test("Date brief stays available when Analyze new is shown", async () => {
   assert.match(card, /label=\{briefActionLabel\}/);
   assert.match(card, /onPress=\{loadBrief\}/);
 });
+
+test("match detail is split into jumpable sections instead of one long feed", async () => {
+  const screen = await readFile(
+    path.join(root, "artifacts/bumble-mobile/app/match/[id].tsx"),
+    "utf8",
+  );
+
+  assert.match(screen, /type MatchDetailSection =/);
+  assert.match(screen, /MatchSectionTabs/);
+  assert.match(screen, /MATCH_DETAIL_SECTIONS/);
+  assert.match(screen, /id: "today"[\s\S]*label: "Today"/);
+  assert.match(screen, /id: "read"[\s\S]*label: "Read"/);
+  assert.match(screen, /id: "story"[\s\S]*label: "Story"/);
+  assert.match(screen, /id: "date"[\s\S]*label: "Date"/);
+  assert.match(screen, /id: "talk"[\s\S]*label: "Talk"/);
+  assert.match(screen, /selectedSection === "today"/);
+  assert.match(screen, /selectedSection === "read"/);
+  assert.match(screen, /selectedSection === "story"/);
+  assert.match(screen, /selectedSection === "date"/);
+  assert.match(screen, /selectedSection === "talk"/);
+});

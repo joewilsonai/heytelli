@@ -51,7 +51,7 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
         fontSize: 11,
         fontWeight: "600",
         color: c.mutedForeground,
-        letterSpacing: 1.2,
+        letterSpacing: 0,
         textTransform: "uppercase",
         marginBottom: 10,
       }}
@@ -116,6 +116,7 @@ export function Button({
       style={({ pressed }) => [
         {
           backgroundColor: bg,
+          minHeight: 44,
           borderRadius: c.radius - 4,
           borderWidth: variant === "ghost" ? 1 : 0,
           borderColor,
@@ -139,7 +140,7 @@ export function Button({
         style={{
           color: fg,
           fontSize: small ? 13 : 15,
-          fontWeight: "600",
+          fontWeight: "700",
         }}
       >
         {label}
@@ -171,7 +172,14 @@ export function IconButton({
         onPress();
       }}
       hitSlop={10}
-      style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
+      style={({ pressed }) => ({
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.5 : 1,
+      })}
     >
       <Feather name={icon} size={size} color={color ?? c.foreground} />
     </Pressable>
@@ -262,6 +270,7 @@ export function Chip({
         flexDirection: "row",
         alignItems: "center",
         gap: 5,
+        minHeight: 44,
         backgroundColor: active ? c.foreground : c.card,
         borderWidth: 1,
         borderColor: active ? c.foreground : c.border,

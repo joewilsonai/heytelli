@@ -34,13 +34,21 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
     <Card>
       <Pressable
         onPress={() => setOpen((v) => !v)}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Feather name="activity" size={14} color={c.mutedForeground} />
           <SectionLabel>Behavior log</SectionLabel>
         </View>
-        <Feather name={open ? "chevron-up" : "chevron-down"} size={16} color={c.mutedForeground} />
+        <Feather
+          name={open ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={c.mutedForeground}
+        />
       </Pressable>
       {!open && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
@@ -52,7 +60,8 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
           {isLoading && <ActivityIndicator size="small" color={c.primary} />}
           {!isLoading && data && data.events.length === 0 && (
             <Body muted style={{ fontSize: 12 }}>
-              No changes yet — tags you add or AI suggestions you apply will appear here.
+              No changes yet — tags you add or AI suggestions you apply will
+              appear here.
             </Body>
           )}
           {!isLoading && data && data.events.length > 0 && (
@@ -64,7 +73,11 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
                 return (
                   <View
                     key={e.id}
-                    style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 8,
+                    }}
                   >
                     <View
                       style={{
@@ -77,7 +90,11 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
                         marginTop: 1,
                       }}
                     >
-                      <Feather name={isAdd ? "plus" : "minus"} size={11} color={tint} />
+                      <Feather
+                        name={isAdd ? "plus" : "minus"}
+                        size={11}
+                        color={tint}
+                      />
                     </View>
                     <View style={{ flex: 1 }}>
                       <View
@@ -99,21 +116,30 @@ export function TagHistoryCard({ matchId }: { matchId: number }) {
                         </Text>
                         <Text
                           style={{
-                            color: e.source === "ai" ? c.primary : c.mutedForeground,
+                            color:
+                              e.source === "ai" ? c.primary : c.mutedForeground,
                             fontSize: 10,
                             fontWeight: "500",
                             textTransform: "uppercase",
-                            letterSpacing: 0.5,
+                            letterSpacing: 0,
                           }}
                         >
                           {e.source}
                         </Text>
-                        <Text style={{ color: c.mutedForeground, fontSize: 11 }}>
+                        <Text
+                          style={{ color: c.mutedForeground, fontSize: 11 }}
+                        >
                           · {relTime(created)}
                         </Text>
                       </View>
                       {e.reason ? (
-                        <Text style={{ color: c.mutedForeground, fontSize: 11, marginTop: 2 }}>
+                        <Text
+                          style={{
+                            color: c.mutedForeground,
+                            fontSize: 11,
+                            marginTop: 2,
+                          }}
+                        >
                           {e.reason}
                         </Text>
                       ) : null}

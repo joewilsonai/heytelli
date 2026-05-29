@@ -132,12 +132,47 @@ import {
   type MatchAnalysisActionPlan,
 } from "@/lib/match-analysis-actions";
 
+type MatchDetailSection = "today" | "read" | "story" | "date" | "talk";
+
+const MATCH_DETAIL_SECTIONS: Array<{
+  id: MatchDetailSection;
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}> = [
+  { id: "today", label: "Today", icon: "star" },
+  { id: "read", label: "Read", icon: "eye" },
+  { id: "story", label: "Story", icon: "book-open" },
+  { id: "date", label: "Date", icon: "calendar" },
+  { id: "talk", label: "Talk", icon: "message-circle" },
+];
+
+function initialMatchDetailSection(
+  match: MatchDetail,
+  activeDateMode: boolean,
+  analysisPlan: MatchAnalysisActionPlan | null,
+): MatchDetailSection {
+  if (activeDateMode) return "date";
+  if (match.nextDateAt && !isPast(match.nextDateAt)) return "date";
+  if (
+    analysisPlan?.visible ||
+    match.analysisFreshness !== "current" ||
+    match.pendingScreenshotCount > 0 ||
+    match.failedScreenshotCount > 0
+  ) {
+    return "read";
+  }
+  return "today";
+}
+
 export default function MatchDetailScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Number(id);
+  const [selectedSection, setSelectedSection] =
+    useState<MatchDetailSection>("today");
+  const [sectionMatchId, setSectionMatchId] = useState<number | null>(null);
   const [dateCoverRevealed, setDateCoverRevealed] = useState(false);
   const [coverActionBusy, setCoverActionBusy] =
     useState<CoverQuickActionId | null>(null);
@@ -167,6 +202,14 @@ export default function MatchDetailScreen() {
   useEffect(() => {
     if (!dateCoverActive) setDateCoverRevealed(false);
   }, [dateCoverActive]);
+
+  useEffect(() => {
+    if (!data || sectionMatchId === data.id) return;
+    setSelectedSection(
+      initialMatchDetailSection(data, activeDateMode, analysisPlan),
+    );
+    setSectionMatchId(data.id);
+  }, [activeDateMode, analysisPlan, data, sectionMatchId]);
 
   const runFullAnalysisUpdate = async () => {
     if (!data || !analysisPlan?.visible || analysisLoading) return;
@@ -313,6 +356,13 @@ export default function MatchDetailScreen() {
     );
   }
 
+  const showPastDateDebrief = Boolean(
+    isPast(data.nextDateAt) && data.nextDateAt && !activeDateMode,
+  );
+  const showUpcomingDateFlow = Boolean(
+    data.nextDateAt && (!isPast(data.nextDateAt) || activeDateMode),
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerTintColor: c.foreground }} />
@@ -340,102 +390,71 @@ export default function MatchDetailScreen() {
           removeLocalMatchPhoto={removeLocalMatchPhoto}
           onChange={() => refetch()}
         />
-        <SectionIntro
-          icon="eye"
-          title="Read"
-          body="The latest read, saved patterns, and what deserves attention before you reply or meet."
+        <MatchSectionTabs
+          selectedSection={selectedSection}
+          onSelect={setSelectedSection}
         />
-        <NextStepCard match={data} />
-        <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
-        <AnalyzeNewScreenshotsCard
-          plan={analysisPlan}
-          loading={analysisLoading}
-          onAnalyze={runFullAnalysisUpdate}
-        />
-        <LatestReadCard
-          match={data}
-          onAnalyzeNew={runFullAnalysisUpdate}
-          analyzingNew={analysisLoading}
-        />
-        <GutCheckCard match={data} onChange={() => refetch()} />
-        <RedFlagsCard
-          matchId={data.id}
-          promoted
-          analysisUpdate={
-            analysisPlan?.visible
-              ? {
-                  loading: analysisLoading,
-                  onPress: runFullAnalysisUpdate,
-                }
-              : undefined
-          }
-          analysisRefreshKey={analysisRefreshVersion}
-          initialSummary={data.redFlagSummary}
-          initialRedFlags={{
-            redFlags: data.redFlags ?? [],
-            currentRedFlags: data.currentRedFlags ?? [],
-            historicalRedFlags: data.historicalRedFlags ?? [],
-            greenFlags: data.greenFlags ?? [],
-            overallRead: data.overallRead ?? "",
-          }}
-        />
-        <SectionIntro
-          icon="book-open"
-          title="Story"
-          body="Trends, receipts, tags, and the timeline of what has happened with this person."
-        />
-        <StoryOverviewCard match={data} />
-        <TimelineCard events={data.timelineEvents ?? []} />
-        <DatingPatternGlossaryCard compact />
-        <ScreenshotsCard match={data} onChange={() => refetch()} />
-        <Pressable
-          onPress={() => router.push(`/match/${data.id}/photos`)}
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            padding: 10,
-            borderRadius: c.radius,
-            borderWidth: 1,
-            borderColor: c.border,
-            backgroundColor: c.card,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Feather name="image" size={14} color={c.foreground} />
-          <Text
-            style={{
-              color: c.foreground,
-              fontSize: 13,
-              fontWeight: "500",
-            }}
-          >
-            View all {data.screenshots.length} photo
-            {data.screenshots.length === 1 ? "" : "s"}
-          </Text>
-        </Pressable>
-        <TranscriptCard match={data} onChange={() => refetch()} />
-        <TagsRow
-          matchId={data.id}
-          tags={data.tags ?? []}
-          onChange={() => refetch()}
-        />
-        <TagHistoryCard matchId={data.id} />
-        <NotesCard match={data} onChange={() => refetch()} />
-        <SectionIntro
-          icon="calendar"
-          title="Date"
-          body="Plan the date, brief yourself before you go, and keep your circle in the loop."
-        />
-        {isPast(data.nextDateAt) && data.nextDateAt && !activeDateMode && (
-          <PostDateDebriefCard match={data} onChange={() => refetch()} />
-        )}
-        {data.nextDateAt && (!isPast(data.nextDateAt) || activeDateMode) && (
+        {selectedSection === "today" && (
           <>
-            <NextDateCard
+            <SectionIntro
+              icon="star"
+              title="Today"
+              body="The shortest path to what needs attention right now."
+            />
+            <NextStepCard match={data} />
+            <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
+            <AnalyzeNewScreenshotsCard
+              plan={analysisPlan}
+              loading={analysisLoading}
+              onAnalyze={runFullAnalysisUpdate}
+            />
+            <LatestReadCard
               match={data}
-              onChange={() => refetch()}
+              onAnalyzeNew={runFullAnalysisUpdate}
+              analyzingNew={analysisLoading}
+            />
+            <SectionJumpCard
+              icon="calendar"
+              title={data.nextDateAt ? "Date tools" : "Schedule a date"}
+              body={
+                data.nextDateAt
+                  ? "Open the Date Card, cover mode, reminders, and check-ins."
+                  : "Add a time and place when plans start to firm up."
+              }
+              label="Open Date"
+              onPress={() => setSelectedSection("date")}
+            />
+            <SectionJumpCard
+              icon="message-circle"
+              title="Talk it through"
+              body="Chat with Telli, debrief by voice, or check a reply."
+              label="Open Talk"
+              onPress={() => setSelectedSection("talk")}
+            />
+          </>
+        )}
+        {selectedSection === "read" && (
+          <>
+            <SectionIntro
+              icon="eye"
+              title="Read"
+              body="The latest read, saved patterns, and what deserves attention before you reply or meet."
+            />
+            <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
+            <AnalyzeNewScreenshotsCard
+              plan={analysisPlan}
+              loading={analysisLoading}
+              onAnalyze={runFullAnalysisUpdate}
+            />
+            <LatestReadCard
+              match={data}
+              onAnalyzeNew={runFullAnalysisUpdate}
+              analyzingNew={analysisLoading}
+            />
+            <GutCheckCard match={data} onChange={() => refetch()} />
+            <RedFlagsCard
+              matchId={data.id}
+              promoted
               analysisUpdate={
                 analysisPlan?.visible
                   ? {
@@ -444,52 +463,280 @@ export default function MatchDetailScreen() {
                     }
                   : undefined
               }
-            />
-            <DateSafetyPlanCard
-              match={data}
-              onChange={() => refetch()}
-              onHideCover={() => setDateCoverRevealed(false)}
-            />
-            <BetaFeedbackCard
-              matchId={data.id}
-              surface="date-card"
-              prompt="Would you send this Date Card to a friend?"
+              analysisRefreshKey={analysisRefreshVersion}
+              initialSummary={data.redFlagSummary}
+              initialRedFlags={{
+                redFlags: data.redFlags ?? [],
+                currentRedFlags: data.currentRedFlags ?? [],
+                historicalRedFlags: data.historicalRedFlags ?? [],
+                greenFlags: data.greenFlags ?? [],
+                overallRead: data.overallRead ?? "",
+              }}
             />
           </>
         )}
-        {!data.nextDateAt && (
-          <ScheduleDateCard match={data} onChange={() => refetch()} />
+        {selectedSection === "story" && (
+          <>
+            <SectionIntro
+              icon="book-open"
+              title="Story"
+              body="Trends, receipts, tags, and the timeline of what has happened with this person."
+            />
+            <StoryOverviewCard match={data} />
+            <TimelineCard events={data.timelineEvents ?? []} />
+            <DatingPatternGlossaryCard compact />
+            <ScreenshotsCard match={data} onChange={() => refetch()} />
+            <Pressable
+              onPress={() => router.push(`/match/${data.id}/photos`)}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: 10,
+                borderRadius: c.radius,
+                borderWidth: 1,
+                borderColor: c.border,
+                backgroundColor: c.card,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Feather name="image" size={14} color={c.foreground} />
+              <Text
+                style={{
+                  color: c.foreground,
+                  fontSize: 13,
+                  fontWeight: "500",
+                }}
+              >
+                View all {data.screenshots.length} photo
+                {data.screenshots.length === 1 ? "" : "s"}
+              </Text>
+            </Pressable>
+            <TranscriptCard match={data} onChange={() => refetch()} />
+            <TagsRow
+              matchId={data.id}
+              tags={data.tags ?? []}
+              onChange={() => refetch()}
+            />
+            <TagHistoryCard matchId={data.id} />
+            <NotesCard match={data} onChange={() => refetch()} />
+            <StatusActionsCard
+              match={data}
+              onChange={() => refetch()}
+              onArchived={() => router.back()}
+              onDeleted={() => router.replace("/")}
+            />
+          </>
         )}
-        <SectionIntro
-          icon="message-circle"
-          title="Talk"
-          body="Ask Telli, talk out a debrief, check a voice note, or get one careful reply."
-        />
-        <ChatLinkCard matchId={data.id} matchName={data.name} />
-        <VoiceDebriefCard
-          matchId={data.id}
-          matchName={data.name}
-          onApplied={() => refetch()}
-        />
-        <ToolsRow
-          matchId={data.id}
-          matchName={data.name}
-          onApplied={() => refetch()}
-        />
-        <ResponseStatsCard matchId={data.id} />
-        <CheatSheetCard matchId={data.id} />
-        <StatusActionsCard
-          match={data}
-          onChange={() => refetch()}
-          onArchived={() => router.back()}
-          onDeleted={() => router.replace("/")}
-        />
+        {selectedSection === "date" && (
+          <>
+            <SectionIntro
+              icon="calendar"
+              title="Date"
+              body="Plan the date, brief yourself before you go, and keep your circle in the loop."
+            />
+            {showPastDateDebrief && (
+              <PostDateDebriefCard match={data} onChange={() => refetch()} />
+            )}
+            {showUpcomingDateFlow && (
+              <>
+                <NextDateCard
+                  match={data}
+                  onChange={() => refetch()}
+                  analysisUpdate={
+                    analysisPlan?.visible
+                      ? {
+                          loading: analysisLoading,
+                          onPress: runFullAnalysisUpdate,
+                        }
+                      : undefined
+                  }
+                />
+                <DateSafetyPlanCard
+                  match={data}
+                  onChange={() => refetch()}
+                  onHideCover={() => setDateCoverRevealed(false)}
+                />
+                <BetaFeedbackCard
+                  matchId={data.id}
+                  surface="date-card"
+                  prompt="Would you send this Date Card to a friend?"
+                />
+              </>
+            )}
+            {!data.nextDateAt && (
+              <ScheduleDateCard match={data} onChange={() => refetch()} />
+            )}
+          </>
+        )}
+        {selectedSection === "talk" && (
+          <>
+            <SectionIntro
+              icon="message-circle"
+              title="Talk"
+              body="Ask Telli, talk out a debrief, check a voice note, or get one careful reply."
+            />
+            <ChatLinkCard matchId={data.id} matchName={data.name} />
+            <VoiceDebriefCard
+              matchId={data.id}
+              matchName={data.name}
+              onApplied={() => refetch()}
+            />
+            <ToolsRow
+              matchId={data.id}
+              matchName={data.name}
+              onApplied={() => refetch()}
+            />
+            <ResponseStatsCard matchId={data.id} />
+            <CheatSheetCard matchId={data.id} />
+          </>
+        )}
       </ScrollView>
     </>
   );
 }
 
 /* ------------------------------- Cards ----------------------------------- */
+
+function MatchSectionTabs({
+  selectedSection,
+  onSelect,
+}: {
+  selectedSection: MatchDetailSection;
+  onSelect: (section: MatchDetailSection) => void;
+}) {
+  const c = useColors();
+  return (
+    <View
+      style={{
+        marginHorizontal: -16,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.background,
+      }}
+    >
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          gap: 8,
+        }}
+      >
+        {MATCH_DETAIL_SECTIONS.map((section) => {
+          const selected = selectedSection === section.id;
+          return (
+            <Pressable
+              key={section.id}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${section.label} section`}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                onSelect(section.id);
+              }}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                minWidth: 76,
+                paddingHorizontal: 13,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: selected ? c.primary : c.border,
+                backgroundColor: selected ? c.secondary : c.card,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                opacity: pressed ? 0.72 : 1,
+              })}
+            >
+              <Feather
+                name={section.icon}
+                size={14}
+                color={selected ? c.primary : c.mutedForeground}
+              />
+              <Text
+                style={{
+                  color: selected ? c.foreground : c.mutedForeground,
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
+                {section.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function SectionJumpCard({
+  icon,
+  title,
+  body,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  body: string;
+  label: string;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        minHeight: 72,
+        borderRadius: c.radius,
+        borderWidth: 1,
+        borderColor: c.border,
+        backgroundColor: c.card,
+        padding: 14,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        opacity: pressed ? 0.78 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: c.secondary,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Feather name={icon} size={17} color={c.secondaryForeground} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ color: c.foreground, fontSize: 14, fontWeight: "700" }}>
+          {title}
+        </Text>
+        <Text
+          style={{ color: c.mutedForeground, fontSize: 12, lineHeight: 17 }}
+        >
+          {body}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+    </Pressable>
+  );
+}
 
 function SectionIntro({
   icon,
@@ -2422,7 +2669,13 @@ function DateModeCoverScreen({
         }}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <Pressable onLongPress={revealCoverActions} delayLongPress={550}>
+        <Pressable
+          accessibilityLabel="Reveal Date Mode safety actions"
+          accessibilityHint="Long press to open private safety actions"
+          accessibilityRole="button"
+          onLongPress={revealCoverActions}
+          delayLongPress={550}
+        >
           <Text
             style={{
               color: "#1f2933",
@@ -2466,6 +2719,9 @@ function DateModeCoverScreen({
       >
         <Stack.Screen options={{ headerShown: false }} />
         <Pressable
+          accessibilityLabel="Reveal Date Mode safety actions"
+          accessibilityHint="Long press to open private safety actions"
+          accessibilityRole="button"
           onLongPress={revealCoverActions}
           delayLongPress={550}
           style={{
@@ -2506,6 +2762,9 @@ function DateModeCoverScreen({
     >
       <Stack.Screen options={{ headerShown: false }} />
       <Pressable
+        accessibilityLabel="Reveal Date Mode safety actions"
+        accessibilityHint="Long press to open private safety actions"
+        accessibilityRole="button"
         onLongPress={revealCoverActions}
         delayLongPress={550}
         style={{
@@ -2575,6 +2834,7 @@ function CoverQuickActions({
 
   return (
     <View
+      accessibilityLabel="Date Mode safety actions"
       style={{
         width: "100%",
         borderRadius: 24,
@@ -2600,12 +2860,15 @@ function CoverQuickActions({
             fontWeight: "700",
           }}
         >
-          Timer controls
+          Date Mode safety actions
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Edit Date Mode plan"
             onPress={onOpenPlan}
             style={({ pressed }) => ({
+              minHeight: 44,
               borderWidth: 1,
               borderColor,
               borderRadius: 99,
@@ -2625,12 +2888,14 @@ function CoverQuickActions({
             </Text>
           </Pressable>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Hide Date Mode safety actions"
             onPress={onDismiss}
             hitSlop={8}
             style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
               alignItems: "center",
               justifyContent: "center",
               opacity: pressed ? 0.72 : 1,
@@ -2646,6 +2911,9 @@ function CoverQuickActions({
           return (
             <Pressable
               key={action.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Send ${action.label} update`}
+              accessibilityState={{ disabled }}
               disabled={disabled}
               onPress={() => onAction(action.id)}
               style={({ pressed }) => ({
@@ -3757,7 +4025,7 @@ function DateSafetyPlanCard({
                 fontSize: 11,
                 fontWeight: "600",
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0,
               }}
             >
               Preview
@@ -4101,7 +4369,7 @@ function NextDateCard({
                 fontWeight: "600",
                 color: c.mutedForeground,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0,
               }}
             >
               Prep brief · {briefAgeLabel}
@@ -4422,7 +4690,7 @@ function ScreenshotsCard({
               fontSize: 13,
               fontWeight: "600",
               color: c.foreground,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               textTransform: "uppercase",
             }}
           >
@@ -4600,7 +4868,7 @@ function TranscriptCard({
               fontSize: 13,
               fontWeight: "600",
               color: c.foreground,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               textTransform: "uppercase",
             }}
           >
