@@ -68,6 +68,10 @@ test("ios beta workflow injects changelog metadata without gated TestFlight note
   const workflow = read("../../../.github/workflows/ios-beta-build.yml");
 
   assert.match(workflow, /Generate in-app build changelog/);
+  assert.match(
+    workflow,
+    /EAS_SUBMIT: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.submit \|\| 'false' \}\}/,
+  );
   assert.match(workflow, /HEYTELLI_CHANGELOG_HIGHLIGHTS/);
   assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE/);
   assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE/);
