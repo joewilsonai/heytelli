@@ -120,13 +120,13 @@ export default function MatchesScreen() {
         }}
       >
         <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.headerTitle}>
             <H1>HeyTelli</H1>
             <Body muted style={{ marginTop: 2 }}>
               Your private dating bestie · {counts.active} active
             </Body>
           </View>
-          <View style={{ flexDirection: "row", gap: 10 }}>
+          <View style={styles.headerActions}>
             <Link href="/trust" asChild>
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
@@ -188,32 +188,25 @@ export default function MatchesScreen() {
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
                 style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  height: 44,
-                  paddingHorizontal: 14,
-                  borderRadius: 22,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
                   backgroundColor: c.primary,
-                  opacity: pressed ? 0.7 : 1,
+                  borderWidth: 2,
+                  borderColor: c.background,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.78 : 1,
                   shadowColor: "#000",
-                  shadowOpacity: 0.15,
-                  shadowRadius: 8,
-                  shadowOffset: { width: 0, height: 4 },
-                  elevation: 3,
+                  shadowOpacity: 0.22,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 5,
                 })}
+                accessibilityRole="button"
                 accessibilityLabel="Add match"
               >
-                <Feather name="plus" size={20} color={c.primaryForeground} />
-                <Text
-                  style={{
-                    fontWeight: "600",
-                    fontSize: 14,
-                    color: c.primaryForeground,
-                  }}
-                >
-                  Add
-                </Text>
+                <Feather name="plus" size={24} color={c.primaryForeground} />
               </Pressable>
             </Link>
           </View>
@@ -1095,7 +1088,18 @@ function ContextChip({ label }: { label: string }) {
 const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerTitle: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+    gap: 8,
   },
 });
