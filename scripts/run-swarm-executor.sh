@@ -15,7 +15,7 @@ if [[ -z "${HEYTELLI_GITHUB_TOKEN:-}" ]] && command -v railway >/dev/null 2>&1 &
   railway_worker_vars_json=""
   if ! railway_worker_vars_json="$(railway variable list --service heytelli-improvement-worker --json 2>/dev/null)"; then
     railway_worker_vars_json="$(
-      env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN railway variable list --service heytelli-improvement-worker --json 2>/dev/null || true
+      env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN -u RAILWAY_PROJECT_TOKEN railway variable list --service heytelli-improvement-worker --json 2>/dev/null || true
     )"
   fi
   HEYTELLI_GITHUB_TOKEN="$(printf '%s' "$railway_worker_vars_json" | node -e 'let s = ""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => { try { const data = JSON.parse(s); process.stdout.write(data.HEYTELLI_GITHUB_TOKEN || ""); } catch { process.stdout.write(""); } });')"
@@ -39,7 +39,7 @@ if [[ -z "${DATABASE_URL:-}" ]] && command -v railway >/dev/null 2>&1 && command
   railway_vars_json=""
   if ! railway_vars_json="$(railway variable list --service Postgres --json 2>/dev/null)"; then
     railway_vars_json="$(
-      env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN railway variable list --service Postgres --json 2>/dev/null || true
+      env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN -u RAILWAY_PROJECT_TOKEN railway variable list --service Postgres --json 2>/dev/null || true
     )"
   fi
   DATABASE_URL="$(printf '%s' "$railway_vars_json" | node -e 'let s = ""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => { try { const data = JSON.parse(s); process.stdout.write(data.DATABASE_PUBLIC_URL || data.DATABASE_URL || ""); } catch { process.stdout.write(""); } });')"
