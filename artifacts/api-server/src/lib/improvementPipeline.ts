@@ -165,11 +165,12 @@ function isDateCardOrShareRecord(input: {
   surface: string | null;
 }): boolean {
   const surface = input.surface?.toLowerCase() ?? "";
+  const compactSurface = surface.replace(/[^a-z0-9]/g, "");
   return (
     input.source === "share_failure" ||
-    surface.includes("date-card") ||
-    surface.includes("date_card") ||
-    surface.includes("share")
+    compactSurface.includes("datecard") ||
+    compactSurface.includes("share") ||
+    compactSurface.includes("sharing")
   );
 }
 

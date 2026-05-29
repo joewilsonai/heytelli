@@ -35,6 +35,20 @@ test("normalizes product feedback without accepting arbitrary sensitive context"
   assert.equal(ordinaryFeedback?.matchId, 42);
 });
 
+test("drops match ids for human-readable Date Card feedback surfaces", async () => {
+  const { normalizeProductFeedback } = await import("./productFeedback");
+
+  const feedback = normalizeProductFeedback({
+    event: "recipient-viewed",
+    answer: "worked",
+    matchId: 42,
+    context: { surface: "Date Card" },
+  });
+
+  assert.ok(feedback);
+  assert.equal(feedback.matchId, null);
+});
+
 test("rejects empty feedback events and answers", async () => {
   const { normalizeProductFeedback } = await import("./productFeedback");
 
