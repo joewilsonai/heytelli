@@ -22,7 +22,7 @@ const TRUST_ITEMS = [
   {
     icon: "users" as const,
     title: "Your circle stays local",
-    body: "Trusted Circle entries are saved on this phone for Date Card defaults. Contacts are only read when you tap Add from Contacts, and phone storage stays off unless you explicitly enable it.",
+    body: "Trusted Circle entries are saved on this phone for Date Card defaults. Contacts are only read when you tap Add from Contacts, and phone numbers are not saved.",
   },
   {
     icon: "trash-2" as const,
