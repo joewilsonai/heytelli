@@ -231,6 +231,14 @@ Sender-authenticated endpoints require the user's app session. Recipient endpoin
 5. **Sender status:** app shows Sent, Viewed, Confirmed, Overdue, Home Safe, Revoked, and Expired; date timeline records card shared/viewed/confirmed/completed.
 6. **Verification:** focused tests for no screenshots, no transcripts, no `match_id`, no recipient PII by default, expiry, revocation, idempotent events, and stale-token behavior.
 
+### V1 implementation checkpoint - 2026-05-29
+
+- Schema and migration: `date_cards`, `date_card_recipients`, and `date_card_events`.
+- API: `/api/date-cards`, `/api/date-cards/:id`, revoke/complete, and `/api/date-card-shares/:shareToken/view|confirm|mute`.
+- Recipient web: `/c/:shareToken` renders the private card and posts Got it back to the API.
+- Mobile: Share Date Card creates private links first, shares through the native sheet, records the local share event, and reloads circle link status.
+- Privacy guardrails: first names/labels only, token hashes server-side, no raw screenshots, no transcripts, no profile photos, no server-side `match_id`, no recipient phone/email unless a future reminders opt-in explicitly asks for it.
+
 ## Visual design tokens
 
 - Background: cream `#FAF7F3`
