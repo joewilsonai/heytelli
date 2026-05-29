@@ -10,6 +10,7 @@ import {
   buildSwarmExecutorDigest,
   acquireExecutorRunLock,
   executorPrBodyMarker,
+  gitEnv,
   issueLabelsAllowExecutor,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
@@ -237,6 +238,20 @@ test("parses executor agent timeout from CLI or env", () => {
   );
 });
 
+test("builds non-interactive git auth env from the GitHub token", () => {
+  const env = gitEnv("secret-token");
+
+  assert.equal(env.GIT_TERMINAL_PROMPT, "0");
+  assert.equal(env.GH_TOKEN, "secret-token");
+  assert.equal(env.GITHUB_TOKEN, "secret-token");
+  assert.equal(env.GIT_CONFIG_COUNT, "1");
+  assert.equal(
+    env.GIT_CONFIG_KEY_0,
+    "url.https://x-access-token:secret-token@github.com/.insteadOf",
+  );
+  assert.equal(env.GIT_CONFIG_VALUE_0, "https://github.com/");
+});
+
 test("passes a timeout to child agent execution", async () => {
   const calls: Array<{ command: string; timeoutMs?: number }> = [];
   const options = {
@@ -293,6 +308,18 @@ test("retryable executor failures return work items to planned", () => {
   assert.equal(
     workItemStatusAfterExecutorFailure(
       new Error('Auth(TokenRefreshFailed("Failed to parse server response"))'),
+    ),
+    "planned",
+  );
+  assert.equal(
+    workItemStatusAfterExecutorFailure(
+      new Error("fatal: could not read Username for 'https://github.com'"),
+    ),
+    "planned",
+  );
+  assert.equal(
+    workItemStatusAfterExecutorFailure(
+      new Error("remote: Invalid username or token. Authentication failed"),
     ),
     "planned",
   );

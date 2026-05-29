@@ -11,7 +11,18 @@ if [[ -f "$HOME/.luna/secrets/keys.env" ]]; then
   set +a
 fi
 
-if command -v gh >/dev/null 2>&1; then
+if [[ -z "${HEYTELLI_GITHUB_TOKEN:-}" ]] && command -v railway >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
+  railway_worker_vars_json=""
+  if ! railway_worker_vars_json="$(railway variable list --service heytelli-improvement-worker --json 2>/dev/null)"; then
+    railway_worker_vars_json="$(
+      env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN railway variable list --service heytelli-improvement-worker --json 2>/dev/null || true
+    )"
+  fi
+  HEYTELLI_GITHUB_TOKEN="$(printf '%s' "$railway_worker_vars_json" | node -e 'let s = ""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => { try { const data = JSON.parse(s); process.stdout.write(data.HEYTELLI_GITHUB_TOKEN || ""); } catch { process.stdout.write(""); } });')"
+  export HEYTELLI_GITHUB_TOKEN
+fi
+
+if [[ -z "${HEYTELLI_GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null 2>&1; then
   gh_token="$(env -u GITHUB_TOKEN -u GH_TOKEN -u HEYTELLI_GITHUB_TOKEN gh auth token 2>/dev/null || true)"
   if [[ -n "$gh_token" ]]; then
     HEYTELLI_GITHUB_TOKEN="$gh_token"
