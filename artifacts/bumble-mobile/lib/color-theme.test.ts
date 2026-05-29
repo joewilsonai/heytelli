@@ -47,7 +47,9 @@ test("color themes expose complete light and dark palettes", () => {
     systemScheme: "light",
   });
 
-  assert.equal(heytelli.background, "#FAF7F3");
+  assert.equal(heytelli.background, "#F2F2F7");
+  assert.equal(heytelli.card, "#FFFFFF");
+  assert.equal(heytelli.border, "#D1D1D6");
   assert.notEqual(rose.primary, heytelli.primary);
   assert.equal(oceanDark.background, "#0F1A1B");
   assert.ok(oceanDark.primaryForeground);

@@ -733,20 +733,7 @@ function SectionJumpCard({
           {body}
         </Text>
       </View>
-      <View
-        style={{
-          minHeight: 32,
-          paddingHorizontal: 10,
-          borderRadius: 999,
-          backgroundColor: c.muted,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={{ color: c.foreground, fontSize: 12, fontWeight: "700" }}>
-          {label}
-        </Text>
-      </View>
+      <Feather name="chevron-right" size={18} color={c.mutedForeground} />
     </Pressable>
   );
 }
@@ -2682,7 +2669,13 @@ function DateModeCoverScreen({
         }}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <Pressable onLongPress={revealCoverActions} delayLongPress={550}>
+        <Pressable
+          accessibilityLabel="Reveal Date Mode safety actions"
+          accessibilityHint="Long press to open private safety actions"
+          accessibilityRole="button"
+          onLongPress={revealCoverActions}
+          delayLongPress={550}
+        >
           <Text
             style={{
               color: "#1f2933",
@@ -2726,6 +2719,9 @@ function DateModeCoverScreen({
       >
         <Stack.Screen options={{ headerShown: false }} />
         <Pressable
+          accessibilityLabel="Reveal Date Mode safety actions"
+          accessibilityHint="Long press to open private safety actions"
+          accessibilityRole="button"
           onLongPress={revealCoverActions}
           delayLongPress={550}
           style={{
@@ -2766,6 +2762,9 @@ function DateModeCoverScreen({
     >
       <Stack.Screen options={{ headerShown: false }} />
       <Pressable
+        accessibilityLabel="Reveal Date Mode safety actions"
+        accessibilityHint="Long press to open private safety actions"
+        accessibilityRole="button"
         onLongPress={revealCoverActions}
         delayLongPress={550}
         style={{
@@ -2835,6 +2834,7 @@ function CoverQuickActions({
 
   return (
     <View
+      accessibilityLabel="Date Mode safety actions"
       style={{
         width: "100%",
         borderRadius: 24,
@@ -2860,12 +2860,15 @@ function CoverQuickActions({
             fontWeight: "700",
           }}
         >
-          Timer controls
+          Date Mode safety actions
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Edit Date Mode plan"
             onPress={onOpenPlan}
             style={({ pressed }) => ({
+              minHeight: 44,
               borderWidth: 1,
               borderColor,
               borderRadius: 99,
@@ -2885,12 +2888,14 @@ function CoverQuickActions({
             </Text>
           </Pressable>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Hide Date Mode safety actions"
             onPress={onDismiss}
             hitSlop={8}
             style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
               alignItems: "center",
               justifyContent: "center",
               opacity: pressed ? 0.72 : 1,
@@ -2906,6 +2911,9 @@ function CoverQuickActions({
           return (
             <Pressable
               key={action.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Send ${action.label} update`}
+              accessibilityState={{ disabled }}
               disabled={disabled}
               onPress={() => onAction(action.id)}
               style={({ pressed }) => ({
@@ -4017,7 +4025,7 @@ function DateSafetyPlanCard({
                 fontSize: 11,
                 fontWeight: "600",
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0,
               }}
             >
               Preview
@@ -4361,7 +4369,7 @@ function NextDateCard({
                 fontWeight: "600",
                 color: c.mutedForeground,
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0,
               }}
             >
               Prep brief · {briefAgeLabel}
@@ -4682,7 +4690,7 @@ function ScreenshotsCard({
               fontSize: 13,
               fontWeight: "600",
               color: c.foreground,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               textTransform: "uppercase",
             }}
           >
@@ -4860,7 +4868,7 @@ function TranscriptCard({
               fontSize: 13,
               fontWeight: "600",
               color: c.foreground,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               textTransform: "uppercase",
             }}
           >

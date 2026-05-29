@@ -144,7 +144,9 @@ export function VoiceDebriefSheet({
             >
               Voice debrief
             </Text>
-            <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
+            <Text
+              style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}
+            >
               {matchName}
             </Text>
           </View>
@@ -161,8 +163,8 @@ export function VoiceDebriefSheet({
           {phase === "idle" && (
             <>
               <Body muted>
-                Hit record and talk freely about what happened — the date,
-                what she said, how it felt. HeyTelli will save the transcript,
+                Hit record and talk freely about what happened — the date, what
+                they said, how it felt. HeyTelli will save the transcript,
                 update the read, flag concerns, and add useful tags.
               </Body>
               <RecordButton onPress={begin} />
@@ -192,7 +194,7 @@ export function VoiceDebriefSheet({
                   fontSize: 32,
                   fontWeight: "700",
                   color: c.foreground,
-                  letterSpacing: 1,
+                  letterSpacing: 0,
                 }}
               >
                 {mm}:{ss}
@@ -259,7 +261,9 @@ export function VoiceDebriefSheet({
               </Section>
               {analysis.vibe && (
                 <Section title="Vibe">
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
+                  >
                     <VibeTag label={analysis.vibe} />
                   </View>
                 </Section>
@@ -267,7 +271,12 @@ export function VoiceDebriefSheet({
               {analysis.greenFlags.length > 0 && (
                 <Section title="Green flags">
                   {analysis.greenFlags.map((f, i) => (
-                    <BulletRow key={i} text={f} color={c.success} icon="check" />
+                    <BulletRow
+                      key={i}
+                      text={f}
+                      color={c.success}
+                      icon="check"
+                    />
                   ))}
                 </Section>
               )}
@@ -290,7 +299,9 @@ export function VoiceDebriefSheet({
               )}
               {analysis.tagsToAdd.length > 0 && (
                 <Section title="Tags saved">
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
+                  >
                     {analysis.tagsToAdd.map((t) => (
                       <VibeTag key={t.tag} label={t.tag} />
                     ))}
@@ -413,7 +424,8 @@ function DateHistoryToggle({
           Log this as a date
         </Text>
         <Text style={{ color: c.mutedForeground, fontSize: 12, marginTop: 2 }}>
-          Adds an entry to her date history and clears the upcoming-date slot.
+          Adds an entry to this connection's date history and clears the
+          upcoming-date slot.
         </Text>
       </View>
       <Switch value={value} onValueChange={onChange} />
@@ -421,7 +433,13 @@ function DateHistoryToggle({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   const c = useColors();
   return (
     <View
@@ -439,7 +457,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontSize: 11,
           fontWeight: "600",
           color: c.mutedForeground,
-          letterSpacing: 1.2,
+          letterSpacing: 0,
           textTransform: "uppercase",
         }}
       >
@@ -463,7 +481,9 @@ function BulletRow({
   return (
     <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
       <Feather name={icon} size={14} color={color} style={{ marginTop: 3 }} />
-      <Text style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}>
+      <Text
+        style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}
+      >
         {text}
       </Text>
     </View>

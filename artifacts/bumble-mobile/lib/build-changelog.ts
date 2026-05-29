@@ -11,6 +11,17 @@ export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
   {
     version: "1.0.0",
     date: "2026-05-29",
+    title: "iOS visual polish",
+    highlights: [
+      "HeyTelli now uses calmer iOS grouped neutrals with stronger status contrast.",
+      "Shared buttons, icon actions, and chips have Apple-sized tap targets.",
+      "Cover Mode safety actions have clearer accessible labels after long press.",
+      "Match and settings labels are cleaner, less tracked, and easier to scan.",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "2026-05-29",
     title: "Simpler navigation redesign",
     highlights: [
       "Match details now open as a sectioned hub with Today, Read, Story, Date, and Talk.",

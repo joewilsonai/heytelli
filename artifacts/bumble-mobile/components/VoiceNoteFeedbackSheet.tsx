@@ -105,7 +105,12 @@ export function VoiceNoteFeedbackSheet({
   const ss = String(elapsed % 60).padStart(2, "0");
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
       <View style={{ flex: 1, backgroundColor: c.background, paddingTop: 16 }}>
         <View
           style={{
@@ -117,10 +122,14 @@ export function VoiceNoteFeedbackSheet({
           }}
         >
           <View>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: c.foreground }}>
+            <Text
+              style={{ fontSize: 18, fontWeight: "700", color: c.foreground }}
+            >
               Voice note check
             </Text>
-            <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
+            <Text
+              style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}
+            >
               Critique before you send to {matchName}
             </Text>
           </View>
@@ -173,7 +182,9 @@ export function VoiceNoteFeedbackSheet({
               >
                 <Feather name="mic" size={48} color="#fff" />
               </View>
-              <Text style={{ fontSize: 32, fontWeight: "700", color: c.foreground }}>
+              <Text
+                style={{ fontSize: 32, fontWeight: "700", color: c.foreground }}
+              >
                 {mm}:{ss}
               </Text>
               <View style={{ flexDirection: "row", gap: 12 }}>
@@ -202,7 +213,9 @@ export function VoiceNoteFeedbackSheet({
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
+                  <Text
+                    style={{ color: c.primaryForeground, fontWeight: "600" }}
+                  >
                     Critique
                   </Text>
                 </Pressable>
@@ -211,9 +224,13 @@ export function VoiceNoteFeedbackSheet({
           )}
 
           {phase === "processing" && (
-            <View style={{ alignItems: "center", paddingVertical: 60, gap: 16 }}>
+            <View
+              style={{ alignItems: "center", paddingVertical: 60, gap: 16 }}
+            >
               <ActivityIndicator size="large" color={c.primary} />
-              <Text style={{ color: c.mutedForeground }}>Analyzing your delivery…</Text>
+              <Text style={{ color: c.mutedForeground }}>
+                Analyzing your delivery…
+              </Text>
             </View>
           )}
 
@@ -254,7 +271,12 @@ export function VoiceNoteFeedbackSheet({
               {result.improvements.length > 0 && (
                 <Section title="Fix this">
                   {result.improvements.map((s, i) => (
-                    <Bullet key={i} text={s} color={c.warning} icon="alert-circle" />
+                    <Bullet
+                      key={i}
+                      text={s}
+                      color={c.warning}
+                      icon="alert-circle"
+                    />
                   ))}
                 </Section>
               )}
@@ -263,7 +285,9 @@ export function VoiceNoteFeedbackSheet({
                   <Body>{result.rewrite}</Body>
                   <Pressable
                     onPress={() => {
-                      Clipboard.setStringAsync(result.rewrite ?? "").catch(() => {});
+                      Clipboard.setStringAsync(result.rewrite ?? "").catch(
+                        () => {},
+                      );
                       Haptics.notificationAsync(
                         Haptics.NotificationFeedbackType.Success,
                       ).catch(() => {});
@@ -283,7 +307,9 @@ export function VoiceNoteFeedbackSheet({
                     })}
                   >
                     <Feather name="copy" size={12} color={c.foreground} />
-                    <Text style={{ fontSize: 12, color: c.foreground }}>Copy</Text>
+                    <Text style={{ fontSize: 12, color: c.foreground }}>
+                      Copy
+                    </Text>
                   </Pressable>
                 </Section>
               )}
@@ -321,14 +347,27 @@ function Metric({ label, value }: { label: string; value: number | null }) {
       <Text style={{ fontSize: 28, fontWeight: "700", color: c.foreground }}>
         {value ?? "—"}
       </Text>
-      <Text style={{ fontSize: 11, color: c.mutedForeground, letterSpacing: 1, textTransform: "uppercase" }}>
+      <Text
+        style={{
+          fontSize: 11,
+          color: c.mutedForeground,
+          letterSpacing: 0,
+          textTransform: "uppercase",
+        }}
+      >
         {label}
       </Text>
     </View>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   const c = useColors();
   return (
     <View
@@ -346,7 +385,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontSize: 11,
           fontWeight: "600",
           color: c.mutedForeground,
-          letterSpacing: 1.2,
+          letterSpacing: 0,
           textTransform: "uppercase",
         }}
       >
@@ -370,7 +409,9 @@ function Bullet({
   return (
     <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
       <Feather name={icon} size={14} color={color} style={{ marginTop: 3 }} />
-      <Text style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}>
+      <Text
+        style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}
+      >
         {text}
       </Text>
     </View>

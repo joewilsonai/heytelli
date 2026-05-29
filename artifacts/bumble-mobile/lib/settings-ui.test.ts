@@ -33,7 +33,7 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /MAX_TRUSTED_CIRCLE_PEOPLE/);
   assert.match(screen, /Date Safety Defaults/);
   assert.match(screen, /Appearance/);
-  assert.match(screen, /Light mode/);
+  assert.match(screen, /Appearance mode/);
   assert.match(screen, /Color theme/);
   assert.match(screen, /updateAppearance/);
   assert.match(screen, /setSettings\(\(current\)/);

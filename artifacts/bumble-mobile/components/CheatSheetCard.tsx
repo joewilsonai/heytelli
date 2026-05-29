@@ -130,7 +130,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                   color: c.destructive,
                   fontSize: 12,
                   fontWeight: "700",
-                  letterSpacing: 0.5,
+                  letterSpacing: 0,
                 }}
               >
                 {gate.flags.redFlags.length} PATTERN
@@ -227,7 +227,7 @@ export function CheatSheetCard({ matchId }: { matchId: number }) {
                       color: meta.tint,
                       fontWeight: "600",
                       textTransform: "uppercase",
-                      letterSpacing: 0.5,
+                      letterSpacing: 0,
                     }}
                   >
                     {meta.label}

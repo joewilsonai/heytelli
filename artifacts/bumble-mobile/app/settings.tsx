@@ -1000,7 +1000,7 @@ function AppearanceModePicker({
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ color: c.foreground, fontSize: 14, fontWeight: "700" }}>
-        Light mode
+        Appearance mode
       </Text>
       <View style={{ flexDirection: "row", gap: 8 }}>
         {APP_COLOR_SCHEME_OPTIONS.map((option) => {

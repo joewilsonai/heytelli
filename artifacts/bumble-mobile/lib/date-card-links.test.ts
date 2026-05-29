@@ -4,7 +4,7 @@ import test from "node:test";
 import { fileURLToPath, URL as NodeURL } from "node:url";
 
 test("builds a private date card API request without match ids or media", async () => {
-  const { buildCreateDateCardRequest } = await import("./date-card-links");
+  const { buildCreateDateCardRequest } = await import("./date-card-links.ts");
 
   const request = buildCreateDateCardRequest({
     senderLabel: "Terry Wilson",
@@ -51,7 +51,7 @@ test("builds a private date card API request without match ids or media", async 
 });
 
 test("adds recipient-specific private links to the share message", async () => {
-  const { appendDateCardLinksToMessage } = await import("./date-card-links");
+  const { appendDateCardLinksToMessage } = await import("./date-card-links.ts");
 
   const message = appendDateCardLinksToMessage("HeyTelli Date Card", [
     { recipientLabel: "Claire", shareUrl: "https://api.heytelli.test/c/one" },
@@ -66,7 +66,7 @@ test("adds recipient-specific private links to the share message", async () => {
 
 test("finds and summarizes sender Date Card status by local date id", async () => {
   const { findPrivateDateCardForMatch, summarizePrivateDateCardStatus } =
-    await import("./date-card-links");
+    await import("./date-card-links.ts");
 
   const card = findPrivateDateCardForMatch(
     [

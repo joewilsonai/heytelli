@@ -14,7 +14,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
-import { inPersonRecording, type VoiceDebriefAnalysis } from "@workspace/api-client-react";
+import {
+  inPersonRecording,
+  type VoiceDebriefAnalysis,
+} from "@workspace/api-client-react";
 
 import { Body, IconButton, VibeTag } from "@/components/ui";
 import {
@@ -103,7 +106,9 @@ export function InPersonRecordingSheet({
       setAnalysis(res.analysis);
       setTranscript(res.transcript);
       setPhase("result");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
       onApplied();
     } catch (e: any) {
       Alert.alert("Analysis failed", e?.message ?? "Try again.");
@@ -123,7 +128,12 @@ export function InPersonRecordingSheet({
   const ss = String(elapsed % 60).padStart(2, "0");
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
       <View style={{ flex: 1, backgroundColor: c.background, paddingTop: 16 }}>
         <View
           style={{
@@ -135,10 +145,14 @@ export function InPersonRecordingSheet({
           }}
         >
           <View>
-            <Text style={{ fontSize: 18, fontWeight: "700", color: c.foreground }}>
+            <Text
+              style={{ fontSize: 18, fontWeight: "700", color: c.foreground }}
+            >
               In-person recording
             </Text>
-            <Text style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}>
+            <Text
+              style={{ fontSize: 12, color: c.mutedForeground, marginTop: 2 }}
+            >
               Date with {matchName}
             </Text>
           </View>
@@ -165,8 +179,20 @@ export function InPersonRecordingSheet({
                   gap: 10,
                 }}
               >
-                <Feather name="alert-triangle" size={20} color={c.destructive} style={{ marginTop: 2 }} />
-                <Text style={{ flex: 1, color: c.foreground, fontSize: 13, lineHeight: 19 }}>
+                <Feather
+                  name="alert-triangle"
+                  size={20}
+                  color={c.destructive}
+                  style={{ marginTop: 2 }}
+                />
+                <Text
+                  style={{
+                    flex: 1,
+                    color: c.foreground,
+                    fontSize: 13,
+                    lineHeight: 19,
+                  }}
+                >
                   Recording someone without consent is illegal in many places
                   ("two-party consent" states/countries). You must verbally ask
                   her and get clear, recorded "yes" before pressing record.
@@ -240,7 +266,10 @@ export function InPersonRecordingSheet({
               >
                 <Feather name="mic" size={36} color="#fff" />
               </Pressable>
-              <DateHistoryToggle value={addToHistory} onChange={setAddToHistory} />
+              <DateHistoryToggle
+                value={addToHistory}
+                onChange={setAddToHistory}
+              />
             </>
           )}
 
@@ -258,7 +287,9 @@ export function InPersonRecordingSheet({
               >
                 <Feather name="mic" size={48} color="#fff" />
               </View>
-              <Text style={{ fontSize: 28, fontWeight: "700", color: c.foreground }}>
+              <Text
+                style={{ fontSize: 28, fontWeight: "700", color: c.foreground }}
+              >
                 {hh !== "00" ? `${hh}:` : ""}
                 {mm}:{ss}
               </Text>
@@ -289,7 +320,9 @@ export function InPersonRecordingSheet({
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
+                  <Text
+                    style={{ color: c.primaryForeground, fontWeight: "600" }}
+                  >
                     Stop & analyze
                   </Text>
                 </Pressable>
@@ -298,7 +331,9 @@ export function InPersonRecordingSheet({
           )}
 
           {phase === "processing" && (
-            <View style={{ alignItems: "center", paddingVertical: 60, gap: 16 }}>
+            <View
+              style={{ alignItems: "center", paddingVertical: 60, gap: 16 }}
+            >
               <ActivityIndicator size="large" color={c.primary} />
               <Text style={{ color: c.mutedForeground }}>
                 Uploading, transcribing, analyzing… (can take a minute)
@@ -313,7 +348,9 @@ export function InPersonRecordingSheet({
               </Section>
               {analysis.vibe && (
                 <Section title="Vibe">
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
+                  >
                     <VibeTag label={analysis.vibe} />
                   </View>
                 </Section>
@@ -328,7 +365,12 @@ export function InPersonRecordingSheet({
               {analysis.redFlags.length > 0 && (
                 <Section title="Red flags">
                   {analysis.redFlags.map((f, i) => (
-                    <Bullet key={i} text={f} color={c.destructive} icon="alert-triangle" />
+                    <Bullet
+                      key={i}
+                      text={f}
+                      color={c.destructive}
+                      icon="alert-triangle"
+                    />
                   ))}
                 </Section>
               )}
@@ -339,7 +381,9 @@ export function InPersonRecordingSheet({
               )}
               {analysis.tagsToAdd.length > 0 && (
                 <Section title="Tags saved">
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
+                  >
                     {analysis.tagsToAdd.map((t) => (
                       <VibeTag key={t.tag} label={t.tag} />
                     ))}
@@ -427,7 +471,9 @@ function ConsentToggle({
         gap: 12,
       }}
     >
-      <Text style={{ flex: 1, color: c.foreground, fontSize: 13, lineHeight: 18 }}>
+      <Text
+        style={{ flex: 1, color: c.foreground, fontSize: 13, lineHeight: 18 }}
+      >
         {label}
       </Text>
       <Switch value={value} onValueChange={onChange} />
@@ -469,7 +515,13 @@ function DateHistoryToggle({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   const c = useColors();
   return (
     <View
@@ -487,7 +539,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontSize: 11,
           fontWeight: "600",
           color: c.mutedForeground,
-          letterSpacing: 1.2,
+          letterSpacing: 0,
           textTransform: "uppercase",
         }}
       >
@@ -511,7 +563,9 @@ function Bullet({
   return (
     <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
       <Feather name={icon} size={14} color={color} style={{ marginTop: 3 }} />
-      <Text style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}>
+      <Text
+        style={{ flex: 1, color: c.foreground, fontSize: 14, lineHeight: 20 }}
+      >
         {text}
       </Text>
     </View>

@@ -19,7 +19,9 @@ export default function AnalyticsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerTintColor: c.foreground, title: "Analytics" }} />
+      <Stack.Screen
+        options={{ headerTintColor: c.foreground, title: "Analytics" }}
+      />
       <ScrollView
         style={{ flex: 1, backgroundColor: c.background }}
         contentContainerStyle={{
@@ -52,11 +54,24 @@ export default function AnalyticsScreen() {
                         );
                   return (
                     <View key={s.label} style={{ gap: 4 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "500" }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: c.foreground,
+                            fontSize: 13,
+                            fontWeight: "500",
+                          }}
+                        >
                           {s.label}
                         </Text>
-                        <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+                        <Text
+                          style={{ color: c.mutedForeground, fontSize: 12 }}
+                        >
                           {s.count} {i > 0 && `(${topPct}%)`}
                         </Text>
                       </View>
@@ -83,7 +98,14 @@ export default function AnalyticsScreen() {
             </Card>
             <Card>
               <SectionLabel>Totals</SectionLabel>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 10 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 10,
+                }}
+              >
                 {[
                   ["All matches", data.totals.matches],
                   ["Active", data.totals.active],
@@ -93,10 +115,23 @@ export default function AnalyticsScreen() {
                   ["Date completed", data.totals.withDateCompleted],
                 ].map(([label, val]) => (
                   <View key={label as string} style={{ minWidth: 120, gap: 2 }}>
-                    <Text style={{ fontSize: 10, color: c.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        color: c.mutedForeground,
+                        textTransform: "uppercase",
+                        letterSpacing: 0,
+                      }}
+                    >
                       {label}
                     </Text>
-                    <Text style={{ fontSize: 22, fontWeight: "700", color: c.foreground }}>
+                    <Text
+                      style={{
+                        fontSize: 22,
+                        fontWeight: "700",
+                        color: c.foreground,
+                      }}
+                    >
                       {val}
                     </Text>
                   </View>
@@ -115,13 +150,23 @@ export default function AnalyticsScreen() {
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Feather name="calendar" size={18} color={c.primaryForeground} />
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+              >
+                <Feather
+                  name="calendar"
+                  size={18}
+                  color={c.primaryForeground}
+                />
                 <Text style={{ color: c.primaryForeground, fontWeight: "600" }}>
                   Weekly debrief
                 </Text>
               </View>
-              <Feather name="chevron-right" size={18} color={c.primaryForeground} />
+              <Feather
+                name="chevron-right"
+                size={18}
+                color={c.primaryForeground}
+              />
             </Pressable>
           </>
         )}

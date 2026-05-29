@@ -731,8 +731,8 @@ function TodayActionLink({
         style={({ pressed }) => [
           styles.todayActionButton,
           {
-            backgroundColor: emphasized ? c.foreground : c.card,
-            borderColor: emphasized ? c.foreground : c.border,
+            backgroundColor: emphasized ? c.primary : c.card,
+            borderColor: emphasized ? c.primary : c.border,
             opacity: pressed ? 0.72 : 1,
           },
         ]}
@@ -740,11 +740,11 @@ function TodayActionLink({
         <Feather
           name={icon}
           size={15}
-          color={emphasized ? c.background : c.foreground}
+          color={emphasized ? c.primaryForeground : c.foreground}
         />
         <Text
           style={{
-            color: emphasized ? c.background : c.foreground,
+            color: emphasized ? c.primaryForeground : c.foreground,
             fontSize: 12,
             fontWeight: "700",
           }}
