@@ -1,4 +1,5 @@
 import { circleLabelsFromPlanValue } from "./circle-card-labels.ts";
+import { sanitizeSafetyShareText } from "./safety-share.ts";
 
 export type SafeDateChecklist = {
   publicPlace: boolean;
@@ -292,13 +293,13 @@ export function buildDateCardMessage(match: DateSafetyPlanMatch): string {
   }
   lines.push(
     `Time: ${formatDateTime(match.nextDateAt)}`,
-    `Location: ${clean(match.nextDateLocation) ?? "Not set"}`,
-    `Transport: ${clean(plan?.transportPlan) ?? "Not set"}`,
+    `Location: ${sanitizeSafetyShareText(match.nextDateLocation) ?? "Not set"}`,
+    `Transport: ${sanitizeSafetyShareText(plan?.transportPlan) ?? "Not set"}`,
     `Check-in: ${formatDateTime(plan?.checkInAt)}`,
     `Expected end: ${formatDateTime(plan?.expectedEndAt)}`,
   );
-  const codeWord = clean(plan?.codeWord);
-  const circleNote = clean(plan?.circleNote);
+  const codeWord = sanitizeSafetyShareText(plan?.codeWord);
+  const circleNote = sanitizeSafetyShareText(plan?.circleNote);
 
   if (codeWord) lines.push(`Code word: ${codeWord}`);
   if (circleNote) lines.push(`Note: ${circleNote}`);
@@ -318,8 +319,8 @@ export function buildSoftExitMessage(
   intent: SoftExitIntent,
 ): string {
   const name = firstName(match.name);
-  const location = clean(match.nextDateLocation);
-  const codeWord = clean(match.dateSafetyPlan?.codeWord);
+  const location = sanitizeSafetyShareText(match.nextDateLocation);
+  const codeWord = sanitizeSafetyShareText(match.dateSafetyPlan?.codeWord);
   const locationPhrase = location ? ` at ${location}` : "";
   const codePhrase = codeWord ? ` Code word: ${codeWord}.` : "";
 
@@ -339,7 +340,7 @@ export function buildCircleCheckMessage(
   status: Extract<CircleCheckStatus, "safe" | "completed">,
 ): string {
   const name = firstName(match.name);
-  const location = clean(match.nextDateLocation);
+  const location = sanitizeSafetyShareText(match.nextDateLocation);
   const locationPhrase = location ? ` at ${location}` : "";
 
   if (status === "completed") {

@@ -1,4 +1,5 @@
 import { circleLabelsFromPlanValue } from "./circle-card-labels.ts";
+import { sanitizeSafetyShareText } from "./safety-share.ts";
 
 export type GutCheckTimelineEvent = {
   id?: number;
@@ -329,33 +330,39 @@ export function buildGutCheckMessage(
     options.selectedMoments ??
     (options.selectedMoment ? [options.selectedMoment] : [])
   ).filter((moment): moment is GutCheckMoment => moment != null);
-  const note = clean(options.note);
-  const question =
+  const note = sanitizeSafetyShareText(options.note);
+  const question = sanitizeSafetyShareText(
     clean(options.question) ??
-    (selectedMoments.length === 1
-      ? selectedMoments[0]?.suggestedQuestion
-      : selectedMoments.length > 1
-        ? "Can you gut check these together and tell me what you notice?"
-        : undefined);
+      (selectedMoments.length === 1
+        ? selectedMoments[0]?.suggestedQuestion
+        : selectedMoments.length > 1
+          ? "Can you gut check these together and tell me what you notice?"
+          : undefined),
+  );
   const lines = ["HeyTelli Gut Check", `About: ${preview.displayName}`];
 
   if (preview.circleLabel) lines.push(`Circle: ${preview.circleLabel}`);
   if (selectedMoments.length === 1) {
     const selectedMoment = selectedMoments[0]!;
+    const title =
+      sanitizeSafetyShareText(selectedMoment.title) ?? "Selected item";
+    const evidence = sanitizeSafetyShareText(selectedMoment.evidence);
     lines.push(
       "",
       "Gut check item:",
-      `${selectedMoment.label}: ${selectedMoment.title}`,
+      `${selectedMoment.label}: ${title}`,
     );
-    if (clean(selectedMoment.evidence)) {
-      lines.push("Why it stood out:", clean(selectedMoment.evidence)!);
+    if (evidence) {
+      lines.push("Why it stood out:", evidence);
     }
   } else if (selectedMoments.length > 1) {
     lines.push("", "Gut check items:");
     for (const moment of selectedMoments) {
-      lines.push(`${moment.label}: ${moment.title}`);
-      if (clean(moment.evidence)) {
-        lines.push(`Why it stood out: ${clean(moment.evidence)!}`);
+      const title = sanitizeSafetyShareText(moment.title) ?? "Selected item";
+      const evidence = sanitizeSafetyShareText(moment.evidence);
+      lines.push(`${moment.label}: ${title}`);
+      if (evidence) {
+        lines.push(`Why it stood out: ${evidence}`);
       }
     }
   }
@@ -380,14 +387,14 @@ export function buildGutCheckMessage(
       "",
       "Date context:",
       `Date: ${formatDateTime(match.nextDateAt)}`,
-      `Place: ${clean(match.nextDateLocation) ?? "Not set"}`,
+      `Place: ${sanitizeSafetyShareText(match.nextDateLocation) ?? "Not set"}`,
     );
   }
 
   if (options.includeTimeline && preview.timelineHighlights.length > 0) {
     lines.push("", "Recent context:");
     for (const highlight of preview.timelineHighlights) {
-      lines.push(`- ${highlight}`);
+      lines.push(`- ${sanitizeSafetyShareText(highlight) ?? "Recent moment"}`);
     }
   }
 

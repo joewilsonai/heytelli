@@ -196,6 +196,32 @@ test("builds a gut check message from multiple selected moments", () => {
   assert.doesNotMatch(message, /private transcript|screenshots\//);
 });
 
+test("redacts bearer-style public links from gut check share messages", () => {
+  const message = buildGutCheckMessage(match, {
+    selectedMoment: {
+      id: "unsafe-link",
+      kind: "manual",
+      label: "My read",
+      title:
+        "Generated share https://heytelli.example/gut-check?bearer=secret",
+      evidence:
+        "Authorization: Bearer abc.def.ghi opened https://heytelli.example/api/storage/objects/uploads/raw?signature=secret",
+      suggestedQuestion:
+        "Can you review https://heytelli.example/share?access_token=secret?",
+    },
+    note: "The app made https://heytelli.example/safety?token=secret",
+    question: "",
+    includeDate: true,
+    includeTimeline: false,
+    maskName: true,
+  });
+
+  assert.doesNotMatch(message, /https?:\/\//i);
+  assert.doesNotMatch(message, /(?:authorization:\s*)?bearer\s+/i);
+  assert.doesNotMatch(message, /(?:access_)?token=|signature=/i);
+  assert.match(message, /\[private link removed\]/);
+});
+
 test("can mask the match name and omit date or timeline context", () => {
   const message = buildGutCheckMessage(match, {
     selectedMoment: buildGutCheckMoments(match)[0],
