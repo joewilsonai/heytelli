@@ -26,46 +26,25 @@ test("rejects forbidden client context before raw payload is persisted", () => {
   );
 });
 
-test("accepts private feedback attachment metadata without exposing it to issues", () => {
-  const normalized = normalizeImprovementSignalInput({
-    source: "in_app_feedback",
-    type: "Bug",
-    message:
-      "The in-app feedback screen should accept private attachments like TestFlight.",
-    surface: "settings-feedback",
-    clientContext: {
-      platform: "ios",
-      feedbackAttachment: {
-        objectPath: "/objects/uploads/private-feedback-1",
-        contentType: "image/png",
-        size: 34567,
+test("rejects feedback attachment metadata before raw payload is persisted", () => {
+  assert.equal(
+    normalizeImprovementSignalInput({
+      source: "in_app_feedback",
+      type: "Bug",
+      message: "The in-app feedback screen should stay text-first.",
+      surface: "settings-feedback",
+      clientContext: {
+        platform: "ios",
+        feedbackAttachment: {
+          objectPath: "/objects/uploads/private-feedback-1",
+          contentType: "image/png",
+          size: 34567,
+        },
       },
-    },
-    technicalContextConsent: true,
-  });
-
-  assert.ok(normalized);
-  assert.deepEqual(normalized.rawPayload.feedbackAttachment, {
-    objectPath: "/objects/uploads/private-feedback-1",
-    contentType: "image/png",
-    size: 34567,
-  });
-
-  const sanitized = sanitizeImprovementPayload(normalized.rawPayload);
-  assert.equal(sanitized.privacyRisk, "high");
-  assert.doesNotMatch(
-    JSON.stringify(sanitized.sanitizedPayload),
-    /private-feedback-1|image\/png/,
+      technicalContextConsent: true,
+    }),
+    null,
   );
-
-  const workItem = buildImprovementWorkItemDraft({
-    signalId: 12,
-    sanitizedSummary: sanitized.summary,
-    sanitizedPayload: sanitized.sanitizedPayload,
-    privacyRisk: sanitized.privacyRisk,
-    fingerprint: fingerprintImprovementSignal(normalized),
-  });
-  assert.equal(workItem.riskTier, "extra_agent_review");
 });
 
 test("rejects arbitrary feedback attachment keys before raw payload is persisted", () => {
