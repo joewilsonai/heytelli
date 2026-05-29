@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildBlockedSwarmRecoveryWorkItem,
   buildSwarmDigest,
   buildSwarmBreakdownComment,
   buildSwarmPlanComment,
+  buildSwarmRecoveryComment,
+  issueLabelsAllowRecoveryPlanning,
   planSwarmWorkItem,
   parseSwarmArgs,
   roleToRunType,
@@ -189,6 +192,85 @@ test("builds a parent breakdown comment without private implementation details",
   assert.doesNotMatch(comment, /selected date templates|editing the date card/);
 });
 
+test("builds a sanitized recovery issue for blocked swarm work", () => {
+  const blockedIssue = {
+    ...baseIssue,
+    number: 53,
+    url: "https://github.com/joewilsonai/heytelli/issues/53",
+    title: "Date Card hardening: backend and data model",
+    labels: [
+      "swarm-blocked",
+      "priority:p1",
+      "risk:extra_agent_review",
+      "privacy",
+      "safety",
+      "security",
+      "architecture",
+    ],
+  };
+
+  assert.equal(issueLabelsAllowRecoveryPlanning(blockedIssue.labels), true);
+
+  const recovery = buildBlockedSwarmRecoveryWorkItem(
+    {
+      ...baseWorkItem,
+      id: 14,
+      priority: "p1",
+      riskTier: "extra_agent_review",
+      fingerprint: "date-card-backend",
+    },
+    blockedIssue,
+  );
+
+  assert.equal(recovery.fingerprint, "date-card-backend:recovery:53");
+  assert.equal(recovery.title, "Recovery: blocked swarm issue #53");
+  assert.equal(
+    recovery.githubIssueDraft.title,
+    "Recovery: blocked swarm issue #53",
+  );
+  assert.equal(recovery.riskTier, "extra_agent_review");
+  assert.equal(recovery.githubIssueDraft.labels.includes("agent-ready"), true);
+  assert.equal(
+    recovery.githubIssueDraft.labels.includes("risk:no_auto_merge"),
+    true,
+  );
+  assert.equal(
+    recovery.githubIssueDraft.labels.includes("risk:extra_agent_review"),
+    false,
+  );
+  assert.equal(
+    recovery.githubIssueDraft.labels.includes("swarm-blocked"),
+    false,
+  );
+  assert.match(recovery.githubIssueDraft.body, /Do not store match_id/);
+  assert.match(recovery.githubIssueDraft.body, /recipient PII/);
+  assert.doesNotMatch(
+    recovery.githubIssueDraft.body,
+    /raw transcript|screenshot text|555-1212|123 Main/i,
+  );
+  assert.doesNotMatch(recovery.githubIssueDraft.title, /Date Card hardening/);
+
+  const comment = buildSwarmRecoveryComment(
+    blockedIssue,
+    recovery,
+    "https://github.com/joewilsonai/heytelli/issues/58",
+  );
+  assert.match(comment, /Recovery issue: #58/);
+  assert.match(comment, /not treated as a dead end/);
+  assert.doesNotMatch(comment, /Date Card hardening: backend and data model/);
+});
+
+test("does not recover blocked issues that are known to contain private context", () => {
+  assert.equal(
+    issueLabelsAllowRecoveryPlanning([
+      "swarm-blocked",
+      "risk:extra_agent_review",
+      "contains-private-context",
+    ]),
+    false,
+  );
+});
+
 test("builds a privacy-safe issue comment for the planned swarm", () => {
   const result = planSwarmWorkItem(baseWorkItem, baseIssue);
   assert.equal(result.status, "planned");
@@ -249,6 +331,7 @@ test("parses CLI options for bounded direct swarm runs", () => {
 test("digest reports swarm label side effects", () => {
   const counts = {
     read: 1,
+    blockedRead: 0,
     planned: 1,
     skipped: 0,
     failed: 0,
@@ -257,6 +340,7 @@ test("digest reports swarm label side effects", () => {
     swarmLabelsAdded: 2,
     breakdownsCreated: 0,
     childIssuesCreated: 0,
+    recoveryIssuesCreated: 0,
     dbUpdated: 1,
     dryRun: false,
   };

@@ -10,6 +10,7 @@ import {
   buildSwarmExecutorDigest,
   acquireExecutorRunLock,
   executorPrBodyMarker,
+  issueLabelsAllowExecutor,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
   removeExecutorScratchFiles,
@@ -91,6 +92,21 @@ test("blocks no-auto-merge and issue-less work items", () => {
       reason: "missing-github-issue",
       workItemId: 42,
     },
+  );
+});
+
+test("blocks executor work when the source issue is in a recovery lane", () => {
+  assert.equal(
+    issueLabelsAllowExecutor(["swarm-planned", "risk:extra_agent_review"]),
+    true,
+  );
+  assert.equal(
+    issueLabelsAllowExecutor(["swarm-planned", "swarm-blocked"]),
+    false,
+  );
+  assert.equal(
+    issueLabelsAllowExecutor(["contains-private-context", "agent-ready"]),
+    false,
   );
 });
 

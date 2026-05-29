@@ -17,6 +17,7 @@ import {
   findIssueCommentByMarker,
   githubTokenFromEnv,
   listAgentReadyIssues,
+  listSwarmBlockedIssues,
   removeIssueLabels,
   type GitHubIssueSummary,
 } from "./github";
@@ -97,6 +98,21 @@ export type BreakdownSwarmWorkItem = {
   children: SwarmBreakdownChild[];
 };
 
+export type RecoverySwarmWorkItem = InsertImprovementWorkItem & {
+  fingerprint: string;
+  title: string;
+  summary: string;
+  category: ImprovementCategory;
+  priority: ImprovementPriority;
+  riskTier: ImprovementRiskTier;
+  impactScore: number;
+  confidenceScore: number;
+  frequencyCount: number;
+  signalIds: number[];
+  status: "draft";
+  githubIssueDraft: GithubIssueDraft;
+};
+
 export type SwarmWorkItemPlanResult =
   | PlannedSwarmWorkItem
   | BreakdownSwarmWorkItem
@@ -116,6 +132,7 @@ export type SwarmRunnerOptions = {
 
 export type SwarmRunCounts = {
   read: number;
+  blockedRead: number;
   planned: number;
   skipped: number;
   failed: number;
@@ -124,6 +141,7 @@ export type SwarmRunCounts = {
   swarmLabelsAdded: number;
   breakdownsCreated: number;
   childIssuesCreated: number;
+  recoveryIssuesCreated: number;
   dbUpdated: number;
   dryRun: boolean;
 };
@@ -149,6 +167,19 @@ const CHILD_LABEL_BLOCKLIST = new Set([
   "swarm-planned",
   "swarm-running",
   "wontfix",
+]);
+const RECOVERY_LABEL_BLOCKLIST = new Set([
+  ...CHILD_LABEL_BLOCKLIST,
+  "needs-decomposition",
+  "swarm-recovery-created",
+]);
+const RECOVERY_KEEP_LABELS = new Set([
+  "privacy",
+  "safety",
+  "security",
+  "architecture",
+  "reliability",
+  "test",
 ]);
 
 function envFlag(value: string | undefined, defaultValue: boolean): boolean {
@@ -337,8 +368,113 @@ function childLabels(parentLabels: string[]): string[] {
   return labels;
 }
 
+function uniqueLabels(labels: string[]): string[] {
+  const seen = new Set<string>();
+  return labels.flatMap((label) => {
+    const trimmed = label.trim();
+    const normalized = trimmed.toLowerCase();
+    if (!trimmed || seen.has(normalized)) return [];
+    seen.add(normalized);
+    return [trimmed];
+  });
+}
+
+function recoveryTitle(issue: GitHubIssueSummary): string {
+  return `Recovery: blocked swarm issue #${issue.number}`;
+}
+
+function recoveryLabels(
+  parentLabels: string[],
+  priority: ImprovementPriority,
+): string[] {
+  const kept = parentLabels.filter((label) => {
+    const normalized = label.trim().toLowerCase();
+    return (
+      RECOVERY_KEEP_LABELS.has(normalized) &&
+      !RECOVERY_LABEL_BLOCKLIST.has(normalized)
+    );
+  });
+  return uniqueLabels([
+    "agent-ready",
+    `priority:${priority}`,
+    "risk:no_auto_merge",
+    ...kept,
+  ]);
+}
+
+export function issueLabelsAllowRecoveryPlanning(labels: string[]): boolean {
+  const normalized = normalizeLabels(labels);
+  if (!normalized.includes("swarm-blocked")) return false;
+  if (normalized.includes("swarm-recovery-created")) return false;
+  if (normalized.includes("swarm-done")) return false;
+  if (normalized.includes("wontfix")) return false;
+  if (normalized.includes("contains-private-context")) return false;
+  return normalized.some((label) => label.startsWith("risk:"));
+}
+
 function parentFingerprint(workItem: SwarmWorkItemCandidate): string {
   return workItem.fingerprint?.trim() || `work-item-${workItem.id}`;
+}
+
+export function buildBlockedSwarmRecoveryWorkItem(
+  parent: SwarmWorkItemCandidate,
+  issue: GitHubIssueSummary,
+): RecoverySwarmWorkItem {
+  const fingerprint = `${parentFingerprint(parent)}:recovery:${issue.number}`;
+  const title = recoveryTitle(issue);
+  const summary = [
+    `Recovery lane for blocked issue #${issue.number}.`,
+    "",
+    "The previous swarm path was paused because safety/privacy review found the current implementation direction unsafe. Build the smallest architecture correction that lets the work continue safely.",
+    "",
+    "Non-negotiable guardrails:",
+    "- Do not store screenshots, transcripts, or raw dating details.",
+    "- Do not create public bearer URLs for safety content.",
+    "- Do not store recipient PII for trusted-circle contacts.",
+    "- Do not store match_id on server-side Date Card or share records.",
+    "- Prefer an event/idempotency foundation first; keep Date Card payloads local until a recipient-scoped model exists.",
+    "- Add focused tests that prove the guardrails hold.",
+  ].join("\n");
+  const recovery = {
+    fingerprint,
+    title,
+    summary,
+    category: parent.category,
+    priority: parent.priority,
+    riskTier: "extra_agent_review" as const,
+    impactScore: parent.impactScore ?? 1,
+    confidenceScore: parent.confidenceScore ?? 1,
+    frequencyCount: parent.frequencyCount ?? 1,
+    signalIds: parent.signalIds ?? [],
+    status: "draft" as const,
+    githubIssueUrl: null,
+    githubIssueNumber: null,
+    branchName: null,
+    pullRequestUrl: null,
+    pullRequestNumber: null,
+  };
+  return {
+    ...recovery,
+    githubIssueDraft: {
+      title,
+      labels: recoveryLabels(issue.labels, parent.priority),
+      body: [
+        "## Scope",
+        summary,
+        "",
+        "## Parent",
+        `Blocked issue: #${issue.number}`,
+        `Parent work item: #${parent.id}`,
+        "",
+        "## Guardrails",
+        "- Recovery issue created because the original swarm path was blocked.",
+        "- Use only sanitized issue metadata and this guardrail list.",
+        "- Keep user-identifying and sensitive context out of GitHub.",
+        "",
+        `<!-- heytelli-swarm-recovery:${parent.id}:${issue.number} -->`,
+      ].join("\n"),
+    },
+  };
 }
 
 function shouldBreakDownWorkItem(
@@ -537,6 +673,12 @@ export function swarmBreakdownCommentMarker(
   return `heytelli-swarm-breakdown:${breakdown.workItemId}:${breakdown.issueNumber}`;
 }
 
+export function swarmRecoveryCommentMarker(
+  recovery: Pick<RecoverySwarmWorkItem, "fingerprint">,
+): string {
+  return `heytelli-swarm-recovery:${recovery.fingerprint}`;
+}
+
 function issueNumberFromUrl(url: string): string {
   const match = url.match(/\/issues\/(\d+)(?:[#/?].*)?$/);
   return match ? `#${match[1]}` : url;
@@ -563,6 +705,27 @@ export function buildSwarmBreakdownComment(
     "The parent will not be executed directly; the child issues will move through the normal swarm flow.",
     "",
     `<!-- ${swarmBreakdownCommentMarker(breakdown)} -->`,
+  ].join("\n");
+}
+
+export function buildSwarmRecoveryComment(
+  issue: GitHubIssueSummary,
+  recovery: RecoverySwarmWorkItem,
+  recoveryIssueUrl: string | null,
+): string {
+  return [
+    "## HeyTelli swarm recovery",
+    "",
+    `Blocked issue: #${issue.number}`,
+    recoveryIssueUrl
+      ? `Recovery issue: ${issueNumberFromUrl(recoveryIssueUrl)}`
+      : `Recovery issue planned: ${recovery.title}`,
+    "",
+    "This block was not treated as a dead end. The swarm created a safer recovery lane with privacy/safety guardrails before implementation resumes.",
+    "",
+    "No private screenshots, transcripts, contact details, or dating context were included.",
+    "",
+    `<!-- ${swarmRecoveryCommentMarker(recovery)} -->`,
   ].join("\n");
 }
 
@@ -611,9 +774,11 @@ export function buildSwarmDigest(counts: SwarmRunCounts): string {
     "",
     `Mode: ${counts.dryRun ? "dry-run" : "live"}`,
     `Agent-ready issues read: ${counts.read}`,
+    `Blocked issues read: ${counts.blockedRead}`,
     `Swarm plans created: ${counts.planned}`,
     `Breakdowns created: ${counts.breakdownsCreated}`,
     `Child issues created: ${counts.childIssuesCreated}`,
+    `Recovery issues created: ${counts.recoveryIssuesCreated}`,
     `Skipped: ${counts.skipped}`,
     `Failed: ${counts.failed}`,
     `Issue comments created: ${counts.commentsCreated}`,
@@ -630,6 +795,7 @@ export function swarmRunShouldFail(counts: SwarmRunCounts): boolean {
 function emptyCounts(dryRun: boolean): SwarmRunCounts {
   return {
     read: 0,
+    blockedRead: 0,
     planned: 0,
     skipped: 0,
     failed: 0,
@@ -638,6 +804,7 @@ function emptyCounts(dryRun: boolean): SwarmRunCounts {
     swarmLabelsAdded: 0,
     breakdownsCreated: 0,
     childIssuesCreated: 0,
+    recoveryIssuesCreated: 0,
     dbUpdated: 0,
     dryRun,
   };
@@ -1129,6 +1296,165 @@ export async function runImprovementSwarm(
             directRunner: true,
             issueNumber: issue.number,
             publicCommentCreated,
+            retryable: true,
+          },
+          completedAt: new Date(),
+        });
+      }
+    }
+  }
+
+  const blockedIssues = await listSwarmBlockedIssues({
+    owner: options.owner,
+    repo: options.repo,
+    token: options.token,
+    apiUrl: options.githubApiUrl,
+    limit: Math.min(Math.max(options.limit * 5, options.limit), 100),
+  });
+  counts.blockedRead = blockedIssues.length;
+
+  for (const issue of blockedIssues) {
+    let parentWorkItemForRun: SwarmWorkItemCandidate | null = null;
+    try {
+      if (!issueLabelsAllowRecoveryPlanning(issue.labels)) {
+        counts.skipped += 1;
+        continue;
+      }
+
+      const [parentWorkItem] = (await db
+        .select()
+        .from(improvementWorkItems)
+        .where(
+          and(
+            eq(improvementWorkItems.githubIssueNumber, issue.number),
+            eq(improvementWorkItems.status, "changes_requested"),
+          ),
+        )
+        .limit(1)) as SwarmWorkItemCandidate[];
+      if (!parentWorkItem) {
+        counts.skipped += 1;
+        continue;
+      }
+      parentWorkItemForRun = parentWorkItem;
+
+      const recovery = buildBlockedSwarmRecoveryWorkItem(parentWorkItem, issue);
+      const [existingRecovery] = await db
+        .select()
+        .from(improvementWorkItems)
+        .where(eq(improvementWorkItems.fingerprint, recovery.fingerprint))
+        .limit(1);
+
+      const needsIssue = !existingRecovery?.githubIssueUrl;
+      if (needsIssue) counts.recoveryIssuesCreated += 1;
+      if (options.dryRun) continue;
+
+      let recoveryWorkItem = existingRecovery;
+      if (!recoveryWorkItem) {
+        const { githubIssueDraft: _draft, ...recoveryValues } = recovery;
+        const [createdRecovery] = await db
+          .insert(improvementWorkItems)
+          .values(recoveryValues)
+          .returning();
+        if (!createdRecovery) {
+          throw new Error("Recovery work item insert returned no row");
+        }
+        recoveryWorkItem = createdRecovery;
+        counts.dbUpdated += 1;
+      }
+
+      let recoveryIssueUrl: string | null =
+        existingRecovery?.githubIssueUrl ?? null;
+      if (needsIssue) {
+        const issueResult = await createGitHubIssue({
+          owner: options.owner,
+          repo: options.repo,
+          token: options.token,
+          draft: recovery.githubIssueDraft,
+          dryRun: options.dryRun,
+          dedupeKey: recovery.fingerprint,
+          apiUrl: options.githubApiUrl,
+        });
+        if (issueResult.mode !== "live") {
+          throw new Error("Recovery issue creation returned non-live result");
+        }
+        recoveryIssueUrl = issueResult.url;
+        await db
+          .update(improvementWorkItems)
+          .set({
+            githubIssueUrl: issueResult.url,
+            githubIssueNumber: issueResult.number,
+            status: "issue_created",
+            updatedAt: new Date(),
+          })
+          .where(eq(improvementWorkItems.id, recoveryWorkItem.id));
+        counts.dbUpdated += 1;
+      }
+
+      let commentUrl: string | null = null;
+      if (options.commentOnIssues) {
+        const marker = swarmRecoveryCommentMarker(recovery);
+        const existingComment = await findIssueCommentByMarker({
+          owner: options.owner,
+          repo: options.repo,
+          token: options.token,
+          issueNumber: issue.number,
+          apiUrl: options.githubApiUrl,
+          marker,
+        });
+        if (existingComment) {
+          commentUrl = existingComment.url;
+        } else {
+          const comment = await commentOnIssue({
+            owner: options.owner,
+            repo: options.repo,
+            token: options.token,
+            issueNumber: issue.number,
+            apiUrl: options.githubApiUrl,
+            body: buildSwarmRecoveryComment(issue, recovery, recoveryIssueUrl),
+          });
+          commentUrl = comment.url;
+          counts.commentsCreated += 1;
+        }
+      }
+
+      const addedRecoveryLabels = await addIssueLabels({
+        owner: options.owner,
+        repo: options.repo,
+        token: options.token,
+        issueNumber: issue.number,
+        apiUrl: options.githubApiUrl,
+        labels: ["swarm-recovery-created"],
+      });
+      counts.swarmLabelsAdded += addedRecoveryLabels.length;
+
+      await db.insert(improvementRuns).values({
+        workItemId: parentWorkItem.id,
+        runType: "research",
+        agentName: options.agentName,
+        status: "succeeded",
+        summary: `Swarm recovery issue created for blocked GitHub issue #${issue.number}`,
+        logsUrl: commentUrl ?? recoveryIssueUrl,
+        metadata: {
+          directRunner: true,
+          issueNumber: issue.number,
+          issueUrl: issue.url,
+          recoveryIssueUrl,
+          recoveryFingerprint: recovery.fingerprint,
+        },
+        completedAt: new Date(),
+      });
+    } catch (err) {
+      counts.failed += 1;
+      if (parentWorkItemForRun) {
+        await db.insert(improvementRuns).values({
+          workItemId: parentWorkItemForRun.id,
+          runType: "research",
+          agentName: options.agentName,
+          status: "failed",
+          summary: `Swarm recovery planning failed for GitHub issue #${issue.number}: ${errorMessage(err)}`,
+          metadata: {
+            directRunner: true,
+            issueNumber: issue.number,
             retryable: true,
           },
           completedAt: new Date(),

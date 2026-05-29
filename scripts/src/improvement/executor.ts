@@ -11,6 +11,7 @@ import type {
 } from "@workspace/db";
 import {
   commentOnIssue,
+  fetchGitHubIssue,
   findIssueCommentByMarker,
   githubTokenFromEnv,
 } from "./github";
@@ -49,7 +50,8 @@ export type SkippedExecutorWorkItem = {
   reason:
     | "missing-github-issue"
     | "not-planned"
-    | "auto-merge-disabled-risk-tier";
+    | "auto-merge-disabled-risk-tier"
+    | "source-issue-swarm-blocked";
 };
 
 export type SwarmExecutorPlanResult =
@@ -315,6 +317,16 @@ export function planSwarmExecutorWorkItem(
     autoMergeAllowed,
     nextStatus: autoMergeAllowed ? "checks_running" : "reviewing",
   };
+}
+
+export function issueLabelsAllowExecutor(labels: string[]): boolean {
+  const normalized = labels.map((label) => label.trim().toLowerCase());
+  return !normalized.some(
+    (label) =>
+      label === "swarm-blocked" ||
+      label === "contains-private-context" ||
+      label === "wontfix",
+  );
 }
 
 export function buildExecutorPrompt(
@@ -927,11 +939,46 @@ export async function runSwarmExecutor(
       counts.skipped += 1;
       continue;
     }
-    counts.executable += 1;
-    if (options.dryRun) continue;
 
     let runId: number | null = null;
     try {
+      const sourceIssue = await fetchGitHubIssue({
+        owner: options.owner,
+        repo: options.repo,
+        token: options.token,
+        apiUrl: options.githubApiUrl,
+        issueNumber: plan.issueNumber,
+      });
+      if (!issueLabelsAllowExecutor(sourceIssue.labels)) {
+        counts.skipped += 1;
+        if (!options.dryRun) {
+          await db
+            .update(improvementWorkItems)
+            .set({
+              status: "changes_requested",
+              updatedAt: new Date(),
+            })
+            .where(eq(improvementWorkItems.id, workItem.id));
+          counts.dbUpdated += 1;
+          await db.insert(improvementRuns).values({
+            workItemId: workItem.id,
+            runType: "review",
+            agentName: options.agentName,
+            status: "blocked",
+            summary: `Swarm executor skipped issue #${plan.issueNumber} because the source issue is blocked for recovery.`,
+            metadata: {
+              issueNumber: plan.issueNumber,
+              labels: sourceIssue.labels,
+              retryable: false,
+            },
+            completedAt: new Date(),
+          });
+        }
+        continue;
+      }
+      counts.executable += 1;
+      if (options.dryRun) continue;
+
       const [claimed] = await db
         .update(improvementWorkItems)
         .set({
@@ -1008,6 +1055,7 @@ export async function runSwarmExecutor(
       }
     } catch (err) {
       counts.failed += 1;
+      if (options.dryRun) continue;
       const failureStatus = workItemStatusAfterExecutorFailure(err);
       const retryable = failureStatus === "planned";
       const message = errorMessage(err);

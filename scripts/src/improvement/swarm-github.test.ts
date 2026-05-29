@@ -8,6 +8,7 @@ import {
   findIssueCommentByMarker,
   listAgentReadyIssues,
   listIssueLabels,
+  listSwarmBlockedIssues,
   removeIssueLabels,
 } from "./github";
 
@@ -285,5 +286,50 @@ test("lists open agent-ready issues without exposing body text", async () => {
   assert.match(
     calls[0] ?? "",
     /\/search\/issues\?q=repo%3Ajoewilsonai%2Fheytelli.*label%3Aagent-ready&per_page=5$/,
+  );
+});
+
+test("lists open swarm-blocked issues for recovery planning", async () => {
+  const calls: string[] = [];
+  const issues = await listSwarmBlockedIssues({
+    owner: "joewilsonai",
+    repo: "heytelli",
+    token: "token",
+    limit: 3,
+    fetchImpl: async (input) => {
+      calls.push(String(input));
+      return new Response(
+        JSON.stringify({
+          items: [
+            {
+              html_url: "https://github.com/joewilsonai/heytelli/issues/53",
+              number: 53,
+              title: "Date Card hardening: backend recovery",
+              state: "open",
+              labels: [{ name: "swarm-blocked" }],
+              body: "private architecture note should not be returned",
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    },
+  });
+
+  assert.deepEqual(issues, [
+    {
+      url: "https://github.com/joewilsonai/heytelli/issues/53",
+      number: 53,
+      title: "Date Card hardening: backend recovery",
+      state: "open",
+      labels: ["swarm-blocked"],
+    },
+  ]);
+  assert.match(
+    calls[0] ?? "",
+    /\/search\/issues\?q=repo%3Ajoewilsonai%2Fheytelli.*label%3Aswarm-blocked&per_page=3$/,
   );
 });
