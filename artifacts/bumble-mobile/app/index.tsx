@@ -184,33 +184,39 @@ export default function MatchesScreen() {
                 <Feather name="message-circle" size={20} color={c.foreground} />
               </Pressable>
             </Link>
-            <Link href="/add" asChild>
-              <Pressable
-                onPress={() => Haptics.selectionAsync().catch(() => {})}
-                style={({ pressed }) => ({
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
-                  backgroundColor: c.primary,
-                  borderWidth: 2,
-                  borderColor: c.background,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.78 : 1,
-                  shadowColor: "#000",
-                  shadowOpacity: 0.22,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 6 },
-                  elevation: 5,
-                })}
-                accessibilityRole="button"
-                accessibilityLabel="Add match"
-              >
-                <Feather name="plus" size={24} color={c.primaryForeground} />
-              </Pressable>
-            </Link>
           </View>
         </View>
+
+        <Link href="/add" asChild>
+          <Pressable
+            onPress={() => Haptics.selectionAsync().catch(() => {})}
+            style={({ pressed }) => [
+              styles.primaryAddProfileButton,
+              {
+                backgroundColor: c.primary,
+                opacity: pressed ? 0.78 : 1,
+                shadowColor: "#000",
+                shadowOpacity: 0.16,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 5 },
+                elevation: 4,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Add profile"
+          >
+            <Feather name="plus" size={18} color={c.primaryForeground} />
+            <Text
+              style={{
+                color: c.primaryForeground,
+                fontSize: 15,
+                fontWeight: "700",
+              }}
+            >
+              Add profile
+            </Text>
+          </Pressable>
+        </Link>
 
         {/* Filter chips */}
         <ScrollView
@@ -1100,6 +1106,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexShrink: 0,
+    gap: 8,
+  },
+  primaryAddProfileButton: {
+    alignSelf: "stretch",
+    minHeight: 48,
+    borderRadius: 16,
+    marginTop: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 8,
   },
 });
