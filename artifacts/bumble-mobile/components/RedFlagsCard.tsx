@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,11 +25,18 @@ import { getSafetyResources } from "@/lib/safety-resources";
 export function RedFlagsCard({
   matchId,
   promoted = false,
+  analysisUpdate,
+  analysisRefreshKey = 0,
   initialSummary,
   initialRedFlags,
 }: {
   matchId: number;
   promoted?: boolean;
+  analysisUpdate?: {
+    loading: boolean;
+    onPress: () => void;
+  };
+  analysisRefreshKey?: number;
   initialSummary?: RedFlagSummary;
   initialRedFlags?: {
     redFlags: RedFlag[];
@@ -48,6 +55,10 @@ export function RedFlagsCard({
       (initialRedFlags?.greenFlags.length ?? 0) > 0 ||
       Boolean(initialRedFlags?.overallRead.trim()),
   );
+
+  useEffect(() => {
+    setData(null);
+  }, [analysisRefreshKey]);
 
   const run = async () => {
     setLoading(true);
@@ -106,6 +117,14 @@ export function RedFlagsCard({
     ...currentFlags,
     ...historicalFlags,
   ]);
+  const analyzeNewLoading = Boolean(analysisUpdate?.loading);
+  const hasRadarDetails = Boolean(data || hasSavedDetails);
+  const radarHeaderLoading = loading || analyzeNewLoading;
+  const radarHeaderAction = hasRadarDetails
+    ? () => setOpen((v) => !v)
+    : analysisUpdate
+      ? analysisUpdate.onPress
+      : run;
 
   const renderFlagList = (title: string, flags: RedFlag[], muted = false) => (
     <View style={{ gap: 6 }}>
@@ -201,20 +220,22 @@ export function RedFlagsCard({
           )}
         </View>
         <Pressable
-          onPress={data || hasSavedDetails ? () => setOpen((v) => !v) : run}
-          disabled={loading}
+          onPress={radarHeaderAction}
+          disabled={radarHeaderLoading}
           hitSlop={8}
         >
-          {loading ? (
+          {radarHeaderLoading ? (
             <ActivityIndicator size="small" color={c.primary} />
           ) : (
             <Feather
               name={
-                data || hasSavedDetails
+                hasRadarDetails
                   ? open
                     ? "chevron-up"
                     : "chevron-down"
-                  : "zap"
+                  : analysisUpdate
+                    ? "refresh-cw"
+                    : "zap"
               }
               size={18}
               color={c.primary}
@@ -400,16 +421,24 @@ export function RedFlagsCard({
               ))}
             </View>
           ) : null}
-          <Pressable onPress={run} disabled={loading} hitSlop={8}>
-            <Text
-              style={{
-                color: c.primary,
-                fontSize: 12,
-                fontWeight: "500",
-              }}
-            >
-              Re-analyze
-            </Text>
+          <Pressable
+            onPress={analysisUpdate ? analysisUpdate.onPress : run}
+            disabled={loading || analyzeNewLoading}
+            hitSlop={8}
+          >
+            {analyzeNewLoading ? (
+              <ActivityIndicator size="small" color={c.primary} />
+            ) : (
+              <Text
+                style={{
+                  color: c.primary,
+                  fontSize: 12,
+                  fontWeight: "500",
+                }}
+              >
+                {analysisUpdate ? "Analyze new" : "Analyze patterns"}
+              </Text>
+            )}
           </Pressable>
         </View>
       )}

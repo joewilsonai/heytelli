@@ -42,3 +42,10 @@ test("home dashboard does not expose tag filtering controls", () => {
   assert.doesNotMatch(home, /tagFilter|setTagFilter|allTags/);
   assert.doesNotMatch(home, /All tags|#\{/);
 });
+
+test("screenshot refresh copy says Analyze new instead of old refresh wording", () => {
+  const combined = files.join("\n");
+
+  assert.doesNotMatch(combined, /re-?analyz/i);
+  assert.match(combined, /Analyze new/);
+});

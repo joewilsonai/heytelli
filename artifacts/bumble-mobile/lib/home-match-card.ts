@@ -425,7 +425,7 @@ function getRead(match: HomeMatchCardMatch): HomeMatchCardModel["read"] {
     return {
       title: "Last read",
       body,
-      freshnessLabel: "Reanalyze",
+      freshnessLabel: "Analyze new",
       tone: "warning",
     };
   }
