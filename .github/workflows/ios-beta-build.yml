@@ -119,6 +119,12 @@ jobs:
           const appJson = JSON.parse(readFileSync("artifacts/bumble-mobile/app.json", "utf8"));
           const version = clean(appJson.expo?.version || "1.0.0", 24);
           const date = new Date().toISOString().slice(0, 10);
+          const whatToTest = [
+            message,
+            "",
+            ...highlights.map((highlight) => `- ${highlight}`),
+          ].join("\n");
+          const whatToTestDelimiter = `HEYTELLI_WHAT_TO_TEST_${Date.now()}`;
 
           appendFileSync(
             process.env.GITHUB_ENV,
@@ -127,6 +133,9 @@ jobs:
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_DATE=${date}`,
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE=${message}`,
               `EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS=${JSON.stringify(highlights)}`,
+              `HEYTELLI_WHAT_TO_TEST<<${whatToTestDelimiter}`,
+              whatToTest,
+              whatToTestDelimiter,
             ].join("\n") + "\n",
           );
           NODE
@@ -155,6 +164,9 @@ jobs:
 
           if [[ "${EAS_SUBMIT}" == "true" ]]; then
             args+=(--auto-submit)
+            if [[ -n "${HEYTELLI_WHAT_TO_TEST:-}" ]]; then
+              args+=(--what-to-test "${HEYTELLI_WHAT_TO_TEST}")
+            fi
           fi
 
           pnpm dlx eas-cli@latest "${args[@]}"
