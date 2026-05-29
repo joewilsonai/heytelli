@@ -19,12 +19,20 @@ test("normalizes product feedback without accepting arbitrary sensitive context"
   assert.deepEqual(feedback, {
     event: "date-card-shared",
     answer: "would-use",
-    matchId: 42,
+    matchId: null,
     context: {
       surface: "date-card",
       prompt: "Would you send this to a friend?",
     },
   });
+
+  const ordinaryFeedback = normalizeProductFeedback({
+    event: "match-read-feedback",
+    answer: "bug",
+    matchId: 42,
+    context: { surface: "match-read" },
+  });
+  assert.equal(ordinaryFeedback?.matchId, 42);
 });
 
 test("rejects empty feedback events and answers", async () => {

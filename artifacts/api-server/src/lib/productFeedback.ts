@@ -45,17 +45,30 @@ function cleanContext(value: unknown): Record<string, string> {
   return context;
 }
 
+function isDateCardOrShareRecord(value: string | null | undefined): boolean {
+  const normalized = value?.toLowerCase() ?? "";
+  return (
+    normalized.includes("date-card") ||
+    normalized.includes("date_card") ||
+    normalized.includes("share")
+  );
+}
+
 export function normalizeProductFeedback(
   input: ProductFeedbackInput,
 ): NormalizedProductFeedback | null {
   const event = cleanText(input.event);
   const answer = cleanText(input.answer);
   if (!event || !answer) return null;
+  const context = cleanContext(input.context);
 
   return {
     event,
     answer,
-    matchId: cleanMatchId(input.matchId),
-    context: cleanContext(input.context),
+    matchId:
+      isDateCardOrShareRecord(event) || isDateCardOrShareRecord(context.surface)
+        ? null
+        : cleanMatchId(input.matchId),
+    context,
   };
 }
