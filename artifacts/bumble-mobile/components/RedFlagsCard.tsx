@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +26,7 @@ export function RedFlagsCard({
   matchId,
   promoted = false,
   analysisUpdate,
+  analysisRefreshKey = 0,
   initialSummary,
   initialRedFlags,
 }: {
@@ -35,6 +36,7 @@ export function RedFlagsCard({
     loading: boolean;
     onPress: () => void;
   };
+  analysisRefreshKey?: number;
   initialSummary?: RedFlagSummary;
   initialRedFlags?: {
     redFlags: RedFlag[];
@@ -53,6 +55,10 @@ export function RedFlagsCard({
       (initialRedFlags?.greenFlags.length ?? 0) > 0 ||
       Boolean(initialRedFlags?.overallRead.trim()),
   );
+
+  useEffect(() => {
+    setData(null);
+  }, [analysisRefreshKey]);
 
   const run = async () => {
     setLoading(true);
@@ -112,6 +118,13 @@ export function RedFlagsCard({
     ...historicalFlags,
   ]);
   const analyzeNewLoading = Boolean(analysisUpdate?.loading);
+  const hasRadarDetails = Boolean(data || hasSavedDetails);
+  const radarHeaderLoading = loading || analyzeNewLoading;
+  const radarHeaderAction = hasRadarDetails
+    ? () => setOpen((v) => !v)
+    : analysisUpdate
+      ? analysisUpdate.onPress
+      : run;
 
   const renderFlagList = (title: string, flags: RedFlag[], muted = false) => (
     <View style={{ gap: 6 }}>
@@ -207,20 +220,22 @@ export function RedFlagsCard({
           )}
         </View>
         <Pressable
-          onPress={data || hasSavedDetails ? () => setOpen((v) => !v) : run}
-          disabled={loading}
+          onPress={radarHeaderAction}
+          disabled={radarHeaderLoading}
           hitSlop={8}
         >
-          {loading ? (
+          {radarHeaderLoading ? (
             <ActivityIndicator size="small" color={c.primary} />
           ) : (
             <Feather
               name={
-                data || hasSavedDetails
+                hasRadarDetails
                   ? open
                     ? "chevron-up"
                     : "chevron-down"
-                  : "zap"
+                  : analysisUpdate
+                    ? "refresh-cw"
+                    : "zap"
               }
               size={18}
               color={c.primary}

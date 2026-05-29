@@ -134,6 +134,7 @@ export default function MatchDetailScreen() {
     useState<CoverQuickActionId | null>(null);
   const [errorFeedbackOpen, setErrorFeedbackOpen] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisRefreshVersion, setAnalysisRefreshVersion] = useState(0);
   const { data, isLoading, refetch, isRefetching, error } =
     useGetMatch(matchId);
   const {
@@ -172,6 +173,7 @@ export default function MatchDetailScreen() {
         () => {},
       );
       await refetch();
+      setAnalysisRefreshVersion((version) => version + 1);
     } catch (e: any) {
       await refetch();
       Alert.alert(
@@ -358,6 +360,7 @@ export default function MatchDetailScreen() {
                 }
               : undefined
           }
+          analysisRefreshKey={analysisRefreshVersion}
           initialSummary={data.redFlagSummary}
           initialRedFlags={{
             redFlags: data.redFlags ?? [],
@@ -3859,9 +3862,8 @@ function NextDateCard({
   const briefStatusBg = briefStatusWarning ? c.warningBg : c.successBg;
   const briefStatusIcon = briefStatusWarning ? "alert-circle" : "check";
   const shouldAnalyzeNew = hasUnanalyzedScreens && Boolean(analysisUpdate);
-  const briefActionLabel = shouldAnalyzeNew
-    ? "Analyze new"
-    : freshness === "current" && savedBrief
+  const briefActionLabel =
+    freshness === "current" && savedBrief
       ? "Refresh brief"
       : "Generate date brief";
 
@@ -3963,12 +3965,22 @@ function NextDateCard({
           {briefStatusLabel}
         </Text>
       </View>
+      {shouldAnalyzeNew && (
+        <Button
+          label="Analyze new"
+          icon="refresh-cw"
+          onPress={analysisUpdate!.onPress}
+          loading={analysisUpdate!.loading}
+          style={{ marginTop: 12 }}
+        />
+      )}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
         <Button
           label={briefActionLabel}
-          icon={shouldAnalyzeNew ? "refresh-cw" : "zap"}
-          onPress={shouldAnalyzeNew ? analysisUpdate!.onPress : loadBrief}
-          loading={shouldAnalyzeNew ? analysisUpdate!.loading : briefLoading}
+          icon="zap"
+          onPress={loadBrief}
+          loading={briefLoading}
+          variant={shouldAnalyzeNew ? "ghost" : "primary"}
           style={{ flex: 1 }}
         />
         <Button
