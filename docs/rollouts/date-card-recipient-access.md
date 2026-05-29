@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation is now wired for the V1 Railway-backed flow:
+Implementation is now live for the V1 Railway-backed flow:
 
 - Railway Postgres migration `0005_date_cards.sql` creates `date_cards`, `date_card_recipients`, and `date_card_events`.
 - The API exposes authenticated sender routes at `/api/date-cards/*`.
@@ -10,6 +10,8 @@ Implementation is now wired for the V1 Railway-backed flow:
 - Recipient actions post to `/api/date-card-shares/:shareToken/*`.
 - The iOS Date Plan flow creates private links before opening the native share sheet.
 - The sender view can reload Date Card status and show viewed/confirmed progress.
+- Production API deployment `5b690f01-d742-47fc-a55a-312bbae6ecf9` is live on Railway.
+- Live smoke test passed: recipient page returned `200`, Got it confirm returned `200`, and Postgres recorded the card as viewed and confirmed.
 
 ## Product decision
 
@@ -57,7 +59,9 @@ The recipient does not see screenshots, chat transcripts, profile photos, AI ana
 4. Done: add recipient web route with the polished Date Card page and Got it action.
 5. Done for V1: sender-side status reload shows viewed/confirmed progress from Railway.
 6. Done in code: focused verification covers no screenshots, no transcripts, no server-side `match_id`, no raw tokens, no recipient PII by default, expiry/revocation structure, and idempotent events.
-7. Next: apply the Railway migration, deploy the API, build iOS, and submit TestFlight.
+7. Done: applied the Railway migration and deployed the API.
+8. Done: added a route-order regression test so public recipient actions stay mounted before the match auth guard.
+9. Next: build iOS and submit TestFlight so beta users get the mobile Date Card share flow.
 
 ## Swarm operating rule
 

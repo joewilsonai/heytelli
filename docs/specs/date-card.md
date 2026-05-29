@@ -238,6 +238,8 @@ Sender-authenticated endpoints require the user's app session. Recipient endpoin
 - Recipient web: `/c/:shareToken` renders the private card and posts Got it back to the API.
 - Mobile: Share Date Card creates private links first, shares through the native sheet, records the local share event, and reloads circle link status.
 - Privacy guardrails: first names/labels only, token hashes server-side, no raw screenshots, no transcripts, no profile photos, no server-side `match_id`, no recipient phone/email unless a future reminders opt-in explicitly asks for it.
+- Production checkpoint: Railway migration applied, API deployment `5b690f01-d742-47fc-a55a-312bbae6ecf9` live, and a real recipient card smoke test confirmed the page, Got it action, and persisted viewed/confirmed status.
+- Regression guard: Date Card API routes must mount before the match router auth guard, so `/api/date-card-shares/:shareToken/confirm` remains public-token based instead of app-session based.
 
 ## Visual design tokens
 
