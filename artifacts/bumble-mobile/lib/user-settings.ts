@@ -96,17 +96,17 @@ export const DEFAULT_HEYTELLI_SETTINGS: HeyTelliSettings = {
   },
 };
 
-function clean(value: string | null | undefined): string {
-  return value?.trim() ?? "";
+function clean(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-function nullable(value: string | null | undefined): string | null {
+function nullable(value: unknown): string | null {
   const trimmed = clean(value);
   return trimmed ? trimmed : null;
 }
 
-function firstName(fullName: string): string {
-  const trimmed = fullName.trim();
+function firstName(fullName: unknown): string {
+  const trimmed = clean(fullName);
   if (!trimmed) return "Circle";
   return trimmed.split(/\s+/)[0] ?? trimmed;
 }
@@ -123,6 +123,26 @@ function makeLocalId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random()
     .toString(36)
     .slice(2, 8)}`;
+}
+
+function cleanCircleSource(value: unknown): TrustedCircleSource {
+  return value === "manual" || value === "contacts" ? value : "manual";
+}
+
+function cleanTrustedCirclePerson(value: unknown): TrustedCirclePerson | null {
+  if (!value || typeof value !== "object") return null;
+  const person = value as Partial<TrustedCirclePerson>;
+  return {
+    id: clean(person.id) || makeLocalId("circle"),
+    name: firstName(person.name),
+    relationship: nullable(person.relationship),
+    cardLabelPreference: normalizeCircleCardPreference(
+      person.cardLabelPreference,
+    ),
+    phoneNumber: null,
+    source: cleanCircleSource(person.source),
+    createdAt: clean(person.createdAt) || new Date().toISOString(),
+  };
 }
 
 export function sanitizeCircleContact(
@@ -220,12 +240,8 @@ export function mergeSettings(
     trustedCircle: Array.isArray(value?.trustedCircle)
       ? value.trustedCircle
           .slice(0, MAX_TRUSTED_CIRCLE_PEOPLE)
-          .map((person) => ({
-            ...person,
-            cardLabelPreference: normalizeCircleCardPreference(
-              person.cardLabelPreference,
-            ),
-          }))
+          .map(cleanTrustedCirclePerson)
+          .filter((person): person is TrustedCirclePerson => person != null)
       : [],
     dateSafetyDefaults: {
       ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
@@ -239,10 +255,9 @@ export function stripStoredCirclePhoneNumbers(
 ): HeyTelliSettings {
   return {
     ...settings,
-    trustedCircle: settings.trustedCircle.map((person) => ({
-      ...person,
-      phoneNumber: null,
-    })),
+    trustedCircle: settings.trustedCircle
+      .map(cleanTrustedCirclePerson)
+      .filter((person): person is TrustedCirclePerson => person != null),
     dateSafetyDefaults: {
       ...settings.dateSafetyDefaults,
       storePhone: false,

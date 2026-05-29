@@ -74,9 +74,13 @@ test("merges persisted settings without retaining trusted circle contact PII", (
         relationship: "sister",
         cardLabelPreference: "name",
         phoneNumber: "private-contact-value",
+        email: "private-email-value",
+        phoneNumbers: ["private-phone-array-value"],
+        contactId: "private-contact-id",
+        postalAddresses: ["private-address-value"],
         source: "contacts",
         createdAt: "2026-05-26T07:00:00.000Z",
-      },
+      } as any,
     ],
     dateSafetyDefaults: {
       ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
@@ -86,6 +90,16 @@ test("merges persisted settings without retaining trusted circle contact PII", (
 
   assert.equal(settings.dateSafetyDefaults.storePhone, false);
   assert.equal(settings.trustedCircle[0]?.phoneNumber, null);
+  assert.deepEqual(Object.keys(settings.trustedCircle[0] ?? {}).sort(), [
+    "cardLabelPreference",
+    "createdAt",
+    "id",
+    "name",
+    "phoneNumber",
+    "relationship",
+    "source",
+  ]);
+  assert.doesNotMatch(JSON.stringify(settings.trustedCircle), /private-/);
 });
 
 test("uses selected primary circle person when building a new date card", () => {
