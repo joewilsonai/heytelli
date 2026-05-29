@@ -48,7 +48,6 @@ import {
   MAX_TRUSTED_CIRCLE_PEOPLE,
   buildProfileReview,
   sanitizeCircleContact,
-  stripStoredCirclePhoneNumbers,
   type HeyTelliSettings,
   type TrustedCirclePerson,
 } from "@/lib/user-settings";
@@ -165,23 +164,6 @@ export default function SettingsScreen() {
     });
   };
 
-  const toggleStorePhone = (storePhone: boolean) => {
-    if (storePhone) {
-      updateDateDefaults({ storePhone: true });
-      return;
-    }
-    setDraftDirty(true);
-    setDraft((current) =>
-      stripStoredCirclePhoneNumbers({
-        ...current,
-        dateSafetyDefaults: {
-          ...current.dateSafetyDefaults,
-          storePhone: false,
-        },
-      }),
-    );
-  };
-
   const save = async () => {
     setSaving(true);
     try {
@@ -234,7 +216,7 @@ export default function SettingsScreen() {
           fullName: manualName,
           relationship: manualRelationship,
         },
-        { source: "manual", storePhone: false },
+        { source: "manual" },
       ),
     );
     setManualName("");
@@ -242,9 +224,7 @@ export default function SettingsScreen() {
   };
 
   const addFromContacts = async () => {
-    const result = await pickTrustedCircleContact({
-      storePhone: draft.dateSafetyDefaults.storePhone,
-    });
+    const result = await pickTrustedCircleContact();
     if (result.status === "picked") {
       addPerson(result.person);
       return;
@@ -650,12 +630,6 @@ export default function SettingsScreen() {
             onValueChange={(shareLiveLocation) =>
               updateDateDefaults({ shareLiveLocation })
             }
-          />
-          <SwitchRow
-            label="Keep phone numbers"
-            body="Off by default. Turning it off removes any saved numbers."
-            value={draft.dateSafetyDefaults.storePhone}
-            onValueChange={toggleStorePhone}
           />
         </View>
       </Card>

@@ -134,7 +134,7 @@ export function sanitizeCircleContact(
     name: firstName(contact.fullName),
     relationship: nullable(contact.relationship),
     cardLabelPreference: "name",
-    phoneNumber: options.storePhone ? nullable(contact.phoneNumber) : null,
+    phoneNumber: null,
     source: options.source ?? "contacts",
     createdAt: new Date().toISOString(),
   };
@@ -201,7 +201,7 @@ export function buildDateSafetyPlanFromSettings(
 export function mergeSettings(
   value: Partial<HeyTelliSettings> | null | undefined,
 ): HeyTelliSettings {
-  return {
+  return stripStoredCirclePhoneNumbers({
     appearance: {
       colorScheme: normalizeColorSchemePreference(
         value?.appearance?.colorScheme,
@@ -231,7 +231,7 @@ export function mergeSettings(
       ...DEFAULT_HEYTELLI_SETTINGS.dateSafetyDefaults,
       ...(value?.dateSafetyDefaults ?? {}),
     },
-  };
+  });
 }
 
 export function stripStoredCirclePhoneNumbers(
