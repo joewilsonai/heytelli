@@ -18,6 +18,11 @@ test("settings screen exposes profile, circle, and date defaults", () => {
   assert.match(screen, /Profile radar/);
   assert.match(screen, /Circle seats/);
   assert.match(screen, /Date defaults/);
+  assert.match(screen, /SETTINGS_SECTIONS/);
+  assert.match(screen, /Settings sections/);
+  assert.match(screen, /Essentials/);
+  assert.match(screen, /accessibilityLabel=\{`Jump to \$\{section\.title\}`\}/);
+  assert.match(screen, /scrollTo/);
   assert.match(screen, /My Dating Profile/);
   assert.match(screen, /Trusted Circle/);
   assert.match(screen, /circle\s+people/);
@@ -118,5 +123,5 @@ test("settings route is registered and reachable from home", () => {
   assert.match(layout, /UserSettingsProvider/);
   assert.match(layout, /name="settings"/);
   assert.match(home, /href="\/settings"/);
-  assert.match(home, /accessibilityLabel="My HeyTelli"/);
+  assert.match(home, /accessibilityLabel="My HeyTelli(?: settings)?"/);
 });

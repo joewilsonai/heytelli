@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { Link, useRouter } from "expo-router";
+import { Link, type Href, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
@@ -19,14 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { useListMatches } from "@workspace/api-client-react";
 import type { Match } from "@workspace/api-client-react";
 
-import {
-  Body,
-  Chip,
-  EmptyState,
-  H1,
-  IconButton,
-  Skeleton,
-} from "@/components/ui";
+import { Body, Chip, EmptyState, H1, Skeleton } from "@/components/ui";
 import { StaleNudgesSection } from "@/components/StaleNudgesSection";
 import { AutoArchiveBanner } from "@/components/AutoArchiveBanner";
 import { formatTimeAgo } from "@/lib/format";
@@ -121,31 +114,12 @@ export default function MatchesScreen() {
       >
         <View style={styles.headerRow}>
           <View style={styles.headerTitle}>
-            <H1>HeyTelli</H1>
+            <H1>Today</H1>
             <Body muted style={{ marginTop: 2 }}>
-              Your private dating bestie · {counts.active} active
+              HeyTelli · {counts.active} active
             </Body>
           </View>
           <View style={styles.headerActions}>
-            <Link href="/trust" asChild>
-              <Pressable
-                onPress={() => Haptics.selectionAsync().catch(() => {})}
-                style={({ pressed }) => ({
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.7 : 1,
-                })}
-                accessibilityLabel="Trust Center"
-              >
-                <Feather name="shield" size={20} color={c.foreground} />
-              </Pressable>
-            </Link>
             <Link href="/settings" asChild>
               <Pressable
                 onPress={() => Haptics.selectionAsync().catch(() => {})}
@@ -160,63 +134,41 @@ export default function MatchesScreen() {
                   justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                 })}
-                accessibilityLabel="My HeyTelli"
+                accessibilityLabel="My HeyTelli settings"
               >
                 <Feather name="settings" size={20} color={c.foreground} />
-              </Pressable>
-            </Link>
-            <Link href="/chat" asChild>
-              <Pressable
-                onPress={() => Haptics.selectionAsync().catch(() => {})}
-                style={({ pressed }) => ({
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.border,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.7 : 1,
-                })}
-                accessibilityLabel="HeyTelli chat"
-              >
-                <Feather name="message-circle" size={20} color={c.foreground} />
               </Pressable>
             </Link>
           </View>
         </View>
 
-        <Link href="/add" asChild>
-          <Pressable
-            onPress={() => Haptics.selectionAsync().catch(() => {})}
-            style={({ pressed }) => [
-              styles.primaryAddProfileButton,
-              {
-                backgroundColor: c.primary,
-                opacity: pressed ? 0.78 : 1,
-                shadowColor: "#000",
-                shadowOpacity: 0.16,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 5 },
-                elevation: 4,
-              },
-            ]}
-            accessibilityRole="button"
+        <View style={styles.todayActionRail}>
+          <TodayActionLink
+            href="/add"
+            icon="plus"
+            label="Add"
             accessibilityLabel="Add profile"
-          >
-            <Feather name="plus" size={18} color={c.primaryForeground} />
-            <Text
-              style={{
-                color: c.primaryForeground,
-                fontSize: 15,
-                fontWeight: "700",
-              }}
-            >
-              Add profile
-            </Text>
-          </Pressable>
-        </Link>
+            emphasized
+          />
+          <TodayActionLink
+            href="/add"
+            icon="upload-cloud"
+            label="Import"
+            accessibilityLabel="Import screenshots"
+          />
+          <TodayActionLink
+            href="/chat"
+            icon="message-circle"
+            label="Chat"
+            accessibilityLabel="HeyTelli chat"
+          />
+          <TodayActionLink
+            href="/trust"
+            icon="shield"
+            label="Privacy"
+            accessibilityLabel="Trust Center"
+          />
+        </View>
 
         {/* Filter chips */}
         <ScrollView
@@ -623,32 +575,32 @@ function ShareSheetOnboardingCard() {
       style={{
         marginHorizontal: 20,
         marginBottom: 12,
-        backgroundColor: c.foreground,
+        backgroundColor: c.card,
         borderWidth: 1,
-        borderColor: c.foreground,
-        borderRadius: c.radius,
-        padding: 16,
-        gap: 13,
+        borderColor: c.border,
+        borderRadius: 16,
+        padding: 14,
+        gap: 11,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View
           style={{
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: "rgba(255,255,255,0.14)",
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: c.muted,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Feather name="upload-cloud" size={20} color={c.background} />
+          <Feather name="upload-cloud" size={18} color={c.foreground} />
         </View>
         <View style={{ flex: 1, gap: 3 }}>
           <Text
             style={{
-              color: c.background,
-              fontSize: 18,
+              color: c.foreground,
+              fontSize: 15,
               fontWeight: "700",
             }}
           >
@@ -656,8 +608,7 @@ function ShareSheetOnboardingCard() {
           </Text>
           <Text
             style={{
-              color: c.background,
-              opacity: 0.78,
+              color: c.mutedForeground,
               fontSize: 12,
               lineHeight: 17,
             }}
@@ -678,20 +629,19 @@ function ShareSheetOnboardingCard() {
               paddingHorizontal: 9,
               paddingVertical: 5,
               borderRadius: 999,
-              backgroundColor: "rgba(255,255,255,0.12)",
+              backgroundColor: c.muted,
             }}
           >
             <Text
               style={{
-                color: c.background,
-                opacity: 0.72,
+                color: c.mutedForeground,
                 fontSize: 11,
                 fontWeight: "700",
               }}
             >
               {index + 1}
             </Text>
-            <Text style={{ color: c.background, fontSize: 12 }}>{step}</Text>
+            <Text style={{ color: c.foreground, fontSize: 12 }}>{step}</Text>
           </View>
         ))}
       </View>
@@ -702,9 +652,9 @@ function ShareSheetOnboardingCard() {
             accessibilityLabel="Import screenshots"
             style={({ pressed }) => ({
               flex: 1,
-              minHeight: 42,
+              minHeight: 44,
               borderRadius: 12,
-              backgroundColor: c.background,
+              backgroundColor: c.foreground,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
@@ -712,10 +662,10 @@ function ShareSheetOnboardingCard() {
               opacity: pressed ? 0.78 : 1,
             })}
           >
-            <Feather name="plus" size={16} color={c.foreground} />
+            <Feather name="plus" size={16} color={c.background} />
             <Text
               style={{
-                color: c.foreground,
+                color: c.background,
                 fontSize: 13,
                 fontWeight: "700",
               }}
@@ -729,11 +679,11 @@ function ShareSheetOnboardingCard() {
             accessibilityRole="button"
             accessibilityLabel="Open Trust Center"
             style={({ pressed }) => ({
-              minHeight: 42,
+              minHeight: 44,
               paddingHorizontal: 12,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.22)",
+              borderColor: c.border,
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
@@ -741,10 +691,10 @@ function ShareSheetOnboardingCard() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Feather name="lock" size={14} color={c.background} />
+            <Feather name="lock" size={14} color={c.foreground} />
             <Text
               style={{
-                color: c.background,
+                color: c.foreground,
                 fontSize: 12,
                 fontWeight: "600",
               }}
@@ -755,6 +705,55 @@ function ShareSheetOnboardingCard() {
         </Link>
       </View>
     </View>
+  );
+}
+
+function TodayActionLink({
+  href,
+  icon,
+  label,
+  accessibilityLabel,
+  emphasized = false,
+}: {
+  href: Href;
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  accessibilityLabel: string;
+  emphasized?: boolean;
+}) {
+  const c = useColors();
+  return (
+    <Link href={href} asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPress={() => Haptics.selectionAsync().catch(() => {})}
+        style={({ pressed }) => [
+          styles.todayActionButton,
+          {
+            backgroundColor: emphasized ? c.foreground : c.card,
+            borderColor: emphasized ? c.foreground : c.border,
+            opacity: pressed ? 0.72 : 1,
+          },
+        ]}
+      >
+        <Feather
+          name={icon}
+          size={15}
+          color={emphasized ? c.background : c.foreground}
+        />
+        <Text
+          style={{
+            color: emphasized ? c.background : c.foreground,
+            fontSize: 12,
+            fontWeight: "700",
+          }}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Link>
   );
 }
 
@@ -790,9 +789,9 @@ function MatchRow({
       style={({ pressed }) => ({
         backgroundColor: c.card,
         borderWidth: 1,
-        borderColor: isStale ? c.warning : actionColors.border,
-        borderRadius: c.radius,
-        padding: 14,
+        borderColor: isStale ? c.warning + "66" : c.border,
+        borderRadius: 16,
+        padding: 12,
         flexDirection: "row",
         gap: 12,
         opacity: pressed ? 0.85 : 1,
@@ -895,7 +894,17 @@ function MatchRow({
           >
             {model.name}
           </Text>
-          <DashboardPill label={model.status.label} tone={model.status.tone} />
+          <Text
+            style={{
+              color: toneColors(model.status.tone, c).fg,
+              fontSize: 11,
+              fontWeight: "700",
+              flexShrink: 0,
+            }}
+            numberOfLines={1}
+          >
+            {model.status.label}
+          </Text>
         </View>
         <Text
           style={{
@@ -918,39 +927,37 @@ function MatchRow({
             marginTop: 4,
           }}
         >
-          <DashboardPill label={model.signal.label} tone={model.signal.tone} />
           <View
             style={{
               flex: 1,
               minWidth: 0,
-              borderRadius: 999,
-              backgroundColor: actionColors.bg,
-              borderWidth: 1,
-              borderColor: actionColors.border,
-              paddingHorizontal: 9,
-              paddingVertical: 4,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
             }}
           >
+            <Feather name="arrow-right" size={13} color={actionColors.fg} />
             <Text
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 color: actionColors.fg,
-                fontWeight: "600",
+                fontWeight: "700",
+                flex: 1,
               }}
               numberOfLines={1}
             >
               {model.primaryAction.label}
             </Text>
           </View>
+          <DashboardPill label={model.signal.label} tone={model.signal.tone} />
         </View>
         <View
           style={{
-            backgroundColor: c.muted,
-            borderRadius: 8,
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-            gap: 5,
-            marginTop: 3,
+            borderTopWidth: 1,
+            borderTopColor: c.border,
+            paddingTop: 8,
+            gap: 4,
+            marginTop: 5,
           }}
         >
           <View
@@ -967,6 +974,7 @@ function MatchRow({
                 color: c.mutedForeground,
                 fontWeight: "600",
                 textTransform: "uppercase",
+                letterSpacing: 0,
               }}
               numberOfLines={1}
             >
@@ -994,7 +1002,7 @@ function MatchRow({
             flexDirection: "row",
             flexWrap: "wrap",
             gap: 6,
-            marginTop: 5,
+            marginTop: 3,
           }}
         >
           {model.contextChips.map((chip) => (
@@ -1108,14 +1116,20 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     gap: 8,
   },
-  primaryAddProfileButton: {
-    alignSelf: "stretch",
-    minHeight: 48,
-    borderRadius: 16,
+  todayActionRail: {
+    flexDirection: "row",
+    gap: 8,
     marginTop: 14,
+  },
+  todayActionButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 8,
   },
 });

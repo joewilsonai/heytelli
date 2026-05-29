@@ -32,6 +32,6 @@ test("falls back to curated changelog when build metadata is absent or malformed
     EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS: "not json",
   });
 
-  assert.equal(entry.title, "Screenshot analysis refresh");
-  assert.match(entry.highlights.join("\n"), /Pattern Radar clears stale/);
+  assert.equal(entry.title, "Simpler navigation redesign");
+  assert.match(entry.highlights.join("\n"), /sectioned hub/);
 });

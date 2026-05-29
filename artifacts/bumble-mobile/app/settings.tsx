@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { Stack } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -52,6 +52,40 @@ import {
   type TrustedCirclePerson,
 } from "@/lib/user-settings";
 
+type SettingsSectionId = "essentials" | "profile" | "safety" | "app";
+
+const SETTINGS_SECTIONS: {
+  id: SettingsSectionId;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Feather.glyphMap;
+}[] = [
+  {
+    id: "essentials",
+    title: "Essentials",
+    subtitle: "Appearance",
+    icon: "sliders",
+  },
+  {
+    id: "profile",
+    title: "Profile",
+    subtitle: "Review and screenshots",
+    icon: "user-check",
+  },
+  {
+    id: "safety",
+    title: "Safety",
+    subtitle: "Circle and date defaults",
+    icon: "shield",
+  },
+  {
+    id: "app",
+    title: "App",
+    subtitle: "Feedback and changelog",
+    icon: "info",
+  },
+];
+
 const COLOR_SCHEME_ICONS: Record<
   AppColorSchemePreference,
   keyof typeof Feather.glyphMap
@@ -64,6 +98,13 @@ const COLOR_SCHEME_ICONS: Record<
 export default function SettingsScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionOffsets = useRef<Record<SettingsSectionId, number>>({
+    essentials: 0,
+    profile: 0,
+    safety: 0,
+    app: 0,
+  });
   const { settings, setSettings, loading } = useUserSettings();
   const [draft, setDraft] = useState<HeyTelliSettings>(settings);
   const [draftDirty, setDraftDirty] = useState(false);
@@ -130,6 +171,14 @@ export default function SettingsScreen() {
         updatedAt: new Date().toISOString(),
       },
     }));
+  };
+
+  const jumpToSection = (sectionId: SettingsSectionId) => {
+    Haptics.selectionAsync().catch(() => {});
+    scrollRef.current?.scrollTo({
+      y: Math.max(sectionOffsets.current[sectionId] - 12, 0),
+      animated: true,
+    });
   };
 
   const updateDateDefaults = (
@@ -392,6 +441,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={{ flex: 1, backgroundColor: c.background }}
       contentContainerStyle={{
         paddingTop: insets.top + 48,
@@ -417,271 +467,405 @@ export default function SettingsScreen() {
         ))}
       </View>
 
-      <Card>
-        <SectionLabel>Appearance</SectionLabel>
-        <H2 style={{ fontSize: 18 }}>Light mode</H2>
-        <Body muted style={{ marginTop: 4 }}>
-          Choose a color mode and palette for the app.
-        </Body>
-        <View style={{ gap: 12, marginTop: 12 }}>
-          <AppearanceModePicker
-            value={draft.appearance.colorScheme}
-            onChange={(colorScheme) => updateAppearance({ colorScheme })}
-          />
-          <ColorThemePicker
-            value={draft.appearance.colorTheme}
-            onChange={(colorTheme) => updateAppearance({ colorTheme })}
-          />
-        </View>
-      </Card>
+      <SectionJumpGrid sections={SETTINGS_SECTIONS} onPress={jumpToSection} />
 
-      <Card>
-        <SectionLabel>My Dating Profile</SectionLabel>
-        <H2 style={{ fontSize: 18 }}>Profile Review</H2>
-        <Body muted style={{ marginTop: 4 }}>
-          Upload or paste your profile so HeyTelli can help spot privacy leaks,
-          clarity gaps, and the kind of matches it may attract.
-        </Body>
-        <View style={{ gap: 10, marginTop: 12 }}>
-          <Input
-            placeholder="What are you looking for?"
-            value={draft.datingProfile.lookingFor}
-            onChangeText={(lookingFor) => updateProfile({ lookingFor })}
-          />
-          <Input
-            placeholder="Paste your profile prompts or bio"
-            value={draft.datingProfile.profileText}
-            onChangeText={(profileText) => updateProfile({ profileText })}
-            multiline
-          />
-          <Input
-            placeholder="Boundaries or non-negotiables"
-            value={draft.datingProfile.boundaries}
-            onChangeText={(boundaries) => updateProfile({ boundaries })}
-            multiline
-          />
-          <Input
-            placeholder="Photo notes, e.g. badge, neighborhood, gym"
-            value={draft.datingProfile.photoNotes}
-            onChangeText={(photoNotes) => updateProfile({ photoNotes })}
-            multiline
-          />
-          <Button
-            label={
-              draft.datingProfile.profileScreenshotUris.length
-                ? `${draft.datingProfile.profileScreenshotUris.length}/${MAX_PROFILE_SCREENSHOTS} profile screenshots selected`
-                : "Upload profile screenshots"
-            }
-            icon="image"
-            variant="secondary"
-            onPress={pickProfileScreenshots}
-          />
-          {draft.datingProfile.profileScreenshotUris.length > 0 ? (
-            <Button
-              label="Clear screenshots"
-              icon="trash-2"
-              variant="ghost"
-              onPress={clearProfileScreenshots}
-            />
-          ) : null}
-          <Button
-            label="Analyze Profile"
-            icon="zap"
-            onPress={analyzeProfile}
-            loading={analyzingProfile}
-            disabled={
-              analyzingProfile ||
-              draft.datingProfile.profileScreenshotUris.length === 0
-            }
-          />
-        </View>
-        <ReviewBlock
-          title="Strengths"
-          items={review.strengths}
-          tone="success"
-        />
-        <ReviewBlock
-          title="Privacy to tighten"
-          items={review.privacyWarnings}
-          tone="warning"
-        />
-        <ReviewBlock
-          title="Clarity to tighten"
-          items={review.clarityWarnings}
-          tone="warning"
-        />
-      </Card>
-
-      <Card>
-        <SectionLabel>Trusted Circle</SectionLabel>
-        <Body muted>
-          HeyTelli stores up to 3 first names locally for Date Cards. Contact
-          access is only used when you tap Add from Contacts.
-        </Body>
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-          <Button
-            label="Add from Contacts"
-            icon="user-plus"
-            onPress={addFromContacts}
-            disabled={draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE}
-            variant="secondary"
-            style={{ flex: 1 }}
-          />
-        </View>
-        <View style={{ gap: 8, marginTop: 12 }}>
-          <Input
-            placeholder="First name or label"
-            value={manualName}
-            onChangeText={setManualName}
-          />
-          <Input
-            placeholder="Relationship, e.g. sister, roommate"
-            value={manualRelationship}
-            onChangeText={setManualRelationship}
-          />
-          <Button
-            label="Add manually"
-            icon="plus"
-            variant="ghost"
-            onPress={addManualPerson}
-            disabled={draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE}
-          />
-        </View>
-        <View style={{ gap: 8, marginTop: 12 }}>
-          <Body muted style={{ fontSize: 12 }}>
-            {draft.trustedCircle.length}/{MAX_TRUSTED_CIRCLE_PEOPLE} circle
-            people
+      <SettingsSection
+        title="Essentials"
+        subtitle="Start with the everyday controls."
+        onLayout={(y) => {
+          sectionOffsets.current.essentials = y;
+        }}
+      >
+        <Card>
+          <SectionLabel>Appearance</SectionLabel>
+          <H2 style={{ fontSize: 18 }}>Light mode</H2>
+          <Body muted style={{ marginTop: 4 }}>
+            Choose a color mode and palette for the app.
           </Body>
-          {draft.trustedCircle.length === 0 ? (
-            <Body muted>No circle people yet.</Body>
-          ) : (
-            draft.trustedCircle.map((person) => (
-              <CirclePersonRow
-                key={person.id}
-                person={person}
-                selected={
-                  draft.dateSafetyDefaults.primaryCirclePersonId === person.id
-                }
-                onSelect={() =>
-                  updateDateDefaults({ primaryCirclePersonId: person.id })
-                }
-                onRelationshipChange={(relationship) =>
-                  updateCirclePerson(person.id, { relationship })
-                }
-                onLabelPreferenceChange={(cardLabelPreference) =>
-                  updateCirclePerson(person.id, { cardLabelPreference })
-                }
-                onRemove={() => removePerson(person.id)}
+          <View style={{ gap: 12, marginTop: 12 }}>
+            <AppearanceModePicker
+              value={draft.appearance.colorScheme}
+              onChange={(colorScheme) => updateAppearance({ colorScheme })}
+            />
+            <ColorThemePicker
+              value={draft.appearance.colorTheme}
+              onChange={(colorTheme) => updateAppearance({ colorTheme })}
+            />
+          </View>
+        </Card>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Profile"
+        subtitle="Review your profile and keep screenshots local."
+        onLayout={(y) => {
+          sectionOffsets.current.profile = y;
+        }}
+      >
+        <Card>
+          <SectionLabel>My Dating Profile</SectionLabel>
+          <H2 style={{ fontSize: 18 }}>Profile Review</H2>
+          <Body muted style={{ marginTop: 4 }}>
+            Upload or paste your profile so HeyTelli can help spot privacy
+            leaks, clarity gaps, and the kind of matches it may attract.
+          </Body>
+          <View style={{ gap: 10, marginTop: 12 }}>
+            <Input
+              placeholder="What are you looking for?"
+              value={draft.datingProfile.lookingFor}
+              onChangeText={(lookingFor) => updateProfile({ lookingFor })}
+            />
+            <Input
+              placeholder="Paste your profile prompts or bio"
+              value={draft.datingProfile.profileText}
+              onChangeText={(profileText) => updateProfile({ profileText })}
+              multiline
+            />
+            <Input
+              placeholder="Boundaries or non-negotiables"
+              value={draft.datingProfile.boundaries}
+              onChangeText={(boundaries) => updateProfile({ boundaries })}
+              multiline
+            />
+            <Input
+              placeholder="Photo notes, e.g. badge, neighborhood, gym"
+              value={draft.datingProfile.photoNotes}
+              onChangeText={(photoNotes) => updateProfile({ photoNotes })}
+              multiline
+            />
+            <Button
+              label={
+                draft.datingProfile.profileScreenshotUris.length
+                  ? `${draft.datingProfile.profileScreenshotUris.length}/${MAX_PROFILE_SCREENSHOTS} profile screenshots selected`
+                  : "Upload profile screenshots"
+              }
+              icon="image"
+              variant="secondary"
+              onPress={pickProfileScreenshots}
+            />
+            {draft.datingProfile.profileScreenshotUris.length > 0 ? (
+              <Button
+                label="Clear screenshots"
+                icon="trash-2"
+                variant="ghost"
+                onPress={clearProfileScreenshots}
               />
-            ))
-          )}
-        </View>
-      </Card>
+            ) : null}
+            <Button
+              label="Analyze Profile"
+              icon="zap"
+              onPress={analyzeProfile}
+              loading={analyzingProfile}
+              disabled={
+                analyzingProfile ||
+                draft.datingProfile.profileScreenshotUris.length === 0
+              }
+            />
+          </View>
+          <ReviewBlock
+            title="Strengths"
+            items={review.strengths}
+            tone="success"
+          />
+          <ReviewBlock
+            title="Privacy to tighten"
+            items={review.privacyWarnings}
+            tone="warning"
+          />
+          <ReviewBlock
+            title="Clarity to tighten"
+            items={review.clarityWarnings}
+            tone="warning"
+          />
+        </Card>
+      </SettingsSection>
 
-      <Card>
-        <SectionLabel>Date Safety Defaults</SectionLabel>
-        <Body muted>
-          These prefill every new Date Card. You can still edit each date before
-          sharing.
-        </Body>
-        <View style={{ gap: 10, marginTop: 12 }}>
-          <Input
-            placeholder="Default transport / exit plan"
-            value={draft.dateSafetyDefaults.transportPlan}
-            onChangeText={(transportPlan) =>
-              updateDateDefaults({ transportPlan })
-            }
-          />
-          <Input
-            placeholder="Code word (optional)"
-            value={draft.dateSafetyDefaults.codeWord}
-            onChangeText={(codeWord) => updateDateDefaults({ codeWord })}
-          />
-          <Input
-            placeholder="Default circle note (optional)"
-            value={draft.dateSafetyDefaults.circleNote}
-            onChangeText={(circleNote) => updateDateDefaults({ circleNote })}
-            multiline
-          />
-          <Input
-            keyboardType="number-pad"
-            placeholder="Check-in minutes after start"
-            value={String(draft.dateSafetyDefaults.checkInOffsetMinutes)}
-            onChangeText={(value) =>
-              updateDateDefaults({
-                checkInOffsetMinutes: clampMinutes(value, 15, 240),
-              })
-            }
-          />
-          <Input
-            keyboardType="number-pad"
-            placeholder="Expected end minutes after start"
-            value={String(draft.dateSafetyDefaults.expectedEndOffsetMinutes)}
-            onChangeText={(value) =>
-              updateDateDefaults({
-                expectedEndOffsetMinutes: clampMinutes(value, 60, 720),
-              })
-            }
-          />
-          <SwitchRow
-            label="Date-only location intent"
-            body="Date Cards say location is date-only if you turn it on."
-            value={draft.dateSafetyDefaults.shareLiveLocation}
-            onValueChange={(shareLiveLocation) =>
-              updateDateDefaults({ shareLiveLocation })
-            }
-          />
-        </View>
-      </Card>
+      <SettingsSection
+        title="Safety"
+        subtitle="Trusted circle and defaults for new Date Cards."
+        onLayout={(y) => {
+          sectionOffsets.current.safety = y;
+        }}
+      >
+        <Card>
+          <SectionLabel>Trusted Circle</SectionLabel>
+          <Body muted>
+            HeyTelli stores up to 3 first names locally for Date Cards. Contact
+            access is only used when you tap Add from Contacts.
+          </Body>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+            <Button
+              label="Add from Contacts"
+              icon="user-plus"
+              onPress={addFromContacts}
+              disabled={draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE}
+              variant="secondary"
+              style={{ flex: 1 }}
+            />
+          </View>
+          <View style={{ gap: 8, marginTop: 12 }}>
+            <Input
+              placeholder="First name or label"
+              value={manualName}
+              onChangeText={setManualName}
+            />
+            <Input
+              placeholder="Relationship, e.g. sister, roommate"
+              value={manualRelationship}
+              onChangeText={setManualRelationship}
+            />
+            <Button
+              label="Add manually"
+              icon="plus"
+              variant="ghost"
+              onPress={addManualPerson}
+              disabled={draft.trustedCircle.length >= MAX_TRUSTED_CIRCLE_PEOPLE}
+            />
+          </View>
+          <View style={{ gap: 8, marginTop: 12 }}>
+            <Body muted style={{ fontSize: 12 }}>
+              {draft.trustedCircle.length}/{MAX_TRUSTED_CIRCLE_PEOPLE} circle
+              people
+            </Body>
+            {draft.trustedCircle.length === 0 ? (
+              <Body muted>No circle people yet.</Body>
+            ) : (
+              draft.trustedCircle.map((person) => (
+                <CirclePersonRow
+                  key={person.id}
+                  person={person}
+                  selected={
+                    draft.dateSafetyDefaults.primaryCirclePersonId === person.id
+                  }
+                  onSelect={() =>
+                    updateDateDefaults({ primaryCirclePersonId: person.id })
+                  }
+                  onRelationshipChange={(relationship) =>
+                    updateCirclePerson(person.id, { relationship })
+                  }
+                  onLabelPreferenceChange={(cardLabelPreference) =>
+                    updateCirclePerson(person.id, { cardLabelPreference })
+                  }
+                  onRemove={() => removePerson(person.id)}
+                />
+              ))
+            )}
+          </View>
+        </Card>
 
-      <Card>
-        <SectionLabel>Beta feedback</SectionLabel>
-        <H2 style={{ fontSize: 18 }}>Help shape HeyTelli</H2>
-        <Body muted style={{ marginTop: 4 }}>
-          Send a note about what felt wrong, missing, or surprisingly helpful.
-        </Body>
+        <Card>
+          <SectionLabel>Date Safety Defaults</SectionLabel>
+          <Body muted>
+            These prefill every new Date Card. You can still edit each date
+            before sharing.
+          </Body>
+          <View style={{ gap: 10, marginTop: 12 }}>
+            <Input
+              placeholder="Default transport / exit plan"
+              value={draft.dateSafetyDefaults.transportPlan}
+              onChangeText={(transportPlan) =>
+                updateDateDefaults({ transportPlan })
+              }
+            />
+            <Input
+              placeholder="Code word (optional)"
+              value={draft.dateSafetyDefaults.codeWord}
+              onChangeText={(codeWord) => updateDateDefaults({ codeWord })}
+            />
+            <Input
+              placeholder="Default circle note (optional)"
+              value={draft.dateSafetyDefaults.circleNote}
+              onChangeText={(circleNote) => updateDateDefaults({ circleNote })}
+              multiline
+            />
+            <Input
+              keyboardType="number-pad"
+              placeholder="Check-in minutes after start"
+              value={String(draft.dateSafetyDefaults.checkInOffsetMinutes)}
+              onChangeText={(value) =>
+                updateDateDefaults({
+                  checkInOffsetMinutes: clampMinutes(value, 15, 240),
+                })
+              }
+            />
+            <Input
+              keyboardType="number-pad"
+              placeholder="Expected end minutes after start"
+              value={String(draft.dateSafetyDefaults.expectedEndOffsetMinutes)}
+              onChangeText={(value) =>
+                updateDateDefaults({
+                  expectedEndOffsetMinutes: clampMinutes(value, 60, 720),
+                })
+              }
+            />
+            <SwitchRow
+              label="Date-only location intent"
+              body="Date Cards say location is date-only if you turn it on."
+              value={draft.dateSafetyDefaults.shareLiveLocation}
+              onValueChange={(shareLiveLocation) =>
+                updateDateDefaults({ shareLiveLocation })
+              }
+            />
+          </View>
+        </Card>
+      </SettingsSection>
+
+      <SettingsSection
+        title="App"
+        subtitle="Feedback, build notes, and saving changes."
+        onLayout={(y) => {
+          sectionOffsets.current.app = y;
+        }}
+      >
+        <Card>
+          <SectionLabel>Beta feedback</SectionLabel>
+          <H2 style={{ fontSize: 18 }}>Help shape HeyTelli</H2>
+          <Body muted style={{ marginTop: 4 }}>
+            Send a note about what felt wrong, missing, or surprisingly helpful.
+          </Body>
+          <Button
+            label="Send feedback"
+            icon="send"
+            variant="secondary"
+            onPress={() => setFeedbackOpen(true)}
+            style={{ marginTop: 12 }}
+          />
+        </Card>
+
+        <Card>
+          <SectionLabel>Build changelog</SectionLabel>
+          <H2 style={{ fontSize: 18 }}>{latestChangelog.title}</H2>
+          <Body muted style={{ marginTop: 4 }}>
+            {buildVersionLabel} · {latestChangelog.date}
+          </Body>
+          <View style={{ gap: 8, marginTop: 12 }}>
+            {latestChangelog.highlights.map((highlight) => (
+              <View
+                key={highlight}
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  alignItems: "flex-start",
+                }}
+              >
+                <Feather name="check-circle" size={15} color={c.primary} />
+                <Text style={{ flex: 1, color: c.foreground, fontSize: 13 }}>
+                  {highlight}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+
         <Button
-          label="Send feedback"
-          icon="send"
-          variant="secondary"
-          onPress={() => setFeedbackOpen(true)}
-          style={{ marginTop: 12 }}
+          label={loading ? "Loading" : "Save Settings"}
+          icon="save"
+          onPress={save}
+          loading={saving || loading}
         />
-      </Card>
-
-      <Card>
-        <SectionLabel>Build changelog</SectionLabel>
-        <H2 style={{ fontSize: 18 }}>{latestChangelog.title}</H2>
-        <Body muted style={{ marginTop: 4 }}>
-          {buildVersionLabel} · {latestChangelog.date}
-        </Body>
-        <View style={{ gap: 8, marginTop: 12 }}>
-          {latestChangelog.highlights.map((highlight) => (
-            <View
-              key={highlight}
-              style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}
-            >
-              <Feather name="check-circle" size={15} color={c.primary} />
-              <Text style={{ flex: 1, color: c.foreground, fontSize: 13 }}>
-                {highlight}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </Card>
-
-      <Button
-        label={loading ? "Loading" : "Save Settings"}
-        icon="save"
-        onPress={save}
-        loading={saving || loading}
-      />
+      </SettingsSection>
       <FeedbackSheet
         visible={feedbackOpen}
         surface="settings"
         onClose={() => setFeedbackOpen(false)}
       />
     </ScrollView>
+  );
+}
+
+function SectionJumpGrid({
+  sections,
+  onPress,
+}: {
+  sections: typeof SETTINGS_SECTIONS;
+  onPress: (sectionId: SettingsSectionId) => void;
+}) {
+  const c = useColors();
+  return (
+    <View
+      accessibilityLabel="Settings sections"
+      style={{
+        borderWidth: 1,
+        borderColor: c.border,
+        borderRadius: 14,
+        backgroundColor: c.card,
+        overflow: "hidden",
+      }}
+    >
+      {sections.map((section, index) => (
+        <Pressable
+          key={section.id}
+          accessibilityRole="button"
+          accessibilityLabel={`Jump to ${section.title}`}
+          onPress={() => onPress(section.id)}
+          style={({ pressed }) => ({
+            minHeight: 56,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderTopWidth: index === 0 ? 0 : 1,
+            borderTopColor: c.border,
+            opacity: pressed ? 0.72 : 1,
+          })}
+        >
+          <View
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              backgroundColor: c.secondary,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name={section.icon} size={15} color={c.primary} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text
+              style={{ color: c.foreground, fontSize: 15, fontWeight: "700" }}
+            >
+              {section.title}
+            </Text>
+            <Text style={{ color: c.mutedForeground, fontSize: 12 }}>
+              {section.subtitle}
+            </Text>
+          </View>
+          <Feather name="chevron-down" size={17} color={c.mutedForeground} />
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function SettingsSection({
+  title,
+  subtitle,
+  onLayout,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  onLayout: (y: number) => void;
+  children: React.ReactNode;
+}) {
+  const c = useColors();
+  return (
+    <View
+      onLayout={(event) => onLayout(event.nativeEvent.layout.y)}
+      style={{ gap: 10 }}
+    >
+      <View style={{ gap: 2, paddingTop: 8 }}>
+        <Text style={{ color: c.foreground, fontSize: 20, fontWeight: "800" }}>
+          {title}
+        </Text>
+        <Text style={{ color: c.mutedForeground, fontSize: 13 }}>
+          {subtitle}
+        </Text>
+      </View>
+      <View style={{ gap: 14 }}>{children}</View>
+    </View>
   );
 }
 
