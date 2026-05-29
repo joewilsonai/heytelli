@@ -10,15 +10,28 @@ function read(relativePath: string): string {
   );
 }
 
-test("home header keeps add-match button prominent and unclipped", () => {
+test("home header keeps utility actions unclipped", () => {
   const screen = read("../app/index.tsx");
 
-  assert.match(screen, /accessibilityLabel="Add match"/);
   assert.match(screen, /style=\{styles\.headerActions\}/);
   assert.match(screen, /headerActions:\s*\{[\s\S]*flexShrink:\s*0/);
-  assert.match(screen, /height:\s*52/);
-  assert.match(screen, /width:\s*52/);
-  assert.match(screen, /borderWidth:\s*2/);
-  assert.match(screen, /borderColor:\s*c\.background/);
-  assert.match(screen, /<Feather name="plus" size=\{24\}/);
+  assert.match(screen, /accessibilityLabel="Trust Center"/);
+  assert.match(screen, /accessibilityLabel="My HeyTelli"/);
+  assert.match(screen, /accessibilityLabel="HeyTelli chat"/);
+});
+
+test("home screen exposes a visible labeled add-profile action", () => {
+  const screen = read("../app/index.tsx");
+
+  assert.match(screen, /accessibilityLabel="Add profile"/);
+  assert.match(screen, />\s*Add profile\s*</);
+  assert.match(screen, /styles\.primaryAddProfileButton/);
+  assert.match(
+    screen,
+    /primaryAddProfileButton:\s*\{[\s\S]*alignSelf:\s*"stretch"/,
+  );
+  assert.match(
+    screen,
+    /primaryAddProfileButton:\s*\{[\s\S]*minHeight:\s*48/,
+  );
 });
