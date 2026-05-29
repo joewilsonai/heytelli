@@ -13,12 +13,12 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(dateCardsRouter);
 router.use(matchesRouter);
 router.use(storageRouter);
 router.use(chatRouter);
 router.use(feedbackRouter);
 router.use(improvementRouter);
 router.use(settingsRouter);
-router.use(dateCardsRouter);
 
 export default router;

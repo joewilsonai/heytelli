@@ -16,6 +16,11 @@ test("date card routes expose private recipient links without requiring recipien
     /router\.post\(\s*"\/date-card-shares\/:shareToken\/confirm"/,
   );
   assert.match(index, /dateCardsRouter/);
+  assert.ok(
+    index.indexOf("router.use(dateCardsRouter)") <
+      index.indexOf("router.use(matchesRouter)"),
+    "date card share routes must be mounted before the match router auth guard",
+  );
   assert.doesNotMatch(routes, /matchId|match_id|screenshots|transcript/);
   assert.match(routes, /hashShareToken/);
 });
