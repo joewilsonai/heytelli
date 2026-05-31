@@ -22,3 +22,21 @@ for (const scriptName of [
     );
   });
 }
+
+test("run-local-swarm-host exports Railway fallback env for every phase", () => {
+  const script = readFileSync(
+    path.join(scriptsRoot, "run-local-swarm-host.sh"),
+    "utf8",
+  );
+
+  assert.match(
+    script,
+    /env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN -u RAILWAY_PROJECT_TOKEN railway variable list --service heytelli-improvement-worker --json/,
+  );
+  assert.match(
+    script,
+    /env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN -u RAILWAY_PROJECT_TOKEN railway variable list --service Postgres --json/,
+  );
+  assert.match(script, /export HEYTELLI_GITHUB_TOKEN/);
+  assert.match(script, /export DATABASE_URL/);
+});
