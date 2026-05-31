@@ -24,8 +24,15 @@ HeyTelli docs over legacy names.
   storage.
 - Distribution: EAS Build and TestFlight. Expo Go is not the beta path because
   the app uses native modules and a share extension.
-- Web: `artifacts/bumble-reply` is an internal/admin companion for operations,
-  QA, support, and API inspection. A consumer web app is not part of the beta.
+- Public landing/signup: `landing/` is the beta waitlist site and should remain
+  the `heytelli-landing` Vercel project. Do not repoint that project at the
+  logged-in web app.
+- User web: `artifacts/heytelli-web` is the fresh consumer browser app for
+  desktop and Android web. It reuses the API auth, uploads, matches, date prep,
+  and chat endpoints without exposing model-provider keys in the browser. Deploy
+  it as a separate app target, for example `app.heytelli.com`.
+- Internal web: `artifacts/bumble-reply` remains an internal/admin companion
+  for operations, QA, support, and API inspection.
 
 ## Product Rules
 
@@ -69,7 +76,9 @@ artifacts/
                        matches, date cards, feedback, and improvement routes.
   bumble-mobile/       Current Expo mobile app scaffold, becoming HeyTelli.
   bumble-reply/        Internal/admin web companion scaffold.
+  heytelli-web/        Consumer Vite/React web app for desktop and Android web.
   mockup-sandbox/      Design sandbox.
+landing/               Public beta signup and founding-member pages.
 lib/
   api-spec/            OpenAPI contract and Orval codegen.
   api-client-react/    Generated React API client.
@@ -120,6 +129,7 @@ Common package-script entry points:
 pnpm --filter @workspace/api-spec run codegen
 PORT=3001 pnpm --filter @workspace/api-server run dev
 PORT=8081 pnpm --filter @workspace/bumble-mobile run dev
+PORT=5174 API_PROXY_TARGET=http://localhost:3001 pnpm --filter @workspace/heytelli-web run dev
 pnpm --filter @workspace/bumble-reply run dev
 ```
 
