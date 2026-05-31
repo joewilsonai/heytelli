@@ -70,7 +70,8 @@ jobs:
 
       - name: Skip EAS build
         if: steps.scope.outputs.should_build != 'true'
-        run: echo "::notice::Skipping EAS iOS build: ${{ steps.scope.outputs.reason }}"
+        run: |
+          echo "::notice::Skipping EAS iOS build: ${{ steps.scope.outputs.reason }}"
 
   build:
     name: Build iOS beta with EAS

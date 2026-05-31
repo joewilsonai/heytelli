@@ -29,5 +29,5 @@ test("push iOS beta workflow skips non-mobile package-only changes before EAS", 
     workflow,
     /if:\s+needs\.detect-ios-build-scope\.outputs\.should_build == 'true'/,
   );
-  assert.match(workflow, /Skip EAS build/);
+  assert.match(workflow, /Skip EAS build[\s\S]*?run:\s+\|/);
 });
