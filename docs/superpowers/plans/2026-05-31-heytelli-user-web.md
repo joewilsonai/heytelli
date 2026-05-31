@@ -21,6 +21,8 @@ Create a fresh, mobile-first HeyTelli web app that can be used from desktop brow
 ## Non-Goals
 
 - Do not migrate or remove `artifacts/bumble-reply`; it remains an internal/admin companion.
+- Do not replace or repoint `landing/`; it remains the public beta signup and
+  founding-member surface.
 - Do not add hosted trusted-circle/friend workspaces.
 - Do not implement a full production deployment pipeline in this pass.
 - Do not store provider keys or direct AI calls in the browser.

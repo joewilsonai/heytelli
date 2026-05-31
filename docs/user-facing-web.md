@@ -4,6 +4,13 @@
 and Android web. It is separate from `artifacts/bumble-reply`, which remains an
 internal/admin companion.
 
+It is also separate from `landing/`, which is the public beta signup surface.
+Keep the existing `heytelli-landing` Vercel project pointed at `landing/` so the
+waitlist/founding-member flows stay intact. The logged-in web app should get its
+own deployment target, such as `app.heytelli.com`, a separate Vercel project, or
+an explicitly scoped `/app` deployment after the landing routes are protected by
+rewrites.
+
 ## What It Supports
 
 - Beta sign-in with the existing email + invite-code API flow.
@@ -19,6 +26,35 @@ internal/admin companion.
 
 The web app does not call model providers directly and does not expose OpenAI,
 Anthropic, OpenRouter, Langfuse, or LiteLLM keys in the client.
+
+## Deployment Boundary
+
+Do not replace the public landing deployment with this app. The current landing
+site contains beta signup flows in `landing/index.html` and the
+founding-member reservation page in `landing/founding-member.html`. Those pages
+use the public waitlist endpoint and should remain available to visitors.
+
+Recommended deployment shape:
+
+```text
+heytelli.com          -> landing/
+www.heytelli.com      -> landing/
+app.heytelli.com      -> artifacts/heytelli-web
+api.heytelli.com      -> artifacts/api-server or Railway API
+```
+
+For Vercel, create a second project for `artifacts/heytelli-web` instead of
+changing the root directory of `heytelli-landing`. Configure:
+
+```text
+Root Directory: artifacts/heytelli-web
+Install Command: pnpm install
+Build Command: pnpm --filter @workspace/heytelli-web run build
+Output Directory: artifacts/heytelli-web/dist/public
+```
+
+Set `VITE_API_BASE_URL` only if the app is not served behind the same origin as
+the API. Do not add model-provider API keys to the Vercel web app environment.
 
 ## Local Development
 
