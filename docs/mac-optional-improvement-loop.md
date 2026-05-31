@@ -174,6 +174,16 @@ HEYTELLI_SWARM_PR_URL=<opened PR URL>
 HEYTELLI_SWARM_WORKTREE=<path to isolated worktree>
 ```
 
+For Joe's local Mac host, use the repo wrapper:
+
+```bash
+HEYTELLI_SWARM_REVIEWER_COMMAND=./scripts/run-swarm-reviewer.sh
+IMPROVEMENT_EXECUTOR_ALLOW_GUARDED_AUTO_MERGE=true
+```
+
+The wrapper runs Codex in read-only review mode, asks for structured JSON, and
+returns a failing exit code when a reviewer marks the PR as blocking.
+
 Reviewer commands run sequentially by default. Use
 `IMPROVEMENT_REVIEWER_PARALLELISM=2` or `--reviewer-parallelism 2` only after
 the reviewer command is stable enough for bounded parallel review.

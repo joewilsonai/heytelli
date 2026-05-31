@@ -245,6 +245,19 @@ HEYTELLI_SWARM_PR_URL=<opened PR URL>
 HEYTELLI_SWARM_WORKTREE=<path to isolated worktree>
 ```
 
+The repo includes a default local reviewer wrapper:
+
+```bash
+HEYTELLI_SWARM_REVIEWER_COMMAND=./scripts/run-swarm-reviewer.sh
+IMPROVEMENT_EXECUTOR_ALLOW_GUARDED_AUTO_MERGE=true
+```
+
+`scripts/run-swarm-reviewer.sh` invokes `codex exec` in read-only sandbox mode,
+requires structured JSON back from each reviewer role, and exits nonzero when a
+reviewer reports a blocking issue. That lets guarded work queue auto-merge only
+after the implementation agent, typecheck, GitHub checks, and reviewer roles
+all pass.
+
 Reviewer agents must not edit, commit, push, merge, or change labels. A failing
 review command blocks the executor and moves the work item to the failure path.
 `guarded_auto_merge` and `extra_agent_review` require both explicit executor
