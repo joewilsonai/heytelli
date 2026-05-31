@@ -27,7 +27,7 @@ test("color scheme preferences normalize and resolve light mode choices", () => 
 test("color themes expose complete light and dark palettes", () => {
   assert.deepEqual(
     COLOR_THEME_OPTIONS.map((option) => option.value),
-    ["heytelli", "rose", "ocean"],
+    ["heytelli", "rose", "ocean", "sage", "plum", "sunset"],
   );
   assert.equal(normalizeColorThemePreference("nope"), "heytelli");
 
@@ -46,6 +46,21 @@ test("color themes expose complete light and dark palettes", () => {
     colorTheme: "ocean",
     systemScheme: "light",
   });
+  const sage = resolveColorPalette({
+    colorScheme: "light",
+    colorTheme: "sage",
+    systemScheme: "dark",
+  });
+  const plumDark = resolveColorPalette({
+    colorScheme: "dark",
+    colorTheme: "plum",
+    systemScheme: "light",
+  });
+  const sunset = resolveColorPalette({
+    colorScheme: "light",
+    colorTheme: "sunset",
+    systemScheme: "dark",
+  });
 
   assert.equal(heytelli.background, "#F2F2F7");
   assert.equal(heytelli.card, "#FFFFFF");
@@ -54,4 +69,17 @@ test("color themes expose complete light and dark palettes", () => {
   assert.equal(oceanDark.background, "#0F1A1B");
   assert.ok(oceanDark.primaryForeground);
   assert.ok(oceanDark.accentForeground);
+  assert.equal(sage.primary, "#4F7D56");
+  assert.equal(plumDark.background, "#1A1321");
+  assert.equal(sunset.accent, "#FFE1C7");
+  assert.equal(
+    new Set([
+      rose.primary,
+      oceanDark.primary,
+      sage.primary,
+      plumDark.primary,
+      sunset.primary,
+    ]).size,
+    5,
+  );
 });
