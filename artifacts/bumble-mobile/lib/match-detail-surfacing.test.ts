@@ -82,7 +82,7 @@ test("Analyze new clears stale local pattern radar state after refetch", async (
   assert.match(card, /\}, \[analysisRefreshKey\]\);/);
 });
 
-test("Pattern radar header uses Analyze new when screenshots are waiting", async () => {
+test("evidence receipts header uses Analyze new when screenshots are waiting", async () => {
   const card = await readFile(
     path.join(root, "artifacts/bumble-mobile/components/RedFlagsCard.tsx"),
     "utf8",
@@ -131,4 +131,59 @@ test("match detail is split into jumpable sections instead of one long feed", as
   assert.match(screen, /selectedSection === "story"/);
   assert.match(screen, /selectedSection === "date"/);
   assert.match(screen, /selectedSection === "talk"/);
+});
+
+test("Calm Read replaces latest read as the primary match detail surface", async () => {
+  const screen = await readFile(
+    path.join(root, "artifacts/bumble-mobile/app/match/[id].tsx"),
+    "utf8",
+  );
+  const calmReadCard = await readFile(
+    path.join(root, "artifacts/bumble-mobile/components/CalmReadCard.tsx"),
+    "utf8",
+  );
+
+  assert.match(screen, /import \{ CalmReadCard \}/);
+  assert.doesNotMatch(screen, /function LatestReadCard/);
+  assert.doesNotMatch(screen, /<LatestReadCard/);
+  assert.doesNotMatch(screen, /function NextStepCard/);
+  assert.doesNotMatch(screen, /<NextStepCard/);
+  assert.match(calmReadCard, /The Calm Read|model\.label/);
+  assert.match(calmReadCard, /Best next move/);
+  assert.match(calmReadCard, /Safety Risk: \{model\.safety\.level\}/);
+});
+
+test("Read tab orders Calm Read before gut checks and evidence receipts", async () => {
+  const screen = await readFile(
+    path.join(root, "artifacts/bumble-mobile/app/match/[id].tsx"),
+    "utf8",
+  );
+  const readSection =
+    screen.match(
+      /selectedSection === "read"[\s\S]*?selectedSection === "story"/,
+    )?.[0] ?? "";
+
+  const calmIndex = readSection.indexOf("<CalmReadCard");
+  const gutCheckIndex = readSection.indexOf("<GutCheckCard");
+  const receiptsIndex = readSection.indexOf("<RedFlagsCard");
+
+  assert.ok(calmIndex >= 0, "Read section should render CalmReadCard");
+  assert.ok(gutCheckIndex > calmIndex, "Gut Check should follow Calm Read");
+  assert.ok(
+    receiptsIndex > gutCheckIndex,
+    "Evidence receipts should follow Gut Check",
+  );
+});
+
+test("evidence receipts language avoids alarm-coded pattern radar framing", async () => {
+  const card = await readFile(
+    path.join(root, "artifacts/bumble-mobile/components/RedFlagsCard.tsx"),
+    "utf8",
+  );
+
+  assert.match(card, /Evidence & receipts/);
+  assert.match(card, /saved observation/);
+  assert.match(card, /ACTIVE RECEIPTS/);
+  assert.doesNotMatch(card, /<SectionLabel>Pattern radar<\/SectionLabel>/);
+  assert.doesNotMatch(card, /Analyze patterns/);
 });

@@ -87,6 +87,8 @@ export function RedFlagsCard({
     initialRedFlags?.redFlags?.length ??
     (summary?.currentCount ?? 0) + (summary?.historicalCount ?? 0);
   const showAlert = promoted && hasHighFlag;
+  const countBadgeBg = showAlert ? c.destructive : c.muted;
+  const countBadgeFg = showAlert ? c.destructiveForeground : c.mutedForeground;
   const currentFlags = data?.currentRedFlags.length
     ? data.currentRedFlags
     : initialRedFlags?.currentRedFlags?.length
@@ -197,11 +199,11 @@ export function RedFlagsCard({
               showAlert ? c.destructive : promoted ? c.primary : c.foreground
             }
           />
-          <SectionLabel>Pattern radar</SectionLabel>
+          <SectionLabel>Evidence & receipts</SectionLabel>
           {flagCount > 0 && (
             <View
               style={{
-                backgroundColor: c.destructive,
+                backgroundColor: countBadgeBg,
                 borderRadius: 999,
                 paddingHorizontal: 7,
                 paddingVertical: 1,
@@ -209,7 +211,7 @@ export function RedFlagsCard({
             >
               <Text
                 style={{
-                  color: c.destructiveForeground,
+                  color: countBadgeFg,
                   fontSize: 10,
                   fontWeight: "700",
                 }}
@@ -246,10 +248,10 @@ export function RedFlagsCard({
       {!data && !open && (
         <Body muted style={{ fontSize: 12, marginTop: 4 }}>
           {flagCount > 0
-            ? `${flagCount} saved pattern${flagCount === 1 ? "" : "s"} on this match.`
+            ? `${flagCount} saved observation${flagCount === 1 ? "" : "s"} on this match.`
             : promoted
-              ? "Scan chat and notes for behavioral patterns before you reply."
-              : "Scan chat, dates, and notes for behavioral patterns."}
+              ? "Review chat and notes for receipts before you reply."
+              : "Review chat, dates, and notes for receipts."}
         </Body>
       )}
       {(data || hasSavedDetails) && open && (
@@ -275,7 +277,7 @@ export function RedFlagsCard({
           ) : null}
           {currentFlags.length > 0 &&
             renderFlagList(
-              data ? "CURRENT PATTERNS" : "SAVED PATTERNS",
+              data ? "ACTIVE RECEIPTS" : "SAVED RECEIPTS",
               currentFlags,
             )}
           {historicalFlags.length > 0 &&
@@ -401,7 +403,7 @@ export function RedFlagsCard({
                   letterSpacing: 0,
                 }}
               >
-                💚 GREEN FLAGS
+                GREEN FLAGS
               </Text>
               {greenFlags.map((f, i) => (
                 <View key={i} style={{ gap: 2 }}>
@@ -436,7 +438,7 @@ export function RedFlagsCard({
                   fontWeight: "500",
                 }}
               >
-                {analysisUpdate ? "Analyze new" : "Analyze patterns"}
+                {analysisUpdate ? "Analyze new" : "Refresh receipts"}
               </Text>
             )}
           </Pressable>

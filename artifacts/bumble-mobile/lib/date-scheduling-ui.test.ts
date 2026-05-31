@@ -18,7 +18,7 @@ test("date scheduling uses native date time picker and explicit brief state", ()
 });
 
 test("match screen walks through safe date planning after a date is entered", () => {
-  assert.match(matchScreen, /NextStepCard/);
+  assert.match(matchScreen, /CalmReadCard/);
   assert.match(matchScreen, /Date Card readiness/);
   assert.match(matchScreen, /Safe date walkthrough/);
   assert.match(matchScreen, /SAFE_DATE_CHECKLIST_ITEMS/);
@@ -63,12 +63,22 @@ test("match screen exposes per-date date mode and clock cover controls", () => {
   assert.match(matchScreen, /Hide as clock/);
 });
 
-test("match hero chip row uses stable keys even if labels repeat", () => {
-  assert.match(matchScreen, /model\.chips\.map\(\(chip, index\)/);
-  assert.match(matchScreen, /key=\{`\$\{chip\}-\$\{index\}`\}/);
+test("calm read receipt chips use stable keys even if labels repeat", () => {
+  const calmReadCard = readFileSync(
+    fileURLToPath(
+      new NodeURL("../components/CalmReadCard.tsx", import.meta.url),
+    ),
+    "utf8",
+  );
+
+  assert.match(calmReadCard, /patternStates\.slice\(0, 3\)\.map/);
+  assert.match(
+    calmReadCard,
+    /key=\{`\$\{pattern\.label\}-\$\{pattern\.state\}-\$\{index\}`\}/,
+  );
 });
 
-test("match screen includes the dating pattern glossary near the radar", () => {
+test("match screen includes the dating pattern glossary near receipts", () => {
   assert.match(matchScreen, /DatingPatternGlossaryCard/);
   assert.match(matchScreen, /compact/);
 });
