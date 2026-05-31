@@ -782,6 +782,19 @@ router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
       match.name,
       normalizeExtractedProfile(match.extractedProfile),
       normalizeTranscript(match.transcript),
+      {
+        tags: match.tags,
+        vibeTags: match.vibeTags,
+        notes: match.notes,
+        dateHistory: normalizeDateHistory(match.dateHistory),
+        nextDateAt: match.nextDateAt,
+        nextDateLocation: match.nextDateLocation,
+        nextDateOutfit: match.nextDateOutfit,
+        dateSafetyPlan: normalizePersistedDateSafetyPlan(
+          match.dateSafetyPlan,
+        ),
+        lastRedFlagRadar: match.lastRedFlagRadar,
+      },
     );
     res.json({ replies });
   } catch (err) {
