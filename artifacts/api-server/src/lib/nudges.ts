@@ -1,5 +1,5 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile, TranscriptTurn } from "@workspace/db";
+import { runModelTask } from "./modelRouter";
 
 const MODEL = "gpt-5.4";
 
@@ -13,6 +13,7 @@ export async function generateStaleNudgeOpeners(
   profile: ExtractedProfile,
   transcript: TranscriptTurn[],
   notes: string,
+  context: { userId?: number; matchId?: number } = {},
 ): Promise<string[]> {
   const recentTurns = transcript.slice(-12);
   const transcriptText = recentTurns
@@ -33,16 +34,26 @@ ${notes || "(none)"}
 
 Generate 3 re-engagement openers in his voice.`;
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
+  const result = await runModelTask({
+    feature: "reply_suggestion",
+    userId: context.userId,
+    matchId: context.matchId,
+    preferredModel: MODEL,
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
-    response_format: { type: "json_object" },
+    responseFormat: { type: "json_object" },
+    metadata: {
+      hoursSinceLastReply: Math.round(hoursSinceLastReply),
+      transcriptTurns: transcript.length,
+      hasNotes: notes.trim().length > 0,
+    },
+    promptVersion: "stale_nudge_openers:v1",
+    responseSchemaVersion: "stale_nudge_openers:v1",
   });
 
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed.openers)) {

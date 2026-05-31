@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { runModelTask } from "./modelRouter";
 
 export type UserProfileAnalysis = {
   profileText: string;
@@ -80,12 +80,15 @@ async function compressForVision(dataUrl: string): Promise<string> {
 
 export async function analyzeUserDatingProfile(
   imageDataUrls: string[],
+  context: { userId?: number } = {},
 ): Promise<UserProfileAnalysis> {
   const capped = imageDataUrls.slice(0, 10);
   const images = await Promise.all(capped.map(compressForVision));
-  const completion = await openai.chat.completions.create({
-    model: "gpt-5.4",
-    max_completion_tokens: 1600,
+  const result = await runModelTask({
+    feature: "ocr_cleanup",
+    userId: context.userId,
+    preferredModel: "gpt-5.4",
+    maxCompletionTokens: 1600,
     messages: [
       { role: "system", content: PROFILE_ANALYSIS_SYSTEM_PROMPT },
       {
@@ -102,10 +105,11 @@ export async function analyzeUserDatingProfile(
         ],
       },
     ],
+    metadata: { imageCount: images.length, surface: "settings_profile" },
+    promptVersion: "user_profile_analysis:v1",
+    responseSchemaVersion: "user_profile_analysis:v1",
   });
 
-  const parsed = parseJsonObject(
-    completion.choices[0]?.message?.content ?? "{}",
-  );
+  const parsed = parseJsonObject(result.content || "{}");
   return normalizeUserProfileAnalysis(parsed);
 }

@@ -1,13 +1,29 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
+import type { AiUsageFeature } from "@workspace/db";
 import { ObjectStorageService } from "./objectStorage";
+import { runAudioTranscriptionTask } from "./modelRouter";
 
 const storage = new ObjectStorageService();
+
+export type AudioTranscriptionContext = {
+  feature?: AiUsageFeature;
+  userId?: number;
+  matchId?: number;
+  conversationId?: number;
+};
 
 /**
  * Download an audio file from object storage and transcribe it via Whisper.
  * Returns plain text.
  */
-export async function transcribeAudioObject(objectPath: string): Promise<string> {
+export function transcribeAudioObject(objectPath: string): Promise<string>;
+export function transcribeAudioObject(
+  objectPath: string,
+  context: AudioTranscriptionContext,
+): Promise<string>;
+export async function transcribeAudioObject(
+  objectPath: string,
+  context: AudioTranscriptionContext = {},
+): Promise<string> {
   const file = await storage.getObjectEntityFile(objectPath);
   const [meta] = await file.getMetadata();
   const [buf] = await file.download();
@@ -29,9 +45,16 @@ export async function transcribeAudioObject(objectPath: string): Promise<string>
   new Uint8Array(ab).set(buf);
   const blob = new Blob([ab], { type: contentType });
   const fileLike = new File([blob], `audio.${ext}`, { type: contentType });
-  const result = await openai.audio.transcriptions.create({
+  return runAudioTranscriptionTask({
+    feature: context.feature ?? "post_date_debrief",
+    userId: context.userId,
+    matchId: context.matchId,
+    conversationId: context.conversationId,
     file: fileLike,
-    model: "gpt-4o-mini-transcribe",
+    metadata: {
+      contentType,
+      byteLength: buf.byteLength,
+      extension: ext,
+    },
   });
-  return (result.text ?? "").trim();
 }

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { analyzeUserDatingProfile } from "../lib/userProfileAnalysis";
-import { requireAuth } from "../lib/auth";
+import { requireAuth, requireUserId } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -26,7 +26,9 @@ router.post("/settings/profile/analyze", async (req, res): Promise<void> => {
   }
 
   try {
-    const analysis = await analyzeUserDatingProfile(images);
+    const analysis = await analyzeUserDatingProfile(images, {
+      userId: requireUserId(req),
+    });
     res.json(analysis);
   } catch (err) {
     req.log.error({ err }, "Profile analysis failed");

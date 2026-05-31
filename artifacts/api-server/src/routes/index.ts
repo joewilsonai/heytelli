@@ -8,6 +8,7 @@ import feedbackRouter from "./feedback";
 import improvementRouter from "./improvement";
 import settingsRouter from "./settings";
 import dateCardsRouter from "./dateCards";
+import aiUsageRouter from "./aiUsage";
 
 const router: IRouter = Router();
 
@@ -19,6 +20,7 @@ router.use(storageRouter);
 router.use(chatRouter);
 router.use(feedbackRouter);
 router.use(improvementRouter);
+router.use(aiUsageRouter);
 router.use(settingsRouter);
 
 export default router;

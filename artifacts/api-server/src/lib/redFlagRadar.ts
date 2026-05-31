@@ -1,4 +1,3 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type {
   ExtractedProfile,
   TranscriptTurn,
@@ -8,6 +7,7 @@ import {
   detectDatingSafetyRedFlags,
   mergeSafetyRedFlags,
 } from "./datingSafetyTaxonomy";
+import { runModelTask } from "./modelRouter";
 
 const MODEL = "gpt-5.4";
 
@@ -43,6 +43,7 @@ export async function analyzeRedFlags(
   transcript: TranscriptTurn[],
   dateHistory: DateHistoryEntry[],
   notes: string,
+  context: { userId?: number; matchId?: number } = {},
 ): Promise<RedFlagRadarResult> {
   const transcriptText = transcript
     .slice(-50)
@@ -65,15 +66,25 @@ ${dateText || "(none)"}
 User notes:
 ${notes || "(none)"}`;
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
+  const result = await runModelTask({
+    feature: "pattern_extraction",
+    userId: context.userId,
+    matchId: context.matchId,
+    preferredModel: MODEL,
+    responseFormat: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
+    metadata: {
+      transcriptTurns: transcript.length,
+      dateHistoryCount: dateHistory.length,
+      hasNotes: notes.trim().length > 0,
+    },
+    promptVersion: "red_flag_radar:v1",
+    responseSchemaVersion: "red_flag_radar:v1",
   });
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   const parsed = JSON.parse(raw);
   const aiRedFlags = Array.isArray(parsed.redFlags)
     ? parsed.redFlags.slice(0, 8)

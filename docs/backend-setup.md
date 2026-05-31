@@ -87,8 +87,14 @@ AI and product safety:
 ```bash
 AI_INTEGRATIONS_OPENAI_BASE_URL=https://api.openai.com/v1
 AI_INTEGRATIONS_OPENAI_API_KEY=<from ~/.luna/secrets/keys.env>
+AI_MODEL_CALLS_DISABLED=false
+AI_MONTHLY_BUDGET_WARNING_USD=250
+AI_USAGE_PRICING_OVERRIDES_JSON='[]'
 PURGE_RAW_SCREENSHOTS_AFTER_EXTRACTION=false
 ```
+
+See `docs/ai-cost-observability.md` for the AI usage ledger, model routing, and
+pricing override format.
 
 Set `PURGE_RAW_SCREENSHOTS_AFTER_EXTRACTION=true` only after the raw-image purge
 task is implemented and tested.

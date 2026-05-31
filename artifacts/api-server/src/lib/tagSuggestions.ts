@@ -1,9 +1,9 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type {
   DateHistoryEntry,
   ExtractedProfile,
   TranscriptTurn,
 } from "@workspace/db";
+import { runModelTask } from "./modelRouter";
 
 const MODEL = "gpt-5.4";
 
@@ -40,6 +40,8 @@ function normalizeTag(raw: unknown): string | null {
 }
 
 export async function suggestTags(args: {
+  userId?: number;
+  matchId?: number;
   name: string;
   currentTags: string[];
   profile: ExtractedProfile;
@@ -74,15 +76,26 @@ ${dates || "(no dates yet)"}
 Recent chat (${args.transcript.length} total turns):
 ${recent || "(no chat yet)"}`;
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
+  const result = await runModelTask({
+    feature: "pattern_extraction",
+    userId: args.userId,
+    matchId: args.matchId,
+    preferredModel: MODEL,
+    responseFormat: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
+    metadata: {
+      currentTagCount: args.currentTags.length,
+      transcriptTurns: args.transcript.length,
+      dateHistoryCount: args.dateHistory.length,
+      hasNotes: args.notes.trim().length > 0,
+    },
+    promptVersion: "tag_suggestions:v1",
+    responseSchemaVersion: "tag_suggestions:v1",
   });
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   let parsed: any = {};
   try {
     parsed = JSON.parse(raw);

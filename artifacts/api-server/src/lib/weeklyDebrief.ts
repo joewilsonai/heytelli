@@ -1,4 +1,4 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { runModelTask } from "./modelRouter";
 
 const MODEL = "gpt-5.4";
 
@@ -36,6 +36,7 @@ Respond with ONLY JSON:
 }`;
 
 export type WeeklyDebriefInput = {
+  userId?: number;
   totalActive: number;
   newThisWeek: number;
   matches: Array<{
@@ -67,15 +68,24 @@ recent: ${m.recentTurns || "(no chat)"}`,
 
 ${matchBlocks || "(no active matches)"}`;
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
+  const result = await runModelTask({
+    feature: "dating_clarity_lens",
+    userId: input.userId,
+    preferredModel: MODEL,
+    responseFormat: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
+    metadata: {
+      totalActive: input.totalActive,
+      newThisWeek: input.newThisWeek,
+      matchCount: input.matches.length,
+    },
+    promptVersion: "weekly_debrief:v1",
+    responseSchemaVersion: "weekly_debrief:v1",
   });
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   const parsed = JSON.parse(raw);
   return {
     headline:
