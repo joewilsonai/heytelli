@@ -60,6 +60,7 @@ import { VoiceNoteFeedbackSheet } from "@/components/VoiceNoteFeedbackSheet";
 import { InPersonRecordingSheet } from "@/components/InPersonRecordingSheet";
 import { GutCheckCard } from "@/components/GutCheckCard";
 import { RedFlagsCard } from "@/components/RedFlagsCard";
+import { CalmReadCard } from "@/components/CalmReadCard";
 import { DatingPatternGlossaryCard } from "@/components/DatingPatternGlossaryCard";
 import { CheatSheetCard } from "@/components/CheatSheetCard";
 import { TagsRow } from "@/components/TagsRow";
@@ -103,7 +104,6 @@ import {
   buildDatePlanFromTemplate,
   type DatePlanTemplate,
 } from "@/lib/date-plan-templates";
-import { getMatchDetailHeroModel } from "@/lib/match-detail-hero";
 import { MAX_SHARED_SCREENSHOTS } from "@/lib/share-intake";
 import { uploadImage } from "@/lib/upload";
 import { buildDateSafetyPlanFromSettings } from "@/lib/user-settings";
@@ -401,17 +401,16 @@ export default function MatchDetailScreen() {
               title="Today"
               body="The shortest path to what needs attention right now."
             />
-            <NextStepCard match={data} />
+            <CalmReadCard
+              match={data}
+              onAnalyzeNew={runFullAnalysisUpdate}
+              analyzingNew={analysisLoading}
+            />
             <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
             <AnalyzeNewScreenshotsCard
               plan={analysisPlan}
               loading={analysisLoading}
               onAnalyze={runFullAnalysisUpdate}
-            />
-            <LatestReadCard
-              match={data}
-              onAnalyzeNew={runFullAnalysisUpdate}
-              analyzingNew={analysisLoading}
             />
             <SectionJumpCard
               icon="calendar"
@@ -438,18 +437,18 @@ export default function MatchDetailScreen() {
             <SectionIntro
               icon="eye"
               title="Read"
-              body="The latest read, saved patterns, and what deserves attention before you reply or meet."
+              body="A calmer read first, then receipts, patterns, and circle support when you want backup."
+            />
+            <CalmReadCard
+              match={data}
+              onAnalyzeNew={runFullAnalysisUpdate}
+              analyzingNew={analysisLoading}
             />
             <ScreenshotIntakeCard match={data} onChange={() => refetch()} />
             <AnalyzeNewScreenshotsCard
               plan={analysisPlan}
               loading={analysisLoading}
               onAnalyze={runFullAnalysisUpdate}
-            />
-            <LatestReadCard
-              match={data}
-              onAnalyzeNew={runFullAnalysisUpdate}
-              analyzingNew={analysisLoading}
             />
             <GutCheckCard match={data} onChange={() => refetch()} />
             <RedFlagsCard
@@ -795,6 +794,29 @@ function SectionIntro({
   );
 }
 
+function surfaceToneColors(
+  tone: "success" | "warning" | "danger" | "muted" | "primary",
+  c: ReturnType<typeof useColors>,
+) {
+  if (tone === "success") {
+    return { bg: c.successBg, fg: c.success, border: c.success + "55" };
+  }
+  if (tone === "warning") {
+    return { bg: c.warningBg, fg: c.warning, border: c.warning + "55" };
+  }
+  if (tone === "danger") {
+    return {
+      bg: c.destructive + "12",
+      fg: c.destructive,
+      border: c.destructive + "55",
+    };
+  }
+  if (tone === "primary") {
+    return { bg: c.infoBg, fg: c.info, border: c.info + "55" };
+  }
+  return { bg: c.muted, fg: c.mutedForeground, border: c.border };
+}
+
 function StoryOverviewCard({ match }: { match: MatchDetail }) {
   const c = useColors();
   const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
@@ -813,7 +835,7 @@ function StoryOverviewCard({ match }: { match: MatchDetail }) {
       : savedPatterns > 0 || pending > 0
         ? "warning"
         : "primary";
-  const colors = heroToneColors(tone, c);
+  const colors = surfaceToneColors(tone, c);
   const trendTitle =
     savedPatterns > 0
       ? "Saved pattern is part of the story"
@@ -1439,93 +1461,6 @@ function BetaFeedbackCard({
   );
 }
 
-function heroToneColors(
-  tone: "success" | "warning" | "danger" | "muted" | "primary",
-  c: ReturnType<typeof useColors>,
-) {
-  if (tone === "success") {
-    return { bg: c.successBg, fg: c.success, border: c.success + "55" };
-  }
-  if (tone === "warning") {
-    return { bg: c.warningBg, fg: c.warning, border: c.warning + "55" };
-  }
-  if (tone === "danger") {
-    return {
-      bg: c.destructive + "12",
-      fg: c.destructive,
-      border: c.destructive + "55",
-    };
-  }
-  if (tone === "primary") {
-    return { bg: c.infoBg, fg: c.info, border: c.info + "55" };
-  }
-  return { bg: c.muted, fg: c.mutedForeground, border: c.border };
-}
-
-function NextStepCard({ match }: { match: MatchDetail }) {
-  const c = useColors();
-  const model = getMatchDetailHeroModel(match);
-  const tone = heroToneColors(model.tone, c);
-
-  return (
-    <Card style={{ borderColor: tone.fg + "55" }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <View
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: tone.bg,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Feather name="arrow-right-circle" size={20} color={tone.fg} />
-        </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <SectionLabel>{model.eyebrow}</SectionLabel>
-          <Text
-            style={{
-              color: c.foreground,
-              fontSize: 18,
-              fontWeight: "700",
-            }}
-          >
-            {model.title}
-          </Text>
-        </View>
-      </View>
-      <Body muted style={{ marginTop: 10 }}>
-        {model.body}
-      </Body>
-      <View
-        style={{
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: 6,
-          marginTop: 12,
-        }}
-      >
-        {model.chips.map((chip, index) => (
-          <View
-            key={`${chip}-${index}`}
-            style={{
-              backgroundColor: c.muted,
-              borderRadius: 999,
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-            }}
-          >
-            <Text style={{ color: c.mutedForeground, fontSize: 11 }}>
-              {chip}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </Card>
-  );
-}
-
 function HeaderCard({
   match,
   localPhotoUri,
@@ -2116,92 +2051,6 @@ function AnalyzeNewScreenshotsCard({
         loading={loading}
         style={{ marginTop: 12 }}
       />
-    </Card>
-  );
-}
-
-function LatestReadCard({
-  match,
-  onAnalyzeNew,
-  analyzingNew,
-}: {
-  match: MatchDetail;
-  onAnalyzeNew: () => void;
-  analyzingNew: boolean;
-}) {
-  const c = useColors();
-  const pending = match.pendingScreenshotCount + match.failedScreenshotCount;
-  const hasRead = Boolean(match.lastRead?.body?.trim());
-  const hasScreenshots = match.screenshots.length > 0;
-  const isCurrent = match.readFreshness === "current";
-  const isStale = match.readFreshness === "stale" || pending > 0;
-  const statusLabel = isCurrent
-    ? "Up to date"
-    : pending > 0
-      ? `${pending} screenshot${pending === 1 ? "" : "s"} waiting`
-      : hasRead
-        ? "Analyze new"
-        : "No read yet";
-  const statusColor = isCurrent ? c.success : c.warning;
-  const statusBg = isCurrent ? c.successBg : c.warningBg;
-
-  return (
-    <Card style={{ borderColor: isStale ? c.warning : c.border }}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          marginBottom: 10,
-        }}
-      >
-        <SectionLabel>Latest read</SectionLabel>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 5,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 999,
-            backgroundColor: statusBg,
-          }}
-        >
-          <Feather
-            name={isCurrent ? "check-circle" : "refresh-cw"}
-            size={11}
-            color={statusColor}
-          />
-          <Text
-            style={{
-              fontSize: 11,
-              color: statusColor,
-              fontWeight: "600",
-            }}
-            numberOfLines={1}
-          >
-            {statusLabel}
-          </Text>
-        </View>
-      </View>
-      <Body muted={!hasRead} style={{ fontSize: 13, lineHeight: 19 }}>
-        {hasRead
-          ? match.lastRead!.body
-          : hasScreenshots
-            ? "Tap Analyze new to generate the first read."
-            : "Upload screenshots to generate the first read."}
-      </Body>
-      {!isCurrent && hasScreenshots && (
-        <Button
-          label="Analyze new"
-          icon="refresh-cw"
-          onPress={onAnalyzeNew}
-          loading={analyzingNew}
-          variant="secondary"
-          style={{ marginTop: 12 }}
-        />
-      )}
     </Card>
   );
 }

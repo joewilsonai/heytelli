@@ -32,6 +32,7 @@
 ### Task 1: Calm Read Model
 
 **Files:**
+
 - Create: `artifacts/bumble-mobile/lib/calm-read.ts`
 - Test: `artifacts/bumble-mobile/lib/calm-read.test.ts`
 
@@ -99,15 +100,20 @@ test("calibrates a low-risk post-date ambiguity case without crisis language", (
   const model = getCalmReadModel({
     ...baseMatch,
     lastSpeaker: "her",
-    dateHistory: [{ when: "2026-05-28", location: "Louie", recap: "First date went well." }],
+    dateHistory: [
+      { when: "2026-05-28", location: "Louie", recap: "First date went well." },
+    ],
     lastRead: {
       body: "Warm, reciprocal, and easygoing. Interested but noncommittal on timing.",
       generatedAt: "2026-05-29T12:00:00.000Z",
       screenshotCountAt: 4,
     },
     readFreshness: "current",
-    overallRead: "Warm, reciprocal, and easygoing. Interested but noncommittal on timing.",
-    greenFlags: [{ label: "Warm follow-through", evidence: "She planned and showed up." }],
+    overallRead:
+      "Warm, reciprocal, and easygoing. Interested but noncommittal on timing.",
+    greenFlags: [
+      { label: "Warm follow-through", evidence: "She planned and showed up." },
+    ],
     currentRedFlags: [
       {
         severity: "low",
@@ -125,7 +131,10 @@ test("calibrates a low-risk post-date ambiguity case without crisis language", (
   assert.match(model.headline, /Momentum is not confirmed/i);
   assert.match(model.safety.sentence, /not a safety concern/i);
   assert.match(model.nextMove, /Reply once/i);
-  assert.doesNotMatch(`${model.summary} ${model.nextMove}`, /hotline|RAINN|dangerous|unsafe/i);
+  assert.doesNotMatch(
+    `${model.summary} ${model.nextMove}`,
+    /hotline|RAINN|dangerous|unsafe/i,
+  );
 });
 
 test("escalates strong safety evidence into elevated safety risk", () => {
@@ -135,7 +144,8 @@ test("escalates strong safety evidence into elevated safety risk", () => {
       {
         severity: "high",
         label: "Threats or intimidation",
-        evidence: "Pattern detected: uses threats to influence what happens next.",
+        evidence:
+          "Pattern detected: uses threats to influence what happens next.",
         status: "current",
       },
     ],
@@ -173,7 +183,9 @@ test("keeps stale saved read visible while marking screenshots waiting", () => {
 test("marks old planning concerns as partially resolved after a completed date", () => {
   const model = getCalmReadModel({
     ...baseMatch,
-    dateHistory: [{ when: "2026-05-28", location: "Louie", recap: "Completed first date." }],
+    dateHistory: [
+      { when: "2026-05-28", location: "Louie", recap: "Completed first date." },
+    ],
     historicalRedFlags: [
       {
         severity: "low",
@@ -185,7 +197,10 @@ test("marks old planning concerns as partially resolved after a completed date",
   });
 
   assert.equal(model.patternStates[0]?.state, "Partially resolved");
-  assert.match(model.patternStates[0]?.reason ?? "", /later planned or completed/i);
+  assert.match(
+    model.patternStates[0]?.reason ?? "",
+    /later planned or completed/i,
+  );
 });
 ```
 
@@ -194,7 +209,7 @@ test("marks old planning concerns as partially resolved after a completed date",
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/calm-read.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/calm-read.test.ts
 ```
 
 Expected: FAIL because `./calm-read.ts` does not exist.
@@ -218,7 +233,11 @@ type GreenFlagLike = {
 
 export type CalmReadMatch = {
   name: string;
-  lastRead?: { body: string; generatedAt: string; screenshotCountAt: number } | null;
+  lastRead?: {
+    body: string;
+    generatedAt: string;
+    screenshotCountAt: number;
+  } | null;
   readFreshness?: string | null;
   analysisFreshness?: string | null;
   pendingScreenshotCount?: number | null;
@@ -240,7 +259,12 @@ export type CalmReadMatch = {
   } | null;
 };
 
-export type CalmReadLensTone = "success" | "warning" | "danger" | "primary" | "muted";
+export type CalmReadLensTone =
+  | "success"
+  | "warning"
+  | "danger"
+  | "primary"
+  | "muted";
 export type CalmReadSafetyLevel = "Low" | "Moderate" | "Elevated";
 export type CalmReadClarityLevel = "Clear" | "Mixed" | "Unclear" | "Cooling";
 export type CalmReadPaceLevel = "Normal" | "Moderate" | "Fast" | "Unbalanced";
@@ -257,15 +281,27 @@ export type CalmReadModel = {
   headline: string;
   summary: string;
   nextMove: string;
-  safety: { level: CalmReadSafetyLevel; sentence: string; tone: CalmReadLensTone };
-  clarity: { level: CalmReadClarityLevel; sentence: string; tone: CalmReadLensTone };
+  safety: {
+    level: CalmReadSafetyLevel;
+    sentence: string;
+    tone: CalmReadLensTone;
+  };
+  clarity: {
+    level: CalmReadClarityLevel;
+    sentence: string;
+    tone: CalmReadLensTone;
+  };
   pace: { level: CalmReadPaceLevel; sentence: string; tone: CalmReadLensTone };
   freshness: { label: string; tone: CalmReadLensTone };
   latestRead: { title: string; body: string; freshnessLabel: string } | null;
   patternStates: Array<{
     label: string;
     evidence: string;
-    category: "Safety risk" | "Dating clarity" | "Emotional pacing" | "Communication";
+    category:
+      | "Safety risk"
+      | "Dating clarity"
+      | "Emotional pacing"
+      | "Communication";
     state: CalmReadPatternState;
     reason: string;
   }>;
@@ -277,11 +313,15 @@ function clean(value: string | null | undefined): string | null {
 }
 
 function pendingCount(match: CalmReadMatch): number {
-  return (match.pendingScreenshotCount ?? 0) + (match.failedScreenshotCount ?? 0);
+  return (
+    (match.pendingScreenshotCount ?? 0) + (match.failedScreenshotCount ?? 0)
+  );
 }
 
 function activeFlags(match: CalmReadMatch): RedFlagLike[] {
-  return match.currentRedFlags?.length ? match.currentRedFlags : match.redFlags ?? [];
+  return match.currentRedFlags?.length
+    ? match.currentRedFlags
+    : (match.redFlags ?? []);
 }
 
 function allFlags(match: CalmReadMatch): RedFlagLike[] {
@@ -289,7 +329,9 @@ function allFlags(match: CalmReadMatch): RedFlagLike[] {
 }
 
 function hasPattern(flags: RedFlagLike[], pattern: RegExp): boolean {
-  return flags.some((flag) => pattern.test(`${flag.label ?? ""} ${flag.evidence ?? ""}`));
+  return flags.some((flag) =>
+    pattern.test(`${flag.label ?? ""} ${flag.evidence ?? ""}`),
+  );
 }
 
 function hasFutureDate(match: CalmReadMatch, now: Date): boolean {
@@ -304,9 +346,16 @@ function hasCompletedDate(match: CalmReadMatch): boolean {
 
 function safetyLens(match: CalmReadMatch): CalmReadModel["safety"] {
   const flags = allFlags(match);
-  const serious = /threat|intimidat|stalk|harass|coerc|sextortion|intimate image|money|gift card|crypto|fraud|privacy|location|password|unsafe|boundary/i;
-  const hasHigh = (match.redFlagSummary?.highSeverityCount ?? 0) > 0 || flags.some((flag) => flag.severity === "high");
-  const hasMediumSafety = flags.some((flag) => flag.severity === "medium" && serious.test(`${flag.label ?? ""} ${flag.evidence ?? ""}`));
+  const serious =
+    /threat|intimidat|stalk|harass|coerc|sextortion|intimate image|money|gift card|crypto|fraud|privacy|location|password|unsafe|boundary/i;
+  const hasHigh =
+    (match.redFlagSummary?.highSeverityCount ?? 0) > 0 ||
+    flags.some((flag) => flag.severity === "high");
+  const hasMediumSafety = flags.some(
+    (flag) =>
+      flag.severity === "medium" &&
+      serious.test(`${flag.label ?? ""} ${flag.evidence ?? ""}`),
+  );
 
   if (hasHigh && hasPattern(flags, serious)) {
     return {
@@ -318,7 +367,8 @@ function safetyLens(match: CalmReadMatch): CalmReadModel["safety"] {
   if (hasMediumSafety) {
     return {
       level: "Moderate",
-      sentence: "This may be a boundary concern. Slow down and bring your circle in.",
+      sentence:
+        "This may be a boundary concern. Slow down and bring your circle in.",
       tone: "warning",
     };
   }
@@ -329,7 +379,10 @@ function safetyLens(match: CalmReadMatch): CalmReadModel["safety"] {
   };
 }
 
-function clarityLens(match: CalmReadMatch, now: Date): CalmReadModel["clarity"] {
+function clarityLens(
+  match: CalmReadMatch,
+  now: Date,
+): CalmReadModel["clarity"] {
   const flags = allFlags(match);
   if (hasPattern(flags, /cool|slower|distant|low effort|one-word|dry/i)) {
     return {
@@ -338,7 +391,12 @@ function clarityLens(match: CalmReadMatch, now: Date): CalmReadModel["clarity"] 
       tone: "warning",
     };
   }
-  if (hasPattern(flags, /soft availability|vague|not sure|follow-through|no concrete|scheduling|plan/i)) {
+  if (
+    hasPattern(
+      flags,
+      /soft availability|vague|not sure|follow-through|no concrete|scheduling|plan/i,
+    )
+  ) {
     return {
       level: "Mixed",
       sentence: "There is warmth, but the next step is not concrete yet.",
@@ -354,7 +412,8 @@ function clarityLens(match: CalmReadMatch, now: Date): CalmReadModel["clarity"] 
   }
   return {
     level: "Unclear",
-    sentence: "There is not enough current evidence to read momentum confidently.",
+    sentence:
+      "There is not enough current evidence to read momentum confidently.",
     tone: "muted",
   };
 }
@@ -366,14 +425,19 @@ function paceLens(match: CalmReadMatch): CalmReadModel["pace"] {
   if (/love bombing|pressure|too fast|intense|trauma bonding/i.test(text)) {
     return {
       level: "Fast",
-      sentence: "The emotional pace may be moving faster than the evidence supports.",
+      sentence:
+        "The emotional pace may be moving faster than the evidence supports.",
       tone: "warning",
     };
   }
-  if (/overshar|heavy disclosure|vulnerab|grief|trauma/i.test(text) || (match.greenFlags?.length ?? 0) > 0) {
+  if (
+    /overshar|heavy disclosure|vulnerab|grief|trauma/i.test(text) ||
+    (match.greenFlags?.length ?? 0) > 0
+  ) {
     return {
       level: "Moderate",
-      sentence: "There is some openness or vulnerability, but not necessarily too fast.",
+      sentence:
+        "There is some openness or vulnerability, but not necessarily too fast.",
       tone: "primary",
     };
   }
@@ -392,7 +456,10 @@ function freshness(match: CalmReadMatch): CalmReadModel["freshness"] {
       tone: "warning",
     };
   }
-  if (match.readFreshness === "current" && match.analysisFreshness === "current") {
+  if (
+    match.readFreshness === "current" &&
+    match.analysisFreshness === "current"
+  ) {
     return { label: "Up to date", tone: "success" };
   }
   if (match.readFreshness === "missing") {
@@ -409,15 +476,25 @@ function summaryFor(match: CalmReadMatch): string {
   );
 }
 
-function headlineFor(match: CalmReadMatch, safety: CalmReadModel["safety"], clarity: CalmReadModel["clarity"]): string {
+function headlineFor(
+  match: CalmReadMatch,
+  safety: CalmReadModel["safety"],
+  clarity: CalmReadModel["clarity"],
+): string {
   if (safety.level === "Elevated") return "Pause before moving forward.";
-  if (clarity.level === "Mixed") return "Warm signs exist. Momentum is not confirmed.";
+  if (clarity.level === "Mixed")
+    return "Warm signs exist. Momentum is not confirmed.";
   if (clarity.level === "Cooling") return "Something may be cooling.";
   if (clarity.level === "Clear") return "The current signals are steady.";
   return "The story is still forming.";
 }
 
-function nextMoveFor(match: CalmReadMatch, safety: CalmReadModel["safety"], clarity: CalmReadModel["clarity"], now: Date): string {
+function nextMoveFor(
+  match: CalmReadMatch,
+  safety: CalmReadModel["safety"],
+  clarity: CalmReadModel["clarity"],
+  now: Date,
+): string {
   if (safety.level === "Elevated") {
     return "Share this with your circle before responding or meeting. Keep plans public and use support resources if you feel pressured or unsafe.";
   }
@@ -441,18 +518,32 @@ function nextMoveFor(match: CalmReadMatch, safety: CalmReadModel["safety"], clar
   return "Add the latest screenshots or a quick note before making a call.";
 }
 
-function patternCategory(flag: RedFlagLike): CalmReadModel["patternStates"][number]["category"] {
+function patternCategory(
+  flag: RedFlagLike,
+): CalmReadModel["patternStates"][number]["category"] {
   const text = `${flag.label ?? ""} ${flag.evidence ?? ""}`;
-  if (/threat|stalk|money|gift card|crypto|coerc|sextortion|boundary|privacy|unsafe/i.test(text)) return "Safety risk";
-  if (/vulnerab|trauma|intense|pace|disclosure|grief/i.test(text)) return "Emotional pacing";
+  if (
+    /threat|stalk|money|gift card|crypto|coerc|sextortion|boundary|privacy|unsafe/i.test(
+      text,
+    )
+  )
+    return "Safety risk";
+  if (/vulnerab|trauma|intense|pace|disclosure|grief/i.test(text))
+    return "Emotional pacing";
   if (/reply|text|message|dodg|question/i.test(text)) return "Communication";
   return "Dating clarity";
 }
 
-function patternState(match: CalmReadMatch, flag: RedFlagLike): Pick<CalmReadModel["patternStates"][number], "state" | "reason"> {
+function patternState(
+  match: CalmReadMatch,
+  flag: RedFlagLike,
+): Pick<CalmReadModel["patternStates"][number], "state" | "reason"> {
   const text = `${flag.label ?? ""} ${flag.evidence ?? ""}`;
-  const historical = flag.status === "previously-seen" || (match.historicalRedFlags ?? []).includes(flag);
-  const planningConcern = /meet|date|plan|schedule|availability|follow-through/i.test(text);
+  const historical =
+    flag.status === "previously-seen" ||
+    (match.historicalRedFlags ?? []).includes(flag);
+  const planningConcern =
+    /meet|date|plan|schedule|availability|follow-through/i.test(text);
 
   if (historical && planningConcern && hasCompletedDate(match)) {
     return {
@@ -492,11 +583,16 @@ function patternStates(match: CalmReadMatch): CalmReadModel["patternStates"] {
         reason: state.reason,
       };
     })
-    .filter((item): item is CalmReadModel["patternStates"][number] => item != null)
+    .filter(
+      (item): item is CalmReadModel["patternStates"][number] => item != null,
+    )
     .slice(0, 6);
 }
 
-export function getCalmReadModel(match: CalmReadMatch, now = new Date()): CalmReadModel {
+export function getCalmReadModel(
+  match: CalmReadMatch,
+  now = new Date(),
+): CalmReadModel {
   const safety = safetyLens(match);
   const clarity = clarityLens(match, now);
   const pace = paceLens(match);
@@ -529,7 +625,7 @@ export function getCalmReadModel(match: CalmReadMatch, now = new Date()): CalmRe
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/calm-read.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/calm-read.test.ts
 ```
 
 Expected: PASS.
@@ -546,6 +642,7 @@ git commit -m "feat: model calm read"
 ### Task 2: Calm Read Card Component
 
 **Files:**
+
 - Create: `artifacts/bumble-mobile/components/CalmReadCard.tsx`
 
 - [ ] **Step 1: Create the Calm Read card component**
@@ -567,10 +664,18 @@ import {
 } from "@/lib/calm-read";
 
 function toneColors(tone: CalmReadLensTone, c: ReturnType<typeof useColors>) {
-  if (tone === "success") return { bg: c.successBg, fg: c.success, border: c.success + "55" };
-  if (tone === "warning") return { bg: c.warningBg, fg: c.warning, border: c.warning + "55" };
-  if (tone === "danger") return { bg: c.destructive + "12", fg: c.destructive, border: c.destructive + "55" };
-  if (tone === "primary") return { bg: c.infoBg, fg: c.info, border: c.info + "55" };
+  if (tone === "success")
+    return { bg: c.successBg, fg: c.success, border: c.success + "55" };
+  if (tone === "warning")
+    return { bg: c.warningBg, fg: c.warning, border: c.warning + "55" };
+  if (tone === "danger")
+    return {
+      bg: c.destructive + "12",
+      fg: c.destructive,
+      border: c.destructive + "55",
+    };
+  if (tone === "primary")
+    return { bg: c.infoBg, fg: c.info, border: c.info + "55" };
   return { bg: c.muted, fg: c.mutedForeground, border: c.border };
 }
 
@@ -598,7 +703,14 @@ export function CalmReadCard({ match }: { match: CalmReadMatch }) {
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <SectionLabel>{model.label}</SectionLabel>
-          <Text style={{ color: c.foreground, fontSize: 19, fontWeight: "800", lineHeight: 24 }}>
+          <Text
+            style={{
+              color: c.foreground,
+              fontSize: 19,
+              fontWeight: "800",
+              lineHeight: 24,
+            }}
+          >
             {model.headline}
           </Text>
         </View>
@@ -619,7 +731,14 @@ export function CalmReadCard({ match }: { match: CalmReadMatch }) {
             paddingVertical: 10,
           }}
         >
-          <Text style={{ color: safetyTone.fg, fontSize: 13, fontWeight: "700", lineHeight: 18 }}>
+          <Text
+            style={{
+              color: safetyTone.fg,
+              fontSize: 13,
+              fontWeight: "700",
+              lineHeight: 18,
+            }}
+          >
             {model.safety.sentence}
           </Text>
         </View>
@@ -641,9 +760,21 @@ export function CalmReadCard({ match }: { match: CalmReadMatch }) {
       </View>
 
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <LensPill label="Safety" value={model.safety.level} tone={model.safety.tone} />
-        <LensPill label="Clarity" value={model.clarity.level} tone={model.clarity.tone} />
-        <LensPill label="Pace" value={model.pace.level} tone={model.pace.tone} />
+        <LensPill
+          label="Safety"
+          value={model.safety.level}
+          tone={model.safety.tone}
+        />
+        <LensPill
+          label="Clarity"
+          value={model.clarity.level}
+          tone={model.clarity.tone}
+        />
+        <LensPill
+          label="Pace"
+          value={model.pace.level}
+          tone={model.pace.tone}
+        />
       </View>
 
       <View
@@ -659,13 +790,21 @@ export function CalmReadCard({ match }: { match: CalmReadMatch }) {
         }}
       >
         <Feather name="refresh-cw" size={11} color={freshnessTone.fg} />
-        <Text style={{ color: freshnessTone.fg, fontSize: 11, fontWeight: "800" }}>
+        <Text
+          style={{ color: freshnessTone.fg, fontSize: 11, fontWeight: "800" }}
+        >
           {model.freshness.label}
         </Text>
       </View>
 
       {model.latestRead ? (
-        <View style={{ borderTopWidth: 1, borderTopColor: c.border, paddingTop: 10 }}>
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: c.border,
+            paddingTop: 10,
+          }}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Toggle latest saved read"
@@ -681,13 +820,26 @@ export function CalmReadCard({ match }: { match: CalmReadMatch }) {
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <Text style={{ color: c.foreground, fontSize: 13, fontWeight: "700" }}>
+            <Text
+              style={{ color: c.foreground, fontSize: 13, fontWeight: "700" }}
+            >
               {model.latestRead.title}
             </Text>
-            <Feather name={detailsOpen ? "chevron-up" : "chevron-down"} size={17} color={c.mutedForeground} />
+            <Feather
+              name={detailsOpen ? "chevron-up" : "chevron-down"}
+              size={17}
+              color={c.mutedForeground}
+            />
           </Pressable>
           {detailsOpen ? (
-            <Text style={{ color: c.mutedForeground, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
+            <Text
+              style={{
+                color: c.mutedForeground,
+                fontSize: 12,
+                lineHeight: 18,
+                marginTop: 4,
+              }}
+            >
               {model.latestRead.body}
             </Text>
           ) : null}
@@ -722,10 +874,20 @@ function LensPill({
         gap: 3,
       }}
     >
-      <Text style={{ color: colors.fg, fontSize: 10, fontWeight: "900", textTransform: "uppercase" }}>
+      <Text
+        style={{
+          color: colors.fg,
+          fontSize: 10,
+          fontWeight: "900",
+          textTransform: "uppercase",
+        }}
+      >
         {label}
       </Text>
-      <Text style={{ color: colors.fg, fontSize: 16, fontWeight: "900" }} numberOfLines={1}>
+      <Text
+        style={{ color: colors.fg, fontSize: 16, fontWeight: "900" }}
+        numberOfLines={1}
+      >
         {value}
       </Text>
     </View>
@@ -755,6 +917,7 @@ git commit -m "feat: add calm read card"
 ### Task 3: Match Detail Integration
 
 **Files:**
+
 - Modify: `artifacts/bumble-mobile/app/match/[id].tsx`
 - Test: `artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts`
 
@@ -769,20 +932,32 @@ test("Calm Read is the primary match detail read surface", async () => {
     "utf8",
   );
 
-  assert.match(screen, /import \{ CalmReadCard \} from "@\/components\/CalmReadCard"/);
+  assert.match(
+    screen,
+    /import \{ CalmReadCard \} from "@\/components\/CalmReadCard"/,
+  );
   assert.match(screen, /<CalmReadCard\s+match=\{data\}\s*\/>/);
   assert.doesNotMatch(screen, /<LatestReadCard\s+match=\{data\}/);
 
-  const todaySection = screen.match(
-    /selectedSection === "today"[\s\S]*?selectedSection === "read"/,
-  )?.[0] ?? "";
-  assert.ok(todaySection.indexOf("<CalmReadCard") < todaySection.indexOf("<ScreenshotIntakeCard"));
+  const todaySection =
+    screen.match(
+      /selectedSection === "today"[\s\S]*?selectedSection === "read"/,
+    )?.[0] ?? "";
+  assert.ok(
+    todaySection.indexOf("<CalmReadCard") <
+      todaySection.indexOf("<ScreenshotIntakeCard"),
+  );
 
-  const readSection = screen.match(
-    /selectedSection === "read"[\s\S]*?selectedSection === "story"/,
-  )?.[0] ?? "";
-  assert.ok(readSection.indexOf("<CalmReadCard") < readSection.indexOf("<GutCheckCard"));
-  assert.ok(readSection.indexOf("<GutCheckCard") < readSection.indexOf("<RedFlagsCard"));
+  const readSection =
+    screen.match(
+      /selectedSection === "read"[\s\S]*?selectedSection === "story"/,
+    )?.[0] ?? "";
+  assert.ok(
+    readSection.indexOf("<CalmReadCard") < readSection.indexOf("<GutCheckCard"),
+  );
+  assert.ok(
+    readSection.indexOf("<GutCheckCard") < readSection.indexOf("<RedFlagsCard"),
+  );
 });
 ```
 
@@ -791,7 +966,7 @@ test("Calm Read is the primary match detail read surface", async () => {
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/match-detail-surfacing.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts
 ```
 
 Expected: FAIL because `CalmReadCard` is not imported/rendered yet.
@@ -823,7 +998,7 @@ Keep `ScreenshotIntakeCard`, `AnalyzeNewScreenshotsCard`, `GutCheckCard`, and `R
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/match-detail-surfacing.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts
 ```
 
 Expected: PASS.
@@ -850,6 +1025,7 @@ git commit -m "feat: make calm read primary match detail card"
 ### Task 4: Evidence & Receipts Calibration
 
 **Files:**
+
 - Modify: `artifacts/bumble-mobile/components/RedFlagsCard.tsx`
 - Test: `artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts`
 - Test: `artifacts/bumble-mobile/lib/safety-resources.test.ts`
@@ -867,7 +1043,10 @@ test("pattern details are framed as evidence and receipts instead of a danger sc
 
   assert.match(card, /Evidence & receipts/);
   assert.doesNotMatch(card, /<SectionLabel>Pattern radar<\/SectionLabel>/);
-  assert.match(card, /backgroundColor:\s*showAlert\s*\?\s*c\.destructive\s*:\s*c\.muted/);
+  assert.match(
+    card,
+    /backgroundColor:\s*showAlert\s*\?\s*c\.destructive\s*:\s*c\.muted/,
+  );
 });
 ```
 
@@ -876,7 +1055,7 @@ test("pattern details are framed as evidence and receipts instead of a danger sc
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/match-detail-surfacing.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts
 ```
 
 Expected: FAIL because `RedFlagsCard` still says `Pattern radar`.
@@ -924,7 +1103,7 @@ color: showAlert ? c.destructiveForeground : c.foreground,
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/safety-resources.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/safety-resources.test.ts
 ```
 
 Expected: PASS.
@@ -934,7 +1113,7 @@ Expected: PASS.
 Run:
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/match-detail-surfacing.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts
 ```
 
 Expected: PASS.
@@ -951,12 +1130,13 @@ git commit -m "fix: calm pattern evidence language"
 ### Task 5: Final Verification
 
 **Files:**
+
 - Verify repo-wide relevant tests and typecheck.
 
 - [ ] **Step 1: Run Calm Read tests**
 
 ```bash
-pnpm --dir artifacts/bumble-mobile exec tsx --test lib/calm-read.test.ts lib/match-detail-surfacing.test.ts lib/safety-resources.test.ts
+pnpm --dir scripts exec tsx --test ../artifacts/bumble-mobile/lib/calm-read.test.ts ../artifacts/bumble-mobile/lib/match-detail-surfacing.test.ts ../artifacts/bumble-mobile/lib/safety-resources.test.ts
 ```
 
 Expected: PASS.
