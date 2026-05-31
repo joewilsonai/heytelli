@@ -14,5 +14,7 @@ Guardrails:
 
 - Preserve native iPhone sharing and beta sign-in flows.
 - Do not add hosted sharing surfaces for private user data.
+- For user-facing workflows, settings, themes, copy, navigation, or API-backed
+  behavior, check `artifacts/heytelli-web` and update web parity when feasible.
 - Treat TestFlight as done only after App Store Connect processing and tester
   availability.

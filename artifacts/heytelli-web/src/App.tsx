@@ -9,6 +9,12 @@ import {
   storeApiBaseUrl,
   storeSession,
 } from "@/lib/auth";
+import {
+  applyColorTheme,
+  loadStoredColorTheme,
+  storeColorTheme,
+  type WebColorThemePreference,
+} from "@/lib/color-theme";
 import { SessionContext } from "@/lib/session-context";
 import AppShell from "@/components/AppShell";
 import SignIn from "@/pages/SignIn";
@@ -46,15 +52,23 @@ function AppRoutes() {
 function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadStoredSession());
   const [apiBaseUrl, setApiBaseUrlState] = useState<string | null>(() => loadStoredApiBaseUrl());
+  const [colorTheme, setColorThemeState] = useState<WebColorThemePreference>(() =>
+    loadStoredColorTheme(),
+  );
 
   useEffect(() => {
     configureApiClient(session, apiBaseUrl);
   }, [session, apiBaseUrl]);
 
+  useEffect(() => {
+    applyColorTheme(colorTheme);
+  }, [colorTheme]);
+
   const contextValue = useMemo(
     () => ({
       session,
       apiBaseUrl,
+      colorTheme,
       signIn(nextSession: AuthSession) {
         storeSession(undefined, nextSession);
         setSession(nextSession);
@@ -70,8 +84,13 @@ function App() {
         setApiBaseUrlState(normalized);
         configureApiClient(session, normalized);
       },
+      setColorTheme(value: WebColorThemePreference) {
+        storeColorTheme(undefined, value);
+        setColorThemeState(value);
+        applyColorTheme(value);
+      },
     }),
-    [apiBaseUrl, session],
+    [apiBaseUrl, colorTheme, session],
   );
 
   return (

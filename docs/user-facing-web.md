@@ -22,10 +22,29 @@ rewrites.
   views backed by the current match API fields.
 - HeyTelli chat through the existing conversation endpoints and SSE response
   stream.
-- Settings for sign-out and an optional API base URL.
+- Settings for color theme, sign-out, and an optional API base URL.
 
 The web app does not call model providers directly and does not expose OpenAI,
 Anthropic, OpenRouter, Langfuse, or LiteLLM keys in the client.
+
+## Mobile-Web Fidelity
+
+When an issue, PR, or in-app feedback item changes a user-facing mobile
+workflow, setting, color theme, copy string, navigation concept, or API-backed
+behavior, check whether `artifacts/heytelli-web` needs the equivalent change.
+
+Default expectation:
+
+- Update mobile and web together when the behavior is feasible in the browser.
+- Keep Android web ergonomics in mind: touch targets, safe-area spacing, small
+  screens, and no desktop-only flows.
+- Preserve native-only boundaries. iOS share extensions, TestFlight delivery,
+  and native share-sheet artifacts do not need fake web replacements.
+- If parity is not feasible in the same PR, say why in the PR body or swarm
+  completion comment.
+
+For shared options such as themes, keep web tests tied to the mobile source so a
+new mobile option fails loudly until web is updated too.
 
 ## Deployment Boundary
 

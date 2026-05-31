@@ -1,12 +1,15 @@
 import { createContext, useContext } from "react";
 import type { AuthSession } from "@workspace/api-client-react";
+import type { WebColorThemePreference } from "./color-theme";
 
 export interface SessionContextValue {
   session: AuthSession | null;
   apiBaseUrl: string | null;
+  colorTheme: WebColorThemePreference;
   signIn: (session: AuthSession) => void;
   signOut: () => void;
   setApiBaseUrl: (value: string | null) => void;
+  setColorTheme: (value: WebColorThemePreference) => void;
 }
 
 export const SessionContext = createContext<SessionContextValue | null>(null);
