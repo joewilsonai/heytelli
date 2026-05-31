@@ -32,6 +32,13 @@ safe merged mobile changes reach testers without a manual release hop. Use a
 manual workflow run with `submit=false` only for deliberate smoke builds that
 should not reach TestFlight.
 
+The workflow has a preflight scope check before dependency install or EAS. It
+builds on mobile/shared-client changes and skips web, docs, landing, or
+root-package-only pushes so those changes do not occupy the EAS queue ahead of a
+real mobile release. If a root dependency-only change should intentionally ship
+to iOS, run the workflow manually or include an actual mobile/shared-client file
+change in the PR.
+
 The workflow needs a repository secret named `EXPO_TOKEN`. Create an Expo access
 token from the Expo dashboard and store it in GitHub Actions secrets. Until the
 secret exists, the workflow intentionally exits with a notice instead of failing

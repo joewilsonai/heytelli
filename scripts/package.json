@@ -13,7 +13,7 @@
     "improvement:evals": "tsx ./src/improvement/evals.ts",
     "ios-beta:monitor": "tsx ./src/iosBetaMonitor.ts",
     "local-swarm-host:check": "tsx ./src/localSwarmHost.ts",
-    "test:ci-workflows": "tsx --test ./src/iosBetaWorkflow.test.ts ./src/iosBetaMonitor.test.ts",
+    "test:ci-workflows": "tsx --test ./src/iosBetaWorkflow.test.ts ./src/iosBetaMonitor.test.ts && node --test ./ci/ios-beta-build-scope.test.mjs",
     "test:improvement": "tsx --test ./src/improvement/*.test.ts",
     "test:local-swarm-host": "tsx --test ./src/localSwarmHost.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
