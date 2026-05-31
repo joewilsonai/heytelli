@@ -1,5 +1,5 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type { ExtractedProfile, TranscriptTurn } from "@workspace/db";
+import { runModelTask } from "./modelRouter";
 
 const MODEL = "gpt-5.4";
 
@@ -30,6 +30,8 @@ Respond with ONLY a JSON object:
 export async function analyzeVoiceNote(
   transcript: string,
   context: {
+    userId?: number;
+    matchId?: number;
     name: string;
     profile: ExtractedProfile;
     recentTurns: TranscriptTurn[];
@@ -53,16 +55,25 @@ ${transcript}
 
 Critique it.`;
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
+  const result = await runModelTask({
+    feature: "reply_suggestion",
+    userId: context.userId,
+    matchId: context.matchId,
+    preferredModel: MODEL,
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
-    response_format: { type: "json_object" },
+    responseFormat: { type: "json_object" },
+    metadata: {
+      transcriptChars: transcript.length,
+      recentTurnCount: context.recentTurns.length,
+    },
+    promptVersion: "voice_note_feedback:v1",
+    responseSchemaVersion: "voice_note_feedback:v1",
   });
 
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   let parsed: Record<string, unknown> = {};
   try {
     parsed = JSON.parse(raw);

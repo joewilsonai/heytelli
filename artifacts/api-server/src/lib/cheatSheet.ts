@@ -1,4 +1,3 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type {
   DateHistoryEntry,
   DateSafetyPlan,
@@ -6,6 +5,7 @@ import type {
   RedFlagRadarSnapshot,
   TranscriptTurn,
 } from "@workspace/db";
+import { runModelTask } from "./modelRouter";
 
 const MODEL = "gpt-5.4";
 
@@ -26,6 +26,8 @@ Use the full dossier: profile, conversation, saved patterns, tags, notes, date h
 Respond with ONLY JSON: { "replies": [{ "style": "playful"|"curious"|"direct", "text": string }, ...] }`;
 
 export type CheatSheetContext = {
+  userId?: number;
+  matchId?: number;
   tags?: string[];
   vibeTags?: string[];
   notes?: string | null;
@@ -159,15 +161,25 @@ export async function generateCheatSheet(
 ): Promise<CheatSheetReply[]> {
   const user = buildCheatSheetPrompt(name, profile, transcript, context);
 
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
+  const result = await runModelTask({
+    feature: "reply_suggestion",
+    userId: context.userId,
+    matchId: context.matchId,
+    preferredModel: MODEL,
+    responseFormat: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM },
       { role: "user", content: user },
     ],
+    metadata: {
+      transcriptTurns: transcript.length,
+      hasDateHistory: (context.dateHistory ?? []).length > 0,
+      hasSavedPatterns: context.lastRedFlagRadar != null,
+    },
+    promptVersion: "cheat_sheet:v1",
+    responseSchemaVersion: "cheat_sheet_replies:v1",
   });
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   const parsed = JSON.parse(raw);
   const replies = Array.isArray(parsed.replies) ? parsed.replies : [];
   return replies

@@ -1,9 +1,9 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type { DateHistoryEntry } from "@workspace/db";
 import type {
   DebriefRoutingAnalysis,
   DebriefTagSuggestion,
 } from "./debriefRouting";
+import { runModelTask } from "./modelRouter";
 
 const DEBRIEF_MODEL = "gpt-5.4";
 
@@ -103,6 +103,8 @@ export function normalizeDebriefAnalysis(
 export async function analyzeVoiceDebrief(
   transcript: string,
   context: {
+    userId?: number;
+    matchId?: number;
     name: string;
     priorVibe: string | null;
     currentTags: string[];
@@ -129,16 +131,26 @@ ${transcript}
 
 Analyze and return the JSON object.`;
 
-  const completion = await openai.chat.completions.create({
-    model: DEBRIEF_MODEL,
+  const result = await runModelTask({
+    feature: "post_date_debrief",
+    userId: context.userId,
+    matchId: context.matchId,
+    preferredModel: DEBRIEF_MODEL,
     messages: [
       { role: "system", content: DEBRIEF_SYSTEM_PROMPT },
       { role: "user", content: user },
     ],
-    response_format: { type: "json_object" },
+    responseFormat: { type: "json_object" },
+    metadata: {
+      transcriptChars: transcript.length,
+      dateHistoryCount: context.dateHistory.length,
+      currentTagCount: context.currentTags.length,
+    },
+    promptVersion: "voice_debrief:v1",
+    responseSchemaVersion: "voice_debrief:v1",
   });
 
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = result.content || "{}";
   let parsed: Record<string, unknown> = {};
   try {
     parsed = JSON.parse(raw);

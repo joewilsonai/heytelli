@@ -1,6 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
 import sharp from "sharp";
-import { openai } from "@workspace/integrations-openai-ai-server";
 import type {
   DateHistoryEntry,
   ExtractedProfile,
@@ -27,6 +26,7 @@ import {
   purgeAnalyzedScreenshotObjects,
   selectScreenshotsForVision,
 } from "./screenshotRetention";
+import { runModelTask } from "./modelRouter";
 
 export type ExtractionResult = {
   suggestedName: string | null;
@@ -345,13 +345,17 @@ Rules:
 async function repairGenericMediaPlaceholders(
   imageParts: VisionImagePart[],
   initial: ExtractionResult,
+  context?: MatchContext,
 ): Promise<ExtractionResult> {
   if (!hasUndescribedMediaPlaceholders(initial.transcript)) return initial;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
-      max_completion_tokens: 2048,
+    const result = await runModelTask({
+      feature: "ocr_cleanup",
+      userId: context?.userId,
+      matchId: context?.matchId,
+      preferredModel: "gpt-5.4",
+      maxCompletionTokens: 2048,
       messages: [
         { role: "system", content: MEDIA_REPAIR_SYSTEM_PROMPT },
         {
@@ -374,11 +378,16 @@ async function repairGenericMediaPlaceholders(
           ],
         },
       ],
+      metadata: {
+        imageCount: imageParts.length,
+        repairGenericMedia: true,
+        transcriptTurns: initial.transcript.length,
+      },
+      promptVersion: "media_placeholder_repair:v1",
+      responseSchemaVersion: "media_placeholder_repair:v1",
     });
 
-    const parsed = parseJsonObject(
-      completion.choices[0]?.message?.content ?? "{}",
-    );
+    const parsed = parseJsonObject(result.content || "{}");
     const repairedTranscript = normalizeTranscript(parsed.transcript);
     const repairedVisibleMedia = normalizeVisibleMedia(parsed.visibleMedia);
     return {
@@ -405,6 +414,8 @@ async function repairGenericMediaPlaceholders(
 }
 
 export type MatchContext = {
+  userId?: number;
+  matchId?: number;
   nextDateAt: Date | string | null;
   nextDateLocation: string | null;
   dateHistory: DateHistoryEntry[];
@@ -503,9 +514,12 @@ export async function extractFromScreenshots(
       ? `Extract structured information from these ${imageDataUrls.length} screenshots, which together form one continuous conversation (chronological order). Produce one current private read.`
       : "Extract structured information from this conversation or profile screenshot.";
   const userText = baseText + formatMatchContext(context);
-  const completion = await openai.chat.completions.create({
-    model: "gpt-5.4",
-    max_completion_tokens: 4096,
+  const result = await runModelTask({
+    feature: "ocr_cleanup",
+    userId: context?.userId,
+    matchId: context?.matchId,
+    preferredModel: "gpt-5.4",
+    maxCompletionTokens: 4096,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -513,13 +527,18 @@ export async function extractFromScreenshots(
         content: [...imageParts, { type: "text", text: userText }],
       },
     ],
+    metadata: {
+      imageCount: imageParts.length,
+      originalImageCount: imageDataUrls.length,
+      hasMatchContext: context != null,
+    },
+    promptVersion: "screenshot_extraction:v1",
+    responseSchemaVersion: "screenshot_extraction:v1",
   });
 
-  const parsed = parseJsonObject(
-    completion.choices[0]?.message?.content ?? "{}",
-  );
+  const parsed = parseJsonObject(result.content || "{}");
   const initial = normalizeExtractionResult(parsed);
-  return repairGenericMediaPlaceholders(imageParts, initial);
+  return repairGenericMediaPlaceholders(imageParts, initial, context);
 }
 
 function mergeScores(
@@ -691,6 +710,8 @@ export function runExtractionInBackground(
         shotsForVision.map((s) => objectPathToDataUrl(s.objectPath)),
       );
       const extraction = await extractFromScreenshots(dataUrls, {
+        userId: match.userId,
+        matchId,
         nextDateAt: match.nextDateAt,
         nextDateLocation: match.nextDateLocation,
         dateHistory: Array.isArray(match.dateHistory) ? match.dateHistory : [],

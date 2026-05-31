@@ -701,6 +701,7 @@ router.get("/matches/stale-nudges", async (req, res): Promise<void> => {
             m.extractedProfile,
             m.transcript,
             m.notes ?? "",
+            { userId, matchId: m.id },
           );
         } catch (err) {
           req.log.warn({ err, matchId: m.id }, "Nudge generation failed");
@@ -744,6 +745,7 @@ router.get("/matches/:id/red-flags", async (req, res): Promise<void> => {
       normalizeTranscript(match.transcript),
       normalizeDateHistory(match.dateHistory),
       match.notes ?? "",
+      { userId, matchId: match.id },
     );
     const historyResult = await persistRedFlagRadar({
       matchId: match.id,
@@ -783,6 +785,8 @@ router.get("/matches/:id/cheat-sheet", async (req, res): Promise<void> => {
       normalizeExtractedProfile(match.extractedProfile),
       normalizeTranscript(match.transcript),
       {
+        userId,
+        matchId: match.id,
         tags: match.tags,
         vibeTags: match.vibeTags,
         notes: match.notes,
@@ -820,6 +824,8 @@ router.get("/matches/:id/tag-suggestions", async (req, res): Promise<void> => {
   }
   try {
     const result = await suggestTags({
+      userId,
+      matchId: match.id,
       name: match.name,
       currentTags: match.tags ?? [],
       profile: normalizeExtractedProfile(match.extractedProfile),
@@ -1062,6 +1068,7 @@ router.get("/matches/weekly-debrief", async (req, res): Promise<void> => {
     });
 
     const result = await generateWeeklyDebrief({
+      userId,
       totalActive: active.length,
       newThisWeek,
       matches: input,
@@ -1657,6 +1664,8 @@ router.post("/matches/:id/rescore", async (req, res): Promise<void> => {
       shotsForVision.map((s) => objectPathToDataUrl(s.objectPath)),
     );
     const extraction = await extractFromScreenshots(dataUrls, {
+      userId: requireUserId(req),
+      matchId: detail.id,
       nextDateAt: detail.nextDateAt,
       nextDateLocation: detail.nextDateLocation,
       dateHistory: detail.dateHistory,
@@ -1740,19 +1749,25 @@ router.post(
       return;
     }
 
-    const detail = await loadMatchDetail(params.data.id, requireUserId(req));
+    const userId = requireUserId(req);
+    const detail = await loadMatchDetail(params.data.id, userId);
     if (!detail) {
       res.status(404).json({ error: "Match not found" });
       return;
     }
 
     try {
-      const transcript = await transcribeAudioObject(body.data.audioObjectPath);
+      const transcript = await transcribeAudioObject(
+        body.data.audioObjectPath,
+        { feature: "reply_suggestion", userId, matchId: detail.id },
+      );
       if (!transcript) {
         res.status(400).json({ error: "Transcription returned empty text" });
         return;
       }
       const feedback = await analyzeVoiceNote(transcript, {
+        userId,
+        matchId: detail.id,
         name: detail.name,
         profile: detail.extractedProfile,
         recentTurns: detail.transcript,
@@ -1786,19 +1801,25 @@ router.post(
       return;
     }
 
-    const detail = await loadMatchDetail(params.data.id, requireUserId(req));
+    const userId = requireUserId(req);
+    const detail = await loadMatchDetail(params.data.id, userId);
     if (!detail) {
       res.status(404).json({ error: "Match not found" });
       return;
     }
 
     try {
-      const transcript = await transcribeAudioObject(body.data.audioObjectPath);
+      const transcript = await transcribeAudioObject(
+        body.data.audioObjectPath,
+        { feature: "post_date_debrief", userId, matchId: detail.id },
+      );
       if (!transcript) {
         res.status(400).json({ error: "Transcription returned empty text" });
         return;
       }
       const analysis = await analyzeVoiceDebrief(transcript, {
+        userId,
+        matchId: detail.id,
         name: detail.name,
         priorVibe: detail.vibeTags.join(", ") || null,
         currentTags: detail.tags ?? [],
@@ -1814,7 +1835,7 @@ router.post(
         addToDateHistory: body.data.addToDateHistory === true,
       });
 
-      const refreshed = await loadMatchDetail(detail.id, requireUserId(req));
+      const refreshed = await loadMatchDetail(detail.id, userId);
       res.json({
         transcript,
         analysis,
@@ -1840,20 +1861,27 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
     return;
   }
 
-  const detail = await loadMatchDetail(params.data.id, requireUserId(req));
+  const userId = requireUserId(req);
+  const detail = await loadMatchDetail(params.data.id, userId);
   if (!detail) {
     res.status(404).json({ error: "Match not found" });
     return;
   }
 
   try {
-    const transcript = await transcribeAudioObject(body.data.audioObjectPath);
+    const transcript = await transcribeAudioObject(body.data.audioObjectPath, {
+      feature: "post_date_debrief",
+      userId,
+      matchId: detail.id,
+    });
     if (!transcript) {
       res.status(400).json({ error: "Transcription returned empty text" });
       return;
     }
 
     const analysis = await analyzeVoiceDebrief(transcript, {
+      userId,
+      matchId: detail.id,
       name: detail.name,
       priorVibe: detail.vibeTags.join(", ") || null,
       currentTags: detail.tags ?? [],
@@ -1869,7 +1897,7 @@ router.post("/matches/:id/voice-debrief", async (req, res): Promise<void> => {
       addToDateHistory: body.data.addToDateHistory === true,
     });
 
-    const refreshed = await loadMatchDetail(detail.id, requireUserId(req));
+    const refreshed = await loadMatchDetail(detail.id, userId);
     res.json({
       transcript,
       analysis,
