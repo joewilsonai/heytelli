@@ -59,6 +59,11 @@ test("settings changelog has detailed latest build notes", () => {
   assert.match(screen, /formatBuildChangelogVersion/);
   assert.match(screen, /Constants\.nativeBuildVersion/);
   assert.match(changelog, /BUILD_CHANGELOG_ENTRIES/);
+  assert.match(changelog, /Feedback follow-up status/);
+  assert.match(
+    changelog,
+    /Settings now shows whether your feedback is received, planned, or shipped/,
+  );
   assert.match(changelog, /Screenshot analysis refresh/);
   assert.match(changelog, /Analyze new now replaces/);
   assert.match(changelog, /Date briefs stay available/);
@@ -70,7 +75,7 @@ test("ios beta workflow injects changelog metadata without gated TestFlight note
   assert.match(workflow, /Generate in-app build changelog/);
   assert.match(
     workflow,
-    /EAS_SUBMIT: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.submit \|\| 'false' \}\}/,
+    /EAS_SUBMIT: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.submit \|\| 'true' \}\}/,
   );
   assert.match(workflow, /HEYTELLI_CHANGELOG_HIGHLIGHTS/);
   assert.match(workflow, /EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_TITLE/);

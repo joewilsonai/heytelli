@@ -69,3 +69,28 @@ CREATE TABLE IF NOT EXISTS improvement_runs (
 
 CREATE INDEX IF NOT EXISTS improvement_runs_work_item_id_created_at_idx
   ON improvement_runs (work_item_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS improvement_trace_spans (
+  id serial PRIMARY KEY,
+  work_item_id integer REFERENCES improvement_work_items(id) ON DELETE CASCADE,
+  run_id integer REFERENCES improvement_runs(id) ON DELETE SET NULL,
+  trace_id text NOT NULL,
+  span_id text NOT NULL,
+  parent_span_id text,
+  name text NOT NULL,
+  kind text NOT NULL,
+  agent_name text,
+  status text NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  error_summary text,
+  duration_ms integer,
+  started_at timestamptz NOT NULL,
+  ended_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS improvement_trace_spans_trace_id_started_at_idx
+  ON improvement_trace_spans (trace_id, started_at DESC);
+
+CREATE INDEX IF NOT EXISTS improvement_trace_spans_work_item_id_started_at_idx
+  ON improvement_trace_spans (work_item_id, started_at DESC);

@@ -2074,6 +2074,25 @@ export const CreateImprovementSignalBody = zod.object({
 
 
 /**
+ * @summary List the signed-in user's privacy-safe feedback follow-up statuses
+ */
+export const ListMyImprovementSignalsResponseItem = zod.object({
+  "ticketId": zod.number(),
+  "stage": zod.enum(['received', 'accepted', 'planned', 'shipped', 'blocked']),
+  "message": zod.string(),
+  "summary": zod.string(),
+  "type": zod.string().nullable(),
+  "surface": zod.string().nullable(),
+  "signalStatus": zod.enum(['new', 'triaged', 'grouped', 'actionable', 'waiting_for_signal', 'blocked', 'resolved', 'ignored']),
+  "workItemStatus": zod.union([zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),zod.null()]),
+  "workItemId": zod.number().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMyImprovementSignalsResponse = zod.array(ListMyImprovementSignalsResponseItem)
+
+
+/**
  * @summary List private improvement signals for admins
  */
 export const ListImprovementSignalsResponseItem = zod.object({
@@ -2092,6 +2111,27 @@ export const ListImprovementSignalsResponseItem = zod.object({
   "updatedAt": zod.coerce.date()
 })
 export const ListImprovementSignalsResponse = zod.array(ListImprovementSignalsResponseItem)
+
+
+/**
+ * @summary Get autonomous improvement queue health for admins
+ */
+export const GetImprovementHealthResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "signals": zod.record(zod.string(), zod.number()),
+  "workItems": zod.record(zod.string(), zod.number()),
+  "riskTiers": zod.record(zod.string(), zod.number()),
+  "priorities": zod.record(zod.string(), zod.number()),
+  "runs": zod.record(zod.string(), zod.number()),
+  "queue": zod.object({
+  "waitingForTriage": zod.number(),
+  "executable": zod.number(),
+  "inProgress": zod.number(),
+  "reviewGated": zod.number(),
+  "needsAttention": zod.number()
+}),
+  "lastRunAt": zod.coerce.date().nullable()
+})
 
 
 /**

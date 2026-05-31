@@ -139,7 +139,7 @@ Contributors and agent workflows must preserve tester privacy:
 - Do not put raw screenshots, transcripts, real names, phone numbers, addresses,
   invite codes, auth tokens, or private dating details in GitHub issues, pull
   requests, docs, screenshots, test fixtures, or logs.
-- Sanitize feedback before opening public GitHub issues.
+- Sanitize feedback before opening repo-visible GitHub issues.
 - Use placeholders in docs and examples.
 - Keep privacy/security-impacting changes out of auto-merge unless an explicit
   review policy says otherwise.

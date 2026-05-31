@@ -42,9 +42,13 @@ run_args+=("$@")
 if command -v caffeinate >/dev/null 2>&1; then
   caffeinate -dimsu ./scripts/run-improvement-swarm.sh "${run_args[@]}"
   caffeinate -dimsu ./scripts/run-swarm-executor.sh "${run_args[@]}"
+  caffeinate -dimsu pnpm --filter @workspace/scripts run improvement:lifecycle -- "${run_args[@]}"
+  caffeinate -dimsu pnpm --filter @workspace/scripts run ios-beta:monitor || echo "[$(timestamp)] iOS beta monitor failed; continuing"
 else
   ./scripts/run-improvement-swarm.sh "${run_args[@]}"
   ./scripts/run-swarm-executor.sh "${run_args[@]}"
+  pnpm --filter @workspace/scripts run improvement:lifecycle -- "${run_args[@]}"
+  pnpm --filter @workspace/scripts run ios-beta:monitor || echo "[$(timestamp)] iOS beta monitor failed; continuing"
 fi
 
 echo "[$(timestamp)] HeyTelli local swarm host finished"

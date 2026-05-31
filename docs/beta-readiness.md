@@ -26,10 +26,11 @@ Use TestFlight for real beta testers. The app depends on native modules and a
 share extension, so Expo Go is not a valid beta distribution path.
 
 Merges to `main` that touch the mobile app or generated API client now trigger
-the `iOS Beta Build` GitHub Actions workflow. By default, that workflow runs
-the `beta` EAS profile without submitting to TestFlight, so the team does not
-burn through App Store Connect's per-app upload limit on every merge. Use a
-manual workflow run with `submit=true` when a build is ready for beta testers.
+the `iOS Beta Build` GitHub Actions workflow. Push-triggered builds run the
+`beta` EAS profile and submit the completed build to TestFlight by default, so
+safe merged mobile changes reach testers without a manual release hop. Use a
+manual workflow run with `submit=false` only for deliberate smoke builds that
+should not reach TestFlight.
 
 The workflow needs a repository secret named `EXPO_TOKEN`. Create an Expo access
 token from the Expo dashboard and store it in GitHub Actions secrets. Until the
@@ -39,8 +40,8 @@ every merge.
 Manual runs are available from GitHub Actions with controls for:
 
 - EAS profile: `beta`, `development`, or `production`.
-- Whether to submit after build completion. Keep this off for ordinary smoke
-  builds; turn it on for the beta build you actually want in TestFlight.
+- Whether to submit after build completion. This defaults on; turn it off only
+  for ordinary smoke builds that should not reach testers.
 - Optional EAS build message.
 
 From the mobile app directory:
@@ -53,8 +54,37 @@ pnpm dlx eas-cli@latest build -p ios --profile beta
 After the build finishes, submit it:
 
 ```bash
+cd /Users/joewilson/pythonprojects/heytelli/artifacts/bumble-mobile
 pnpm dlx eas-cli@latest submit -p ios --profile beta --latest
 ```
+
+Important: run EAS submit from `artifacts/bumble-mobile`. Do not use
+`pnpm --dir artifacts/bumble-mobile dlx eas-cli ...` from the repo root for
+submission; in practice that made EAS inspect the monorepo workspace package and
+try to configure `@thenelseif/workspace` instead of the HeyTelli Expo project.
+
+Successful submit output means the binary was uploaded to App Store Connect and
+Apple is processing it. That is not the same as an immediately installable
+TestFlight build. Check processing and tester availability here:
+
+```text
+https://appstoreconnect.apple.com/apps/6773488324/testflight/ios
+```
+
+The local swarm host also runs the App Store Connect API monitor when
+credentials are configured:
+
+```bash
+APP_STORE_CONNECT_ISSUER_ID=<issuer id>
+APP_STORE_CONNECT_KEY_ID=<key id>
+APP_STORE_CONNECT_PRIVATE_KEY=<p8 private key>
+HEYTELLI_APP_STORE_APP_ID=6773488324
+pnpm --filter @workspace/scripts run ios-beta:monitor
+```
+
+The monitor reports `waiting`, `processing`, `available`, `failed`, `expired`,
+or `unknown`. Treat TestFlight as done only when the build is available to
+testers, not merely when EAS upload/submission succeeds.
 
 For Joe-only device testing with a dev client:
 

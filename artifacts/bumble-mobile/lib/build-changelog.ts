@@ -10,6 +10,17 @@ type BuildChangelogEnv = Record<string, string | undefined>;
 export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
   {
     version: "1.0.0",
+    date: "2026-05-31",
+    title: "Feedback follow-up status",
+    highlights: [
+      "Settings now shows whether your feedback is received, planned, or shipped.",
+      "Feedback status refreshes after you send a new beta note.",
+      "The improvement loop keeps private dating details out of engineering work.",
+      "Build notes now call out the autonomous swarm and TestFlight recovery work.",
+    ],
+  },
+  {
+    version: "1.0.0",
     date: "2026-05-29",
     title: "iOS visual polish",
     highlights: [

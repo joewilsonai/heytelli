@@ -32,6 +32,6 @@ test("falls back to curated changelog when build metadata is absent or malformed
     EXPO_PUBLIC_HEYTELLI_BUILD_CHANGELOG_HIGHLIGHTS: "not json",
   });
 
-  assert.equal(entry.title, "iOS visual polish");
-  assert.match(entry.highlights.join("\n"), /Apple-sized tap targets/);
+  assert.equal(entry.title, "Feedback follow-up status");
+  assert.match(entry.highlights.join("\n"), /received, planned, or shipped/);
 });

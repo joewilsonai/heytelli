@@ -219,6 +219,64 @@ export const ImprovementRunStatus = {
   blocked: 'blocked',
 } as const;
 
+export type FeedbackFollowUpStage = typeof FeedbackFollowUpStage[keyof typeof FeedbackFollowUpStage];
+
+
+export const FeedbackFollowUpStage = {
+  received: 'received',
+  accepted: 'accepted',
+  planned: 'planned',
+  shipped: 'shipped',
+  blocked: 'blocked',
+} as const;
+
+export interface UserFeedbackStatus {
+  ticketId: number;
+  stage: FeedbackFollowUpStage;
+  message: string;
+  summary: string;
+  /** @nullable */
+  type: string | null;
+  /** @nullable */
+  surface: string | null;
+  signalStatus: ImprovementSignalStatus;
+  workItemStatus: ImprovementWorkItemStatus | null;
+  /** @nullable */
+  workItemId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ImprovementHealthSnapshotSignals = {[key: string]: number};
+
+export type ImprovementHealthSnapshotWorkItems = {[key: string]: number};
+
+export type ImprovementHealthSnapshotRiskTiers = {[key: string]: number};
+
+export type ImprovementHealthSnapshotPriorities = {[key: string]: number};
+
+export type ImprovementHealthSnapshotRuns = {[key: string]: number};
+
+export type ImprovementHealthSnapshotQueue = {
+  waitingForTriage: number;
+  executable: number;
+  inProgress: number;
+  reviewGated: number;
+  needsAttention: number;
+};
+
+export interface ImprovementHealthSnapshot {
+  generatedAt: string;
+  signals: ImprovementHealthSnapshotSignals;
+  workItems: ImprovementHealthSnapshotWorkItems;
+  riskTiers: ImprovementHealthSnapshotRiskTiers;
+  priorities: ImprovementHealthSnapshotPriorities;
+  runs: ImprovementHealthSnapshotRuns;
+  queue: ImprovementHealthSnapshotQueue;
+  /** @nullable */
+  lastRunAt: string | null;
+}
+
 /**
  * Client context is allowlisted server-side. Do not send screenshots, transcripts, private notes, phone numbers, or tokens.
  */

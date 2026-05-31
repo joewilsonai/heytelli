@@ -25,9 +25,18 @@ test("improvement admin routes require admin role", () => {
   assert.match(route, /requireAdmin/);
   assert.match(route, /\/admin\/improvement\/signals/);
   assert.match(route, /\/admin\/improvement\/work-items/);
+  assert.match(route, /\/admin\/improvement\/health/);
+  assert.match(route, /buildImprovementHealthSnapshot/);
 });
 
 test("improvement router is mounted", () => {
   assert.match(index, /improvementRouter/);
   assert.match(index, /router\.use\(improvementRouter\)/);
+});
+
+test("user feedback status route returns sanitized follow-up state", () => {
+  assert.match(route, /\/improvement\/signals\/mine/);
+  assert.match(route, /requireUserId\(req\)/);
+  assert.match(route, /buildUserFeedbackStatuses/);
+  assert.doesNotMatch(route, /githubIssueUrl|githubIssueNumber/);
 });

@@ -19,6 +19,11 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
 
   assert.match(settings, /FeedbackSheet/);
   assert.match(settings, /Send feedback/);
+  assert.match(settings, /Feedback status/);
+  assert.match(settings, /listMyImprovementFeedbackStatuses/);
+  assert.match(settings, /refreshFeedbackStatuses/);
+  assert.match(settings, /No feedback sent from this phone yet/);
+  assert.match(settings, /formatFeedbackStageLabel/);
   assert.match(matchDetail, /FeedbackSheet/);
   assert.match(matchDetail, /Tell us more/);
   assert.match(helper, /Bug/);
@@ -38,6 +43,8 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
   assert.doesNotMatch(upload, /uploadFeedbackAttachment|FeedbackAttachment/);
   assert.match(helper, /feedbackFollowUpStages/);
   assert.match(helper, /Settings build notes/);
+  assert.match(helper, /listMyImprovementSignals/);
+  assert.match(helper, /listMyImprovementFeedbackStatuses/);
   assert.match(
     sheet,
     /We do not include screenshots or private\s+conversations in engineering issues\./,

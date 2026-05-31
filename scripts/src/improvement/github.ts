@@ -45,6 +45,14 @@ export type GitHubIssueSummary = {
   labels: string[];
 };
 
+export type GitHubPullRequestSummary = {
+  url: string;
+  number: number;
+  state: string;
+  draft: boolean;
+  mergedAt: string | null;
+};
+
 export type GitHubIssueComment = {
   url: string;
   id: number;
@@ -69,6 +77,10 @@ export type FindIssueCommentByMarkerOptions = GitHubIssueOptions & {
 };
 
 export type FetchGitHubIssueOptions = GitHubIssueOptions;
+
+export type FetchGitHubPullRequestOptions = GitHubRequestOptions & {
+  pullRequestNumber: number;
+};
 
 export type ListAgentReadyIssuesOptions = GitHubRequestOptions & {
   limit?: number;
@@ -395,6 +407,45 @@ export async function fetchGitHubIssue({
     labels?: unknown;
   };
   return issueSummaryFromResponse(data);
+}
+
+export async function fetchGitHubPullRequest({
+  owner,
+  repo,
+  token,
+  pullRequestNumber,
+  apiUrl,
+  fetchImpl = fetch,
+}: FetchGitHubPullRequestOptions): Promise<GitHubPullRequestSummary> {
+  const data = (await githubJsonRequest({
+    owner,
+    repo,
+    token,
+    apiUrl,
+    fetchImpl,
+    path: `/repos/${owner}/${repo}/pulls/${pullRequestNumber}`,
+  })) as {
+    html_url?: unknown;
+    number?: unknown;
+    state?: unknown;
+    draft?: unknown;
+    merged_at?: unknown;
+  };
+  if (
+    typeof data.html_url !== "string" ||
+    typeof data.number !== "number" ||
+    typeof data.state !== "string" ||
+    typeof data.draft !== "boolean"
+  ) {
+    throw new Error("GitHub pull request response was missing summary fields");
+  }
+  return {
+    url: data.html_url,
+    number: data.number,
+    state: data.state,
+    draft: data.draft,
+    mergedAt: typeof data.merged_at === "string" ? data.merged_at : null,
+  };
 }
 
 export async function listOpenIssuesByLabel({

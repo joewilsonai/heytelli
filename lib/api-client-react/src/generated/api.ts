@@ -35,6 +35,7 @@ import type {
   FunnelStats,
   GetCurrentUser200,
   HealthStatus,
+  ImprovementHealthSnapshot,
   ImprovementSignal,
   ImprovementSignalInput,
   ImprovementWorkItem,
@@ -55,6 +56,7 @@ import type {
   TagSuggestionResult,
   UploadUrlRequest,
   UploadUrlResponse,
+  UserFeedbackStatus,
   VoiceDebriefInput,
   VoiceDebriefResult,
   VoiceNoteFeedbackResult,
@@ -144,12 +146,6 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
-
 
 export const getLoginBetaUserUrl = () => {
 
@@ -292,10 +288,6 @@ export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUs
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
 
 
 
@@ -2686,6 +2678,83 @@ export const useCreateImprovementSignal = <TError = ErrorType<ErrorEnvelope>,
       return useMutation(getCreateImprovementSignalMutationOptions(options));
     }
 
+export const getListMyImprovementSignalsUrl = () => {
+
+
+
+
+  return `/api/improvement/signals/mine`
+}
+
+/**
+ * @summary List the signed-in user's privacy-safe feedback follow-up statuses
+ */
+export const listMyImprovementSignals = async ( options?: RequestInit): Promise<UserFeedbackStatus[]> => {
+
+  return customFetch<UserFeedbackStatus[]>(getListMyImprovementSignalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyImprovementSignalsQueryKey = () => {
+    return [
+    `/api/improvement/signals/mine`
+    ] as const;
+    }
+
+
+export const getListMyImprovementSignalsQueryOptions = <TData = Awaited<ReturnType<typeof listMyImprovementSignals>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyImprovementSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyImprovementSignalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyImprovementSignals>>> = ({ signal }) => listMyImprovementSignals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyImprovementSignals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyImprovementSignalsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyImprovementSignals>>>
+export type ListMyImprovementSignalsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary List the signed-in user's privacy-safe feedback follow-up statuses
+ */
+
+export function useListMyImprovementSignals<TData = Awaited<ReturnType<typeof listMyImprovementSignals>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyImprovementSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyImprovementSignalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getListImprovementSignalsUrl = () => {
 
 
@@ -2751,6 +2820,83 @@ export function useListImprovementSignals<TData = Awaited<ReturnType<typeof list
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListImprovementSignalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetImprovementHealthUrl = () => {
+
+
+
+
+  return `/api/admin/improvement/health`
+}
+
+/**
+ * @summary Get autonomous improvement queue health for admins
+ */
+export const getImprovementHealth = async ( options?: RequestInit): Promise<ImprovementHealthSnapshot> => {
+
+  return customFetch<ImprovementHealthSnapshot>(getGetImprovementHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetImprovementHealthQueryKey = () => {
+    return [
+    `/api/admin/improvement/health`
+    ] as const;
+    }
+
+
+export const getGetImprovementHealthQueryOptions = <TData = Awaited<ReturnType<typeof getImprovementHealth>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getImprovementHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetImprovementHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getImprovementHealth>>> = ({ signal }) => getImprovementHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getImprovementHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetImprovementHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getImprovementHealth>>>
+export type GetImprovementHealthQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get autonomous improvement queue health for admins
+ */
+
+export function useGetImprovementHealth<TData = Awaited<ReturnType<typeof getImprovementHealth>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getImprovementHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetImprovementHealthQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

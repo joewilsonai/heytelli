@@ -4,6 +4,7 @@ import test from "node:test";
 import { buildImprovementDigest } from "./digest";
 import { createGitHubIssue } from "./github";
 import {
+  githubIssueRunDecision,
   mergeDuplicateWorkItem,
   planSignalTriage,
   shouldCreateGithubIssue,
@@ -170,10 +171,12 @@ test("digest summarizes counts without private payload fields", () => {
     waitingForSignal: 0,
     dryRun: false,
     rolledBack: 0,
+    issueCapDeferred: 3,
   });
 
   assert.match(digest, /Work items created: 2/);
   assert.match(digest, /Issues opened: 1/);
+  assert.match(digest, /Issue cap deferred: 3/);
   assert.doesNotMatch(digest, /rawPayload|screenshot|transcript|phone/);
 });
 
@@ -191,4 +194,31 @@ test("digest names dry-run issue previews clearly", () => {
 
   assert.match(digest, /Issue drafts previewed: 1/);
   assert.doesNotMatch(digest, /Issues opened: 1/);
+});
+
+test("github issue cap defers runaway issue creation without dropping signals", () => {
+  assert.equal(
+    githubIssueRunDecision({
+      candidateIssue: false,
+      openedThisRun: 9,
+      maxGithubIssuesPerRun: 1,
+    }),
+    "not-needed",
+  );
+  assert.equal(
+    githubIssueRunDecision({
+      candidateIssue: true,
+      openedThisRun: 1,
+      maxGithubIssuesPerRun: 2,
+    }),
+    "open",
+  );
+  assert.equal(
+    githubIssueRunDecision({
+      candidateIssue: true,
+      openedThisRun: 2,
+      maxGithubIssuesPerRun: 2,
+    }),
+    "defer-run-cap",
+  );
 });

@@ -6,14 +6,17 @@ GitHub Actions remains a manual fallback, not the primary scheduled runner.
 
 ## Architecture
 
+For the full agent/process map, data flow, labels, risk tiers, and current V1
+limits, see [`docs/swarm-agents.md`](./swarm-agents.md).
+
 1. Railway API ingests feedback and system signals into private database tables.
    Raw screenshots, transcripts, match details, and tester identities stay in
    Postgres/object storage, not GitHub.
 2. Railway triage, either as a cron service or one-off worker, sanitizes new
    `improvement_signals`, groups them into `improvement_work_items`, and opens
    GitHub issues only when the summary is safe.
-3. GitHub labels are the public handoff. `agent-ready` means a trusted runner
-   can plan work; `needs-breakdown`, `scope:large`, `multi-pr`, or
+3. GitHub labels are the repo-visible handoff. `agent-ready` means a trusted
+   runner can plan work; `needs-breakdown`, `scope:large`, `multi-pr`, or
    `multi-pr-needed` tells the runner to split a broad parent into child
    issues before implementation; `swarm-active` is a temporary claim;
    `swarm-planned` is the idempotent planning marker.
@@ -24,9 +27,11 @@ GitHub Actions remains a manual fallback, not the primary scheduled runner.
    allows it.
 5. EAS cloud builds handle normal iOS beta builds and TestFlight submission.
 
-Keep public GitHub artifacts to product surface, platform/build metadata, error
-codes, safe repro notes, and agent checklists. Do not include screenshots,
-transcripts, names, phone numbers, exact locations, or private dating context.
+Keep GitHub-visible artifacts to product surface, platform/build metadata,
+error codes, safe repro notes, and agent checklists. The repository is private,
+but GitHub issues, PRs, prompts, CI logs, and integrations are still not the
+right place for screenshots, transcripts, names, phone numbers, exact
+locations, or private dating context.
 
 ## Required Secrets
 
@@ -51,6 +56,16 @@ The scripts also accept `GH_TOKEN` or `GITHUB_TOKEN` instead of
 ```bash
 EXPO_TOKEN=<Expo access token>
 EXPO_PUBLIC_API_BASE_URL=https://heytelli-api-production.up.railway.app
+```
+
+For automated TestFlight processing checks, configure an App Store Connect API
+key in the trusted runner secret store:
+
+```bash
+APP_STORE_CONNECT_ISSUER_ID=<issuer id>
+APP_STORE_CONNECT_KEY_ID=<key id>
+APP_STORE_CONNECT_PRIVATE_KEY=<p8 private key>
+HEYTELLI_APP_STORE_APP_ID=6773488324
 ```
 
 Optional deployment/agent jobs may also need `RAILWAY_TOKEN` for Railway CLI
@@ -81,6 +96,7 @@ Useful knobs:
 
 ```bash
 IMPROVEMENT_TRIAGE_LIMIT=25
+IMPROVEMENT_MAX_GITHUB_ISSUES_PER_RUN=5
 IMPROVEMENT_AGENT_NAME=heytelli-triage-worker
 ```
 
@@ -103,13 +119,13 @@ Run a safe local discovery pass:
 ./scripts/run-local-swarm-host.sh --dry-run --limit 5
 ```
 
-Run the live local swarm planner and executor:
+Run the live local swarm planner, executor, lifecycle monitor, and beta monitor:
 
 ```bash
 ./scripts/run-local-swarm-host.sh --live --limit 5
 ```
 
-The wrapper runs two steps in order:
+The wrapper runs four steps in order:
 
 1. `run-improvement-swarm.sh` turns safe `agent-ready` issues into private DB
    work items with `planned` status. If a parent issue is too broad, the runner
@@ -120,6 +136,11 @@ The wrapper runs two steps in order:
    installs dependencies in that worktree, asks the local agent to implement
    from sanitized context, typechecks, opens a PR, comments back on the source
    issue, and queues auto-merge for `safe_auto_merge` work.
+3. `improvement:lifecycle` checks PR-linked work items and moves them to
+   `merged`, `closed`, or their current review/check state.
+4. `ios-beta:monitor` checks App Store Connect processing state when API
+   credentials are configured. If credentials are missing, it reports
+   `not_configured` and does not block the swarm.
 
 You can exercise the executor by itself:
 
@@ -142,9 +163,29 @@ HEYTELLI_SWARM_PROMPT_FILE=<path to sanitized prompt>
 HEYTELLI_SWARM_WORKTREE=<path to isolated worktree>
 ```
 
+To run real reviewer lanes, set `HEYTELLI_SWARM_REVIEWER_COMMAND`. The executor
+calls it once per required reviewer role after the PR is opened. The command
+receives a sanitized review prompt on stdin and:
+
+```bash
+HEYTELLI_SWARM_REVIEW_ROLE=<role>
+HEYTELLI_SWARM_REVIEW_PROMPT=<sanitized review prompt>
+HEYTELLI_SWARM_PR_URL=<opened PR URL>
+HEYTELLI_SWARM_WORKTREE=<path to isolated worktree>
+```
+
+Reviewer commands run sequentially by default. Use
+`IMPROVEMENT_REVIEWER_PARALLELISM=2` or `--reviewer-parallelism 2` only after
+the reviewer command is stable enough for bounded parallel review.
+
+Custom executor and reviewer commands are checked against the local denylist in
+`scripts/src/improvement/hooks.ts` before they run. The executor also records
+structured trace spans in `improvement_trace_spans`.
+
 `guarded_auto_merge` and `extra_agent_review` work items can still open PRs, but
 they do not queue auto-merge unless the corresponding executor flags are
-enabled. `no_auto_merge` items remain research/planning-only in the V1 runner.
+enabled and reviewer agents are configured. `no_auto_merge` items remain
+research/planning-only in the V1 runner.
 
 Install the Mac as the default scheduled swarm host:
 
@@ -221,16 +262,47 @@ Normal beta builds do not need a Mac. The mobile package still lives at
 
 The GitHub Actions workflow `.github/workflows/ios-beta-build.yml` starts an
 EAS iOS beta build automatically on `main` pushes that touch mobile or shared
-client files. Push-triggered builds do not auto-submit to TestFlight by default,
-which protects the App Store Connect upload limit while the swarm is merging
-multiple small changes. Run the workflow manually with `submit=true` for the
-beta build that should go to TestFlight. Without `EXPO_TOKEN`, the workflow logs
-a notice and skips the EAS build instead of failing unrelated merges.
+client files. Push-triggered builds auto-submit the completed beta build to
+TestFlight by default, keeping the autonomous improvement loop responsible for
+getting merged mobile changes onto tester devices. Run the workflow manually
+with `submit=false` only for deliberate smoke builds that should not reach
+TestFlight. Without `EXPO_TOKEN`, the workflow logs a notice and skips the EAS
+build instead of failing unrelated merges.
 
 ```bash
 cd artifacts/bumble-mobile
 pnpm dlx eas-cli@latest build -p ios --profile beta --non-interactive
 pnpm dlx eas-cli@latest submit -p ios --profile beta --latest --non-interactive
+```
+
+Run those commands from the mobile app directory. Avoid using `pnpm --dir
+artifacts/bumble-mobile dlx eas-cli ...` for submit from the repo root; that
+can make EAS resolve the root workspace package instead of the HeyTelli mobile
+app and prompt to create the wrong EAS project.
+
+After EAS prints that the app was submitted, Apple still has to process the
+binary before it appears as available in TestFlight. Check:
+
+```text
+https://appstoreconnect.apple.com/apps/6773488324/testflight/ios
+```
+
+Or use the App Store Connect API monitor:
+
+```bash
+pnpm --filter @workspace/scripts run ios-beta:monitor
+```
+
+The monitor reports `not_configured`, `waiting`, `processing`, `available`,
+`failed`, `expired`, or `unknown`. A successful EAS submit is not considered
+done for testers until this monitor or App Store Connect shows the build is
+available.
+
+Run the improvement eval harness when changing sanitization, triage, labels, or
+risk policy:
+
+```bash
+pnpm --filter @workspace/scripts run improvement:evals
 ```
 
 Development-client builds are also cloud-built:

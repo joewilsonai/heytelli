@@ -220,7 +220,10 @@ test("github issue body includes sanitized reproduction context only", () => {
   });
 
   assert.match(draft.body, /No private screenshots\/transcripts included/);
+  assert.match(draft.body, /private repo/i);
+  assert.match(draft.body, /GitHub-visible/i);
   assert.doesNotMatch(draft.body, /signalIds|314-555|data:image|full private/);
+  assert.doesNotMatch(draft.body, /public GitHub|public handoff/i);
   assert.deepEqual(draft.labels, [
     "feedback",
     "bug",

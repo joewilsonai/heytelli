@@ -16,6 +16,17 @@ import {
   githubTokenFromEnv,
   type GitHubIssueSummary,
 } from "./github";
+import {
+  agentProfilesForWorkItem,
+  buildAgentProfilePromptSection,
+} from "./agentProfiles";
+import {
+  buildExecutorHookPlan,
+  validateAgentCommandSafety,
+  type HookCommand,
+} from "./hooks";
+import { buildTraceSpan, traceIdForExecutorRun } from "./trace";
+import type { SwarmAgentRole } from "./swarmPlan";
 
 export type SwarmExecutorWorkItem = {
   id: number;
@@ -72,6 +83,9 @@ export type SwarmExecutorOptions = {
   worktreeRoot: string;
   agentCommand: string | null;
   agentTimeoutMs: number;
+  reviewerCommand: string | null;
+  reviewerTimeoutMs: number;
+  reviewerParallelism: number;
   keepWorktree: boolean;
   allowGuardedAutoMerge: boolean;
   allowExtraAutoMerge: boolean;
@@ -84,6 +98,7 @@ export type SwarmExecutorRunCounts = {
   failed: number;
   branchesCreated: number;
   pullRequestsCreated: number;
+  reviewerAgentsRun: number;
   autoMergesQueued: number;
   dbUpdated: number;
   dryRun: boolean;
@@ -99,6 +114,7 @@ export type ExecutorCommandPreview = {
     | "commit"
     | "push"
     | "pr"
+    | "review"
     | "automerge";
   command: string;
   args: string[];
@@ -122,8 +138,14 @@ type CommandRunner = (
   },
 ) => Promise<CommandResult>;
 
+type ExecutorTraceRecorder = (
+  span: ReturnType<typeof buildTraceSpan>,
+) => Promise<void>;
+
 const DEFAULT_LIMIT = 3;
 const DEFAULT_AGENT_TIMEOUT_MS = 600_000;
+const DEFAULT_REVIEWER_TIMEOUT_MS = 300_000;
+const DEFAULT_REVIEWER_PARALLELISM = 1;
 export const EXECUTOR_PROMPT_FILE_NAME = ".heytelli-swarm-prompt.md";
 export const EXECUTOR_LOCK_DIR_NAME = ".executor.lock";
 
@@ -163,6 +185,7 @@ function emptyCounts(dryRun: boolean): SwarmExecutorRunCounts {
     failed: 0,
     branchesCreated: 0,
     pullRequestsCreated: 0,
+    reviewerAgentsRun: 0,
     autoMergesQueued: 0,
     dbUpdated: 0,
     dryRun,
@@ -269,6 +292,22 @@ export function parseExecutorArgs(
       env.IMPROVEMENT_EXECUTOR_AGENT_TIMEOUT_MS,
       DEFAULT_AGENT_TIMEOUT_MS,
     ),
+    reviewerCommand:
+      argValue(argv, "--reviewer-command") ||
+      env.HEYTELLI_SWARM_REVIEWER_COMMAND ||
+      null,
+    reviewerTimeoutMs: numericArg(
+      argv,
+      "--reviewer-timeout-ms",
+      env.IMPROVEMENT_REVIEWER_TIMEOUT_MS,
+      DEFAULT_REVIEWER_TIMEOUT_MS,
+    ),
+    reviewerParallelism: numericArg(
+      argv,
+      "--reviewer-parallelism",
+      env.IMPROVEMENT_REVIEWER_PARALLELISM,
+      DEFAULT_REVIEWER_PARALLELISM,
+    ),
     keepWorktree:
       argv.includes("--keep-worktree") ||
       envFlag(env.IMPROVEMENT_EXECUTOR_KEEP_WORKTREE, false),
@@ -298,7 +337,11 @@ export function planSwarmExecutorWorkItem(
   options: Pick<
     SwarmExecutorOptions,
     "allowGuardedAutoMerge" | "allowExtraAutoMerge"
-  > = { allowGuardedAutoMerge: false, allowExtraAutoMerge: false },
+  > & { reviewerCommand?: string | null } = {
+    allowGuardedAutoMerge: false,
+    allowExtraAutoMerge: false,
+    reviewerCommand: null,
+  },
 ): SwarmExecutorPlanResult {
   if (workItem.status !== "planned") {
     return {
@@ -322,11 +365,15 @@ export function planSwarmExecutorWorkItem(
     };
   }
 
+  const reviewerAgentsEnabled = Boolean(options.reviewerCommand);
   const autoMergeAllowed =
     workItem.riskTier === "safe_auto_merge" ||
     (workItem.riskTier === "guarded_auto_merge" &&
-      options.allowGuardedAutoMerge) ||
-    (workItem.riskTier === "extra_agent_review" && options.allowExtraAutoMerge);
+      options.allowGuardedAutoMerge &&
+      reviewerAgentsEnabled) ||
+    (workItem.riskTier === "extra_agent_review" &&
+      options.allowExtraAutoMerge &&
+      reviewerAgentsEnabled);
 
   return {
     status: "executable",
@@ -380,6 +427,11 @@ export function buildExecutorPrompt(
     "Sanitized summary:",
     workItem.summary,
     "",
+    "Visibility boundary:",
+    "This is a private repo, but GitHub issues, PRs, prompts, CI logs, and integrations are GitHub-visible surfaces. Keep private app/database context out of this worktree handoff.",
+    "",
+    buildAgentProfilePromptSection(agentProfilesForWorkItem(workItem)),
+    "",
     "Implementation rules:",
     "- Before editing, compare the issue against the current repository. If the current implementation already resolves or supersedes the issue, leave `RESOLVED_BY_EXISTING_IMPLEMENTATION: <short reason>` in your final response and make no code changes.",
     "- Make the smallest production change that resolves the issue.",
@@ -404,6 +456,7 @@ export function buildPrBody(
     "",
     "## Guardrails",
     "- Built from sanitized issue/work-item context only.",
+    "- This is a private repo, but this PR is GitHub-visible to repo tools, CI, and integrations.",
     "- No screenshots, transcripts, phone numbers, or private dating details included.",
     `- Risk tier: ${workItem.riskTier}.`,
     `- Auto-merge queued: ${plan.autoMergeAllowed ? "yes" : "no"}.`,
@@ -417,13 +470,65 @@ export function buildPrBody(
   ].join("\n");
 }
 
+export function reviewerRolesForRiskTier(
+  riskTier: ImprovementRiskTier,
+): SwarmAgentRole[] {
+  switch (riskTier) {
+    case "safe_auto_merge":
+      return ["code_reviewer"];
+    case "guarded_auto_merge":
+      return ["product_reviewer", "privacy_reviewer", "code_reviewer"];
+    case "extra_agent_review":
+      return [
+        "privacy_reviewer",
+        "safety_reviewer",
+        "backend_api_reviewer",
+        "code_reviewer",
+        "test_reviewer",
+      ];
+    case "no_auto_merge":
+      return [];
+  }
+}
+
+export function buildReviewerAgentPrompt(input: {
+  role: SwarmAgentRole;
+  workItem: SwarmExecutorWorkItem;
+  plan: PlannedExecutorWorkItem;
+  prUrl: string;
+}): string {
+  const { role, workItem, plan, prUrl } = input;
+  return [
+    `You are the ${role} for a HeyTelli swarm PR.`,
+    "",
+    `GitHub issue: #${plan.issueNumber}`,
+    `Pull request: ${prUrl}`,
+    `Work item: #${workItem.id}`,
+    `Risk tier: ${workItem.riskTier}`,
+    `Title: ${workItem.title}`,
+    "",
+    "Sanitized summary:",
+    workItem.summary,
+    "",
+    "Visibility boundary:",
+    "This is a private repo, but GitHub issues, PRs, prompts, CI logs, and integrations are GitHub-visible surfaces. Review only sanitized repo context and do not request private database rows.",
+    "",
+    "Review rules:",
+    "- Inspect the current worktree and PR-relevant diff.",
+    "- Do not edit files, commit, push, merge, or change labels.",
+    "- Look for regressions, missing tests, privacy/safety leaks, and weak rollback behavior relevant to your role.",
+    "- Output REVIEW_PASS with concise evidence when the change is acceptable.",
+    "- Output REVIEW_BLOCKED with concrete file/test reasons when the change should not merge.",
+  ].join("\n");
+}
+
 export function buildSwarmExecutorCommandPreview(
   workItem: SwarmExecutorWorkItem,
   plan: PlannedExecutorWorkItem,
   options: Pick<
     SwarmExecutorOptions,
     "repoRoot" | "worktreeRoot" | "owner" | "repo" | "baseBranch"
-  >,
+  > & { reviewerCommand?: string | null },
 ): ExecutorCommandPreview[] {
   const worktreePath = path.join(options.worktreeRoot, String(workItem.id));
   const commands: ExecutorCommandPreview[] = [
@@ -503,6 +608,17 @@ export function buildSwarmExecutorCommandPreview(
     },
   ];
 
+  if (options.reviewerCommand) {
+    for (const role of reviewerRolesForRiskTier(workItem.riskTier)) {
+      commands.push({
+        kind: "review",
+        command: "/bin/zsh",
+        args: ["-lc", options.reviewerCommand],
+        cwd: worktreePath,
+      });
+    }
+  }
+
   if (plan.autoMergeAllowed) {
     commands.push({
       kind: "automerge",
@@ -528,6 +644,7 @@ export function buildSwarmExecutorDigest(
     `Failed: ${counts.failed}`,
     `Branches created: ${counts.branchesCreated}`,
     `Pull requests created: ${counts.pullRequestsCreated}`,
+    `Reviewer agents run: ${counts.reviewerAgentsRun}`,
     `Auto-merges queued: ${counts.autoMergesQueued}`,
     `DB rows updated: ${counts.dbUpdated}`,
   ].join("\n");
@@ -632,6 +749,10 @@ export async function runAgent(
   runner: CommandRunner,
 ): Promise<void> {
   if (options.agentCommand) {
+    const violations = validateAgentCommandSafety(options.agentCommand);
+    if (violations.length > 0) {
+      throw new Error(`Unsafe executor agent command: ${violations.join("; ")}`);
+    }
     await runner("/bin/zsh", ["-lc", options.agentCommand], {
       cwd: worktreePath,
       env: {
@@ -655,6 +776,46 @@ export async function runAgent(
     ],
     { cwd: worktreePath, stdin: prompt, timeoutMs: options.agentTimeoutMs },
   );
+}
+
+export async function runReviewerAgents(
+  worktreePath: string,
+  workItem: SwarmExecutorWorkItem,
+  plan: PlannedExecutorWorkItem,
+  prUrl: string,
+  options: SwarmExecutorOptions,
+  runner: CommandRunner,
+): Promise<number> {
+  const reviewerCommand = options.reviewerCommand;
+  if (!reviewerCommand) return 0;
+  const violations = validateAgentCommandSafety(reviewerCommand);
+  if (violations.length > 0) {
+    throw new Error(`Unsafe reviewer command: ${violations.join("; ")}`);
+  }
+  const command: string = reviewerCommand;
+  let reviewed = 0;
+  const roles = reviewerRolesForRiskTier(workItem.riskTier);
+  const parallelism = Math.max(1, options.reviewerParallelism);
+  async function runRole(role: SwarmAgentRole): Promise<void> {
+    const prompt = buildReviewerAgentPrompt({ role, workItem, plan, prUrl });
+    await runner("/bin/zsh", ["-lc", command], {
+      cwd: worktreePath,
+      stdin: prompt,
+      env: {
+        ...process.env,
+        HEYTELLI_SWARM_REVIEW_ROLE: role,
+        HEYTELLI_SWARM_REVIEW_PROMPT: prompt,
+        HEYTELLI_SWARM_PR_URL: prUrl,
+        HEYTELLI_SWARM_WORKTREE: worktreePath,
+      },
+      timeoutMs: options.reviewerTimeoutMs,
+    });
+    reviewed += 1;
+  }
+  for (let index = 0; index < roles.length; index += parallelism) {
+    await Promise.all(roles.slice(index, index + parallelism).map(runRole));
+  }
+  return reviewed;
 }
 
 export async function acquireExecutorRunLock(
@@ -751,6 +912,52 @@ export async function removeExecutorScratchFiles(
   await rm(path.join(worktreePath, EXECUTOR_PROMPT_FILE_NAME), {
     force: true,
   });
+}
+
+async function recordExecutorStep<T>(
+  traceRecorder: ExecutorTraceRecorder | null,
+  input: {
+    traceId: string;
+    workItemId: number;
+    runId: number | null;
+    agentName: string;
+    name: string;
+    kind: Parameters<typeof buildTraceSpan>[0]["kind"];
+    metadata?: Record<string, unknown>;
+  },
+  action: () => Promise<T>,
+): Promise<T> {
+  const startedAt = new Date();
+  try {
+    const result = await action();
+    await traceRecorder?.(
+      buildTraceSpan({
+        ...input,
+        startedAt,
+        endedAt: new Date(),
+        status: "succeeded",
+      }),
+    );
+    return result;
+  } catch (err) {
+    await traceRecorder?.(
+      buildTraceSpan({
+        ...input,
+        startedAt,
+        endedAt: new Date(),
+        status: "failed",
+        errorSummary: errorMessage(err).slice(0, 500),
+      }),
+    );
+    throw err;
+  }
+}
+
+async function runHookCommand(
+  hook: HookCommand,
+  runner: CommandRunner,
+): Promise<void> {
+  await runner(hook.command, hook.args, { cwd: hook.cwd });
 }
 
 async function createOrReusePullRequest(
@@ -874,9 +1081,15 @@ async function executeWorkItem(
   plan: PlannedExecutorWorkItem,
   options: SwarmExecutorOptions,
   runner: CommandRunner,
+  trace: {
+    traceId: string;
+    runId: number | null;
+    recorder: ExecutorTraceRecorder | null;
+  } | null = null,
 ): Promise<{
   branchCreated: boolean;
   prCreated: boolean;
+  reviewerAgentsRun: number;
   autoMergeQueued: boolean;
   prUrl: string;
   prNumber: number | null;
@@ -884,71 +1097,136 @@ async function executeWorkItem(
   const worktreePath = path.join(options.worktreeRoot, String(workItem.id));
   const prompt = buildExecutorPrompt(workItem, plan);
   const promptPath = path.join(worktreePath, EXECUTOR_PROMPT_FILE_NAME);
+  const hookPlan = buildExecutorHookPlan({
+    riskTier: workItem.riskTier,
+    repoRoot: options.repoRoot,
+    worktreePath,
+  });
+  const traceId = trace?.traceId ?? `swarm-executor:${workItem.id}:adhoc`;
+  async function step<T>(
+    name: string,
+    kind: Parameters<typeof buildTraceSpan>[0]["kind"],
+    metadata: Record<string, unknown>,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return recordExecutorStep(
+      trace?.recorder ?? null,
+      {
+        traceId,
+        workItemId: workItem.id,
+        runId: trace?.runId ?? null,
+        agentName: options.agentName,
+        name,
+        kind,
+        metadata,
+      },
+      action,
+    );
+  }
 
   await mkdir(options.worktreeRoot, { recursive: true });
-  await runner("git", ["fetch", "origin", options.baseBranch], {
-    cwd: options.repoRoot,
-    env: gitEnv(options.token),
-  });
-  await removeWorktree(options.repoRoot, worktreePath, runner);
-  await runner(
-    "git",
-    [
-      "worktree",
-      "add",
-      "-B",
-      plan.branchName,
-      worktreePath,
-      `origin/${options.baseBranch}`,
-    ],
-    { cwd: options.repoRoot },
+  await step("git.fetch", "tool", { baseBranch: options.baseBranch }, () =>
+    runner("git", ["fetch", "origin", options.baseBranch], {
+      cwd: options.repoRoot,
+      env: gitEnv(options.token),
+    }),
   );
+  await step("worktree.remove_existing", "tool", { worktreePath }, () =>
+    removeWorktree(options.repoRoot, worktreePath, runner),
+  );
+  await step(
+    "worktree.add",
+    "tool",
+    { branchName: plan.branchName, worktreePath },
+    () =>
+      runner(
+        "git",
+        [
+          "worktree",
+          "add",
+          "-B",
+          plan.branchName,
+          worktreePath,
+          `origin/${options.baseBranch}`,
+        ],
+        { cwd: options.repoRoot },
+      ),
+  );
+  for (const hook of hookPlan.pre) {
+    await step(`hook.pre.${hook.command}`, "check", { args: hook.args }, () =>
+      runHookCommand(hook, runner),
+    );
+  }
   await writeFile(promptPath, prompt, "utf8");
 
-  await runner("pnpm", ["install", "--frozen-lockfile"], { cwd: worktreePath });
-  await runAgent(worktreePath, prompt, promptPath, options, runner);
-  await runner("pnpm", ["run", "typecheck"], { cwd: worktreePath });
-  await removeExecutorScratchFiles(worktreePath);
-  await commitIfNeeded(worktreePath, workItem, options.baseBranch, runner);
-  await runner("git", ["push", "-u", "origin", plan.branchName], {
-    cwd: worktreePath,
-    env: gitEnv(options.token),
-  });
-  const pr = await createOrReusePullRequest(
-    worktreePath,
-    workItem,
-    plan,
-    options,
-    runner,
+  await step("pnpm.install", "tool", {}, () =>
+    runner("pnpm", ["install", "--frozen-lockfile"], { cwd: worktreePath }),
   );
-  await commentOnSourceIssue(workItem, plan, pr.url, options);
+  await step("agent.implementation", "agent", {}, () =>
+    runAgent(worktreePath, prompt, promptPath, options, runner),
+  );
+  for (const hook of hookPlan.post) {
+    await step(`hook.post.${hook.command}`, "check", { args: hook.args }, () =>
+      runHookCommand(hook, runner),
+    );
+  }
+  await step("scratch.cleanup", "tool", {}, () =>
+    removeExecutorScratchFiles(worktreePath),
+  );
+  await step("git.commit", "tool", {}, () =>
+    commitIfNeeded(worktreePath, workItem, options.baseBranch, runner),
+  );
+  await step("git.push", "tool", { branchName: plan.branchName }, () =>
+    runner("git", ["push", "-u", "origin", plan.branchName], {
+      cwd: worktreePath,
+      env: gitEnv(options.token),
+    }),
+  );
+  const pr = await step("github.pr", "github", {}, () =>
+    createOrReusePullRequest(worktreePath, workItem, plan, options, runner),
+  );
+  await step("github.issue_comment", "github", { prUrl: pr.url }, () =>
+    commentOnSourceIssue(workItem, plan, pr.url, options),
+  );
+  const reviewerAgentsRun = await step("agent.reviewers", "agent", {}, () =>
+    runReviewerAgents(worktreePath, workItem, plan, pr.url, options, runner),
+  );
 
   let autoMergeQueued = false;
   if (plan.autoMergeAllowed) {
-    await runner(
-      "gh",
-      [
-        "pr",
-        "merge",
-        pr.number == null ? pr.url : String(pr.number),
-        "--repo",
-        `${options.owner}/${options.repo}`,
-        "--squash",
-        "--auto",
-        "--delete-branch",
-      ],
-      { cwd: worktreePath, env: githubEnv(options.token) },
+    await step(
+      "github.automerge",
+      "github",
+      { prNumber: pr.number, prUrl: pr.url },
+      () =>
+        runner(
+          "gh",
+          [
+            "pr",
+            "merge",
+            pr.number == null ? pr.url : String(pr.number),
+            "--repo",
+            `${options.owner}/${options.repo}`,
+            "--squash",
+            "--auto",
+            "--delete-branch",
+          ],
+          { cwd: worktreePath, env: githubEnv(options.token) },
+        ),
     );
     autoMergeQueued = true;
   }
 
   if (!options.keepWorktree) {
-    await removeWorktree(options.repoRoot, worktreePath, runner);
+    await step("worktree.cleanup", "tool", { worktreePath }, () =>
+      removeWorktree(options.repoRoot, worktreePath, runner),
+    );
   }
 
   return {
     branchCreated: true,
     prCreated: pr.created,
+    reviewerAgentsRun,
     autoMergeQueued,
     prUrl: pr.url,
     prNumber: pr.number,
@@ -966,7 +1244,7 @@ export async function runSwarmExecutor(
     );
   }
 
-  const { db, improvementRuns, improvementWorkItems } =
+  const { db, improvementRuns, improvementTraceSpans, improvementWorkItems } =
     await import("@workspace/db");
   const workItems = (await db
     .select()
@@ -1071,9 +1349,26 @@ export async function runSwarmExecutor(
         runId = run.id;
       }
 
-      const executed = await executeWorkItem(workItem, plan, options, runner);
+      const trace =
+        runId == null
+          ? null
+          : {
+              traceId: traceIdForExecutorRun(workItem.id, runId),
+              runId,
+              recorder: async (span: ReturnType<typeof buildTraceSpan>) => {
+                await db.insert(improvementTraceSpans).values(span);
+              },
+            };
+      const executed = await executeWorkItem(
+        workItem,
+        plan,
+        options,
+        runner,
+        trace,
+      );
       counts.branchesCreated += executed.branchCreated ? 1 : 0;
       counts.pullRequestsCreated += executed.prCreated ? 1 : 0;
+      counts.reviewerAgentsRun += executed.reviewerAgentsRun;
       counts.autoMergesQueued += executed.autoMergeQueued ? 1 : 0;
 
       await db
@@ -1099,6 +1394,7 @@ export async function runSwarmExecutor(
               branchName: plan.branchName,
               prUrl: executed.prUrl,
               prNumber: executed.prNumber,
+              reviewerAgentsRun: executed.reviewerAgentsRun,
               autoMergeQueued: executed.autoMergeQueued,
             },
             completedAt: new Date(),

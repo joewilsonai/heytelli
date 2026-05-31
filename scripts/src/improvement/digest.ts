@@ -9,6 +9,7 @@ export type ImprovementDigestCounts = {
   waitingForSignal: number;
   dryRun: boolean;
   rolledBack: number;
+  issueCapDeferred?: number;
 };
 
 export function buildImprovementDigest(counts: ImprovementDigestCounts): string {
@@ -21,6 +22,7 @@ export function buildImprovementDigest(counts: ImprovementDigestCounts): string 
     `Work items created: ${counts.workItemsCreated}`,
     `Duplicates grouped: ${counts.duplicatesGrouped}`,
     `${counts.dryRun ? "Issue drafts previewed" : "Issues opened"}: ${counts.issuesCreated}`,
+    `Issue cap deferred: ${counts.issueCapDeferred ?? 0}`,
     `Blocked by privacy policy: ${counts.blocked}`,
     `Waiting for more signal: ${counts.waitingForSignal}`,
     `Rollbacks: ${counts.rolledBack}`,

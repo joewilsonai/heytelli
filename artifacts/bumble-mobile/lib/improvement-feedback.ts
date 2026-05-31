@@ -2,7 +2,9 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import {
   createImprovementSignal,
+  listMyImprovementSignals,
   type ImprovementFeedbackType,
+  type UserFeedbackStatus,
 } from "@workspace/api-client-react";
 
 export type FeedbackType = ImprovementFeedbackType;
@@ -75,4 +77,10 @@ export async function submitImprovementFeedback({
       ? clientContext
       : undefined,
   });
+}
+
+export type FeedbackStatus = UserFeedbackStatus;
+
+export async function listMyImprovementFeedbackStatuses() {
+  return listMyImprovementSignals();
 }

@@ -302,6 +302,9 @@ test("builds a privacy-safe issue comment for the planned swarm", () => {
     comment,
     /No private screenshots, transcripts, or dating details/,
   );
+  assert.match(comment, /private repo/i);
+  assert.match(comment, /GitHub-visible/i);
+  assert.doesNotMatch(comment, /public GitHub|public handoff/i);
   assert.match(comment, /heytelli-swarm-plan:7:12/);
   assert.doesNotMatch(comment, /confusing feedback button/);
   assert.doesNotMatch(comment, /The settings feedback button is confusing/);

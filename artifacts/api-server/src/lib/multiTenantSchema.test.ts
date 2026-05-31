@@ -8,6 +8,7 @@ const {
   conversations,
   improvementRuns,
   improvementSignals,
+  improvementTraceSpans,
   improvementWorkItems,
   matches,
   productFeedback,
@@ -40,5 +41,9 @@ test("private beta data has a user owner in the core schema", () => {
   assert.ok(
     improvementRuns.workItemId,
     "improvement runs must be linked to one work item",
+  );
+  assert.ok(
+    improvementTraceSpans.workItemId,
+    "improvement trace spans must be linked to work items when available",
   );
 });

@@ -8,8 +8,12 @@
     "improvement:triage": "tsx ./src/improvement/triage.ts",
     "improvement:swarm": "tsx ./src/improvement/swarm.ts",
     "improvement:execute": "tsx ./src/improvement/executor.ts",
+    "improvement:lifecycle": "tsx ./src/improvement/lifecycle.ts",
     "improvement:digest": "tsx ./src/improvement/digest.ts",
+    "improvement:evals": "tsx ./src/improvement/evals.ts",
+    "ios-beta:monitor": "tsx ./src/iosBetaMonitor.ts",
     "local-swarm-host:check": "tsx ./src/localSwarmHost.ts",
+    "test:ci-workflows": "tsx --test ./src/iosBetaWorkflow.test.ts ./src/iosBetaMonitor.test.ts",
     "test:improvement": "tsx --test ./src/improvement/*.test.ts",
     "test:local-swarm-host": "tsx --test ./src/localSwarmHost.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

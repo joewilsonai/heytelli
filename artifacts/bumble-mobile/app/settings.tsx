@@ -3,7 +3,13 @@ import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { Stack } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Pressable,
@@ -44,6 +50,11 @@ import {
   formatBuildChangelogVersion,
   getLatestBuildChangelog,
 } from "@/lib/build-changelog";
+import { formatTimeAgo } from "@/lib/format";
+import {
+  listMyImprovementFeedbackStatuses,
+  type FeedbackStatus,
+} from "@/lib/improvement-feedback";
 import {
   MAX_TRUSTED_CIRCLE_PEOPLE,
   buildProfileReview,
@@ -111,6 +122,13 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [analyzingProfile, setAnalyzingProfile] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackStatuses, setFeedbackStatuses] = useState<FeedbackStatus[]>(
+    [],
+  );
+  const [feedbackStatusesLoading, setFeedbackStatusesLoading] = useState(false);
+  const [feedbackStatusError, setFeedbackStatusError] = useState<string | null>(
+    null,
+  );
   const [manualName, setManualName] = useState("");
   const [manualRelationship, setManualRelationship] = useState("");
   const latestChangelog = getLatestBuildChangelog();
@@ -124,6 +142,28 @@ export default function SettingsScreen() {
     setDraft(settings);
   }, [draftDirty, settings]);
 
+  const refreshFeedbackStatuses = useCallback(async () => {
+    setFeedbackStatusesLoading(true);
+    setFeedbackStatusError(null);
+    try {
+      const statuses = await listMyImprovementFeedbackStatuses();
+      setFeedbackStatuses(
+        [...statuses].sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        ),
+      );
+    } catch {
+      setFeedbackStatusError("Could not load feedback status.");
+    } finally {
+      setFeedbackStatusesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshFeedbackStatuses();
+  }, [refreshFeedbackStatuses]);
+
   const review = useMemo(
     () => buildProfileReview(draft.datingProfile),
     [draft.datingProfile],
@@ -136,6 +176,10 @@ export default function SettingsScreen() {
     draft.dateSafetyDefaults.transportPlan.trim() ||
     draft.dateSafetyDefaults.codeWord.trim() ||
     draft.dateSafetyDefaults.circleNote.trim(),
+  );
+  const recentFeedbackStatuses = useMemo(
+    () => feedbackStatuses.slice(0, 3),
+    [feedbackStatuses],
   );
   const osTiles = [
     {
@@ -733,6 +777,118 @@ export default function SettingsScreen() {
         </Card>
 
         <Card>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <SectionLabel>Feedback status</SectionLabel>
+              <H2 style={{ fontSize: 18 }}>What happened next</H2>
+            </View>
+            <Button
+              label="Refresh"
+              icon="refresh-cw"
+              variant="ghost"
+              small
+              loading={feedbackStatusesLoading}
+              onPress={refreshFeedbackStatuses}
+            />
+          </View>
+          <Body muted style={{ marginTop: 4 }}>
+            Accepted feedback moves from received to planned to shipped here.
+          </Body>
+          <View style={{ gap: 10, marginTop: 14 }}>
+            {feedbackStatusError ? (
+              <Body muted>{feedbackStatusError}</Body>
+            ) : recentFeedbackStatuses.length === 0 ? (
+              <Body muted>
+                {feedbackStatusesLoading
+                  ? "Checking feedback status."
+                  : "No feedback sent from this phone yet."}
+              </Body>
+            ) : (
+              recentFeedbackStatuses.map((status) => {
+                const style = feedbackStageStyle(status.stage, c);
+                return (
+                  <View
+                    key={status.ticketId}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      borderRadius: 12,
+                      padding: 12,
+                      gap: 8,
+                      backgroundColor: c.background,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 14,
+                          backgroundColor: style.backgroundColor,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Feather
+                          name={style.icon}
+                          size={15}
+                          color={style.color}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            color: c.foreground,
+                            fontSize: 14,
+                            fontWeight: "700",
+                          }}
+                          numberOfLines={2}
+                        >
+                          {status.summary}
+                        </Text>
+                        <Text
+                          style={{
+                            color: c.mutedForeground,
+                            fontSize: 12,
+                            marginTop: 2,
+                          }}
+                        >
+                          Feedback #{status.ticketId} ·{" "}
+                          {formatTimeAgo(status.updatedAt)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={{
+                        color: style.color,
+                        fontSize: 13,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {formatFeedbackStageLabel(status.stage)}
+                    </Text>
+                    <Body muted>{status.message}</Body>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </Card>
+
+        <Card>
           <SectionLabel>Build changelog</SectionLabel>
           <H2 style={{ fontSize: 18 }}>{latestChangelog.title}</H2>
           <Body muted style={{ marginTop: 4 }}>
@@ -768,9 +924,55 @@ export default function SettingsScreen() {
         visible={feedbackOpen}
         surface="settings"
         onClose={() => setFeedbackOpen(false)}
+        onSubmitted={refreshFeedbackStatuses}
       />
     </ScrollView>
   );
+}
+
+function formatFeedbackStageLabel(stage: FeedbackStatus["stage"]): string {
+  switch (stage) {
+    case "received":
+      return "Received";
+    case "accepted":
+      return "Accepted";
+    case "planned":
+      return "Planned";
+    case "shipped":
+      return "Shipped";
+    case "blocked":
+      return "Needs privacy review";
+  }
+}
+
+function feedbackStageStyle(
+  stage: FeedbackStatus["stage"],
+  c: ReturnType<typeof useColors>,
+): {
+  icon: keyof typeof Feather.glyphMap;
+  color: string;
+  backgroundColor: string;
+} {
+  switch (stage) {
+    case "received":
+      return {
+        icon: "inbox",
+        color: c.mutedForeground,
+        backgroundColor: c.muted,
+      };
+    case "accepted":
+      return { icon: "check", color: c.primary, backgroundColor: c.accent };
+    case "planned":
+      return { icon: "tool", color: c.warning, backgroundColor: c.warningBg };
+    case "shipped":
+      return {
+        icon: "check-circle",
+        color: c.success,
+        backgroundColor: c.successBg,
+      };
+    case "blocked":
+      return { icon: "lock", color: c.destructive, backgroundColor: c.muted };
+  }
 }
 
 function SectionJumpGrid({

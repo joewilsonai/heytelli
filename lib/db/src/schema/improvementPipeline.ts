@@ -82,6 +82,18 @@ export type ImprovementRunStatus =
   | "succeeded"
   | "failed"
   | "blocked";
+export type ImprovementTraceSpanKind =
+  | "runner"
+  | "agent"
+  | "tool"
+  | "check"
+  | "github"
+  | "release";
+export type ImprovementTraceSpanStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "blocked";
 
 export const improvementSignals = pgTable("improvement_signals", {
   id: serial("id").primaryKey(),
@@ -165,6 +177,34 @@ export const improvementRuns = pgTable("improvement_runs", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
+export const improvementTraceSpans = pgTable("improvement_trace_spans", {
+  id: serial("id").primaryKey(),
+  workItemId: integer("work_item_id").references(() => improvementWorkItems.id, {
+    onDelete: "cascade",
+  }),
+  runId: integer("run_id").references(() => improvementRuns.id, {
+    onDelete: "set null",
+  }),
+  traceId: text("trace_id").notNull(),
+  spanId: text("span_id").notNull(),
+  parentSpanId: text("parent_span_id"),
+  name: text("name").notNull(),
+  kind: text("kind").$type<ImprovementTraceSpanKind>().notNull(),
+  agentName: text("agent_name"),
+  status: text("status").$type<ImprovementTraceSpanStatus>().notNull(),
+  metadata: jsonb("metadata")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  errorSummary: text("error_summary"),
+  durationMs: integer("duration_ms"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const insertImprovementSignalSchema = createInsertSchema(
   improvementSignals,
 ).omit({
@@ -188,6 +228,13 @@ export const insertImprovementRunSchema = createInsertSchema(
   createdAt: true,
 });
 
+export const insertImprovementTraceSpanSchema = createInsertSchema(
+  improvementTraceSpans,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type ImprovementSignal = typeof improvementSignals.$inferSelect;
 export type InsertImprovementSignal = typeof improvementSignals.$inferInsert;
 export type ImprovementWorkItem = typeof improvementWorkItems.$inferSelect;
@@ -195,3 +242,6 @@ export type InsertImprovementWorkItem =
   typeof improvementWorkItems.$inferInsert;
 export type ImprovementRun = typeof improvementRuns.$inferSelect;
 export type InsertImprovementRun = typeof improvementRuns.$inferInsert;
+export type ImprovementTraceSpan = typeof improvementTraceSpans.$inferSelect;
+export type InsertImprovementTraceSpan =
+  typeof improvementTraceSpans.$inferInsert;

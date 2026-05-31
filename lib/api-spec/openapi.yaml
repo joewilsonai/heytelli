@@ -863,6 +863,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /improvement/signals/mine:
+    get:
+      operationId: listMyImprovementSignals
+      tags: [improvement]
+      summary: List the signed-in user's privacy-safe feedback follow-up statuses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Privacy-safe feedback follow-up statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserFeedbackStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /admin/improvement/signals:
     get:
       operationId: listImprovementSignals
@@ -879,6 +907,26 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ImprovementSignal"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/improvement/health:
+    get:
+      operationId: getImprovementHealth
+      tags: [improvement]
+      summary: Get autonomous improvement queue health for admins
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Improvement queue health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImprovementHealthSnapshot"
         "403":
           description: Admin access required
           content:
@@ -1096,6 +1144,83 @@ components:
     ImprovementRunStatus:
       type: string
       enum: [started, succeeded, failed, blocked]
+    FeedbackFollowUpStage:
+      type: string
+      enum: [received, accepted, planned, shipped, blocked]
+    UserFeedbackStatus:
+      type: object
+      required:
+        - ticketId
+        - stage
+        - message
+        - summary
+        - type
+        - surface
+        - signalStatus
+        - workItemStatus
+        - workItemId
+        - createdAt
+        - updatedAt
+      properties:
+        ticketId: { type: integer }
+        stage:
+          $ref: "#/components/schemas/FeedbackFollowUpStage"
+        message: { type: string }
+        summary: { type: string }
+        type: { type: ["string", "null"] }
+        surface: { type: ["string", "null"] }
+        signalStatus:
+          $ref: "#/components/schemas/ImprovementSignalStatus"
+        workItemStatus:
+          oneOf:
+            - $ref: "#/components/schemas/ImprovementWorkItemStatus"
+            - type: "null"
+        workItemId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ImprovementHealthSnapshot:
+      type: object
+      required:
+        - generatedAt
+        - signals
+        - workItems
+        - riskTiers
+        - priorities
+        - runs
+        - queue
+        - lastRunAt
+      properties:
+        generatedAt: { type: string, format: date-time }
+        signals:
+          type: object
+          additionalProperties: { type: integer }
+        workItems:
+          type: object
+          additionalProperties: { type: integer }
+        riskTiers:
+          type: object
+          additionalProperties: { type: integer }
+        priorities:
+          type: object
+          additionalProperties: { type: integer }
+        runs:
+          type: object
+          additionalProperties: { type: integer }
+        queue:
+          type: object
+          required:
+            - waitingForTriage
+            - executable
+            - inProgress
+            - reviewGated
+            - needsAttention
+          properties:
+            waitingForTriage: { type: integer }
+            executable: { type: integer }
+            inProgress: { type: integer }
+            reviewGated: { type: integer }
+            needsAttention: { type: integer }
+        lastRunAt: { type: ["string", "null"], format: date-time }
     ImprovementSignalInput:
       type: object
       required: [source, type, message]

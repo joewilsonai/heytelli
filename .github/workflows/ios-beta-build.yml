@@ -15,7 +15,7 @@ on:
       submit:
         description: Submit the completed build with the matching EAS submit profile.
         required: true
-        default: "false"
+        default: "true"
         type: choice
         options:
           - "true"
@@ -59,7 +59,7 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS_STATUS: 1
       EAS_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'beta' }}
-      EAS_SUBMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.submit || 'false' }}
+      EAS_SUBMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.submit || 'true' }}
       EAS_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.message || '' }}
       HEYTELLI_CHANGELOG_HIGHLIGHTS: ${{ github.event_name == 'workflow_dispatch' && inputs.highlights || '' }}
 

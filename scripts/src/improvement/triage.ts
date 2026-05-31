@@ -42,6 +42,7 @@ export type TriageOptions = {
   dryRun: boolean;
   createGithubIssues: boolean;
   limit: number;
+  maxGithubIssuesPerRun: number;
   owner: string;
   repo: string;
   githubApiUrl?: string;
@@ -50,10 +51,25 @@ export type TriageOptions = {
 };
 
 const DEFAULT_LIMIT = 25;
+const DEFAULT_MAX_GITHUB_ISSUES_PER_RUN = 5;
 
 function envFlag(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === "") return defaultValue;
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function numericEnv(value: string | undefined, defaultValue: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
+}
+
+function argValue(argv: string[], flag: string): string | null {
+  const eqPrefix = `${flag}=`;
+  const withEquals = argv.find((arg) => arg.startsWith(eqPrefix));
+  if (withEquals) return withEquals.slice(eqPrefix.length);
+  const index = argv.indexOf(flag);
+  if (index >= 0) return argv[index + 1] ?? null;
+  return null;
 }
 
 function parseArgs(argv: string[], env = process.env): TriageOptions {
@@ -67,6 +83,11 @@ function parseArgs(argv: string[], env = process.env): TriageOptions {
     dryRun,
     createGithubIssues: envFlag(env.IMPROVEMENT_CREATE_GITHUB_ISSUES, false),
     limit: Number.parseInt(env.IMPROVEMENT_TRIAGE_LIMIT ?? "", 10) || DEFAULT_LIMIT,
+    maxGithubIssuesPerRun: numericEnv(
+      argValue(argv, "--max-github-issues-per-run") ??
+        env.IMPROVEMENT_MAX_GITHUB_ISSUES_PER_RUN,
+      DEFAULT_MAX_GITHUB_ISSUES_PER_RUN,
+    ),
     owner: env.GITHUB_OWNER || "joewilsonai",
     repo: env.GITHUB_REPO || "heytelli",
     githubApiUrl: env.GITHUB_API_URL,
@@ -102,6 +123,17 @@ export function mergeWorkItemSignals<T extends MergeableWorkItem>(
 
 export function shouldCreateGithubIssue(plan: PlannedSignalTriage): boolean {
   return plan.issueDraft != null && plan.workItem.riskTier !== "no_auto_merge";
+}
+
+export function githubIssueRunDecision(input: {
+  candidateIssue: boolean;
+  openedThisRun: number;
+  maxGithubIssuesPerRun: number;
+}): "not-needed" | "open" | "defer-run-cap" {
+  if (!input.candidateIssue) return "not-needed";
+  return input.openedThisRun < input.maxGithubIssuesPerRun
+    ? "open"
+    : "defer-run-cap";
 }
 
 export function planSignalTriage(signal: TriageSignal): PlannedSignalTriage {
@@ -239,6 +271,7 @@ export async function runImprovementTriage(
   };
 
   const grouped = new Map<string, PlannedSignalTriage>();
+  let githubIssuesOpenedThisRun = 0;
   for (const signal of signals) {
     const plan = planSignalTriage({
       id: signal.id,
@@ -272,12 +305,47 @@ export async function runImprovementTriage(
         counts.workItemsCreated += 1;
       }
       if (
-        options.createGithubIssues &&
-        shouldCreateGithubIssue(plan) &&
-        existing?.githubIssueUrl == null
+        githubIssueRunDecision({
+          candidateIssue:
+            options.createGithubIssues &&
+            shouldCreateGithubIssue(plan) &&
+            existing?.githubIssueUrl == null,
+          openedThisRun: githubIssuesOpenedThisRun,
+          maxGithubIssuesPerRun: options.maxGithubIssuesPerRun,
+        }) === "open"
       ) {
         counts.issuesCreated += 1;
+        githubIssuesOpenedThisRun += 1;
+      } else if (
+        githubIssueRunDecision({
+          candidateIssue:
+            options.createGithubIssues &&
+            shouldCreateGithubIssue(plan) &&
+            existing?.githubIssueUrl == null,
+          openedThisRun: githubIssuesOpenedThisRun,
+          maxGithubIssuesPerRun: options.maxGithubIssuesPerRun,
+        }) === "defer-run-cap"
+      ) {
+        counts.issueCapDeferred =
+          (counts.issueCapDeferred ?? 0) + plan.workItem.frequencyCount;
       }
+      continue;
+    }
+
+    const existingForIssueCap = await loadWorkItemByFingerprint(
+      plan.fingerprint,
+    );
+    const issueRunDecision = githubIssueRunDecision({
+      candidateIssue:
+        options.createGithubIssues &&
+        shouldCreateGithubIssue(plan) &&
+        existingForIssueCap?.githubIssueUrl == null,
+      openedThisRun: githubIssuesOpenedThisRun,
+      maxGithubIssuesPerRun: options.maxGithubIssuesPerRun,
+    });
+    if (issueRunDecision === "defer-run-cap") {
+      counts.issueCapDeferred =
+        (counts.issueCapDeferred ?? 0) + plan.workItem.frequencyCount;
       continue;
     }
 
@@ -317,6 +385,7 @@ export async function runImprovementTriage(
             })
             .where(eq(improvementWorkItems.id, workItem.id));
           counts.issuesCreated += 1;
+          githubIssuesOpenedThisRun += 1;
         }
       } catch (err) {
         await db.insert(improvementRuns).values({

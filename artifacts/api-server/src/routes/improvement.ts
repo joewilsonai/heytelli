@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import {
   db,
+  improvementRuns,
   improvementSignals,
   improvementWorkItems,
   matches,
@@ -15,6 +16,10 @@ import {
   normalizeImprovementSignalInput,
   sanitizeImprovementPayload,
 } from "../lib/improvementPipeline";
+import {
+  buildImprovementHealthSnapshot,
+  buildUserFeedbackStatuses,
+} from "../lib/improvementStatus";
 import { requireAdmin, requireAuth, requireUserId } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -74,6 +79,43 @@ router.post("/improvement/signals", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/improvement/signals/mine", async (req, res): Promise<void> => {
+  const userId = requireUserId(req);
+  try {
+    const signals = await db
+      .select({
+        id: improvementSignals.id,
+        status: improvementSignals.status,
+        sanitizedSummary: improvementSignals.sanitizedSummary,
+        sanitizedPayload: improvementSignals.sanitizedPayload,
+        createdAt: improvementSignals.createdAt,
+        updatedAt: improvementSignals.updatedAt,
+      })
+      .from(improvementSignals)
+      .where(eq(improvementSignals.userId, userId))
+      .orderBy(desc(improvementSignals.createdAt))
+      .limit(20);
+
+    const workItems = await db
+      .select({
+        id: improvementWorkItems.id,
+        signalIds: improvementWorkItems.signalIds,
+        status: improvementWorkItems.status,
+        pullRequestNumber: improvementWorkItems.pullRequestNumber,
+        createdAt: improvementWorkItems.createdAt,
+        updatedAt: improvementWorkItems.updatedAt,
+      })
+      .from(improvementWorkItems)
+      .orderBy(desc(improvementWorkItems.updatedAt))
+      .limit(200);
+
+    res.json(buildUserFeedbackStatuses(signals, workItems));
+  } catch (err) {
+    req.log.error({ err }, "Improvement feedback status failed");
+    res.status(500).json({ error: "Failed to load feedback status" });
+  }
+});
+
 router.get(
   "/admin/improvement/signals",
   requireAdmin,
@@ -97,6 +139,42 @@ router.get(
       .orderBy(desc(improvementWorkItems.createdAt))
       .limit(50);
     res.json(rows);
+  },
+);
+
+router.get(
+  "/admin/improvement/health",
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const [signals, workItems, runs] = await Promise.all([
+      db
+        .select({ status: improvementSignals.status })
+        .from(improvementSignals)
+        .orderBy(desc(improvementSignals.createdAt))
+        .limit(500),
+      db
+        .select({
+          status: improvementWorkItems.status,
+          riskTier: improvementWorkItems.riskTier,
+          priority: improvementWorkItems.priority,
+          updatedAt: improvementWorkItems.updatedAt,
+        })
+        .from(improvementWorkItems)
+        .orderBy(desc(improvementWorkItems.updatedAt))
+        .limit(500),
+      db
+        .select({
+          runType: improvementRuns.runType,
+          status: improvementRuns.status,
+          createdAt: improvementRuns.createdAt,
+          completedAt: improvementRuns.completedAt,
+        })
+        .from(improvementRuns)
+        .orderBy(desc(improvementRuns.createdAt))
+        .limit(500),
+    ]);
+
+    res.json(buildImprovementHealthSnapshot({ signals, workItems, runs }));
   },
 );
 
