@@ -1,172 +1,134 @@
 # HeyTelli Upcoming Features
 
-This is the near-term product roadmap for turning HeyTelli from a useful beta into a clear, repeatable safety-and-clarity loop for women dating online.
+This is the active near-term roadmap only. It should not list features that are
+already shipped; shipped behavior belongs in the README, PRD, specs, rollout
+notes, or changelog.
 
-## 0. Privacy and Signal Foundation
+Current product truth lives in `docs/heytelli-prd.md`.
 
-**Goal:** Keep HeyTelli private by default and remove legacy scoring language before layering on more safety intelligence.
+## Priority Order
 
-### Screenshot Retention
+1. Privacy and signal foundation cleanup
+2. Safe Date Flow real-device verification and guided-flow polish
+3. First-run onboarding
+4. Match memory and timeline upgrade
+5. Story Check, durable green flags, and cross-match patterns
+6. Dating profile compatibility integration
+7. Vet Packet
 
-- Raw screenshot images uploaded to the backend are temporary analysis inputs.
-- After analysis succeeds, the backend should purge the raw object and keep only extracted text, read summaries, timeline facts, tags, green flags, red flags, and freshness metadata.
-- The iPhone can keep a private local copy of match screenshots so the user can review or resubmit them later.
-- Local screenshot copies are deleted when the match is deleted.
-- Gut Check and Date Card shares should never include screenshots by default. Any future image-sharing option must be explicit and local-device initiated.
+## 0. Privacy And Signal Foundation Cleanup
 
-### Neutral Signals
+**Goal:** Finish the trust-sensitive foundation before adding more safety
+intelligence.
 
-- Do not use sex, chemistry, conversion, attraction, or dateability scores in the product UI.
-- Use neutral pattern signals instead:
-  - consistency across messages
-  - pace match
-  - escalation velocity
-  - self-disclosure balance
-  - planning clarity
-  - respect for boundaries
-- The app should describe what is happening, not label what the match is worth.
+### Remaining Work
 
-### Success Criteria
-
-- A tester can still see local screenshot copies after the server image has been purged.
-- A tester can resubmit a local copy for analysis if needed.
-- Home, reads, and timeline surfaces do not sort or label matches using legacy scores.
-
-### Later: Automatic Analysis Preference
-
-- Add a Settings toggle that automatically runs Analyze new after screenshot upload, once cost controls, privacy messaging, and failure recovery are clear.
-
-## 1. Safe Date Flow
-
-**Goal:** When a user enters a date, HeyTelli should automatically guide her from "I have plans" to "I am prepared, my circle knows, and I can debrief after."
-
-### Trigger
-
-- Starts when a match gets `nextDateAt`, `nextDateLocation`, or a date plan template.
-- Shows a clear prompt on the match screen and home dashboard:
-  - "Date coming up. Get your Date Card ready."
-
-### Step 1: Date Details
-
-- Confirm match first name.
-- Confirm date time.
-- Confirm location.
-- Choose or edit a date plan template:
-  - Coffee
-  - Drinks
-  - Dinner
-  - Custom
-- Optional outfit or note.
-
-### Step 2: Match Review
-
-- Show latest read.
-- Show whether analysis is up to date or stale.
-- Show top green flags.
-- Show current concerns.
-- Show relevant profile/context notes.
-- If screenshots were uploaded after the latest analysis, prompt to use Analyze new before creating the Date Card.
-
-### Step 3: Circle Setup
-
-- Let the user choose up to 3 trusted circle people.
-- Pull from saved circle defaults or contacts picker.
-- Store only safe labels/first names in app data where possible.
-- Make clear that no screenshots or private conversation images are shared with the circle.
-
-### Step 4: Date Card
-
-- Generate a clean shareable Date Card message/image with:
-  - Match first name only
-  - Date location
-  - Date time
-  - Check-in time
-  - Expected end time
-  - Transport/exit plan
-  - Optional code word
-  - Optional user note
-- Do not include profile photos.
-- Do not include screenshots.
-- Create a private, expiring Date Card link for selected circle recipients when web access is needed.
-- The link must show only first names, date logistics, check-in status, and sender-written safety notes.
-- Do not create a public profile, hosted dossier, comment thread, searchable page, or anything that exposes screenshots, transcripts, ratings, tags, or AI analysis.
-
-### Step 5: Date Mode
-
-- Let the user mark herself as "on date."
-- Turn on cover mode per date.
-- Cover mode can look like:
-  - Clock
-  - Notes
-  - Breathing screen
-- Long press opens a harmless-looking action screen.
-
-### Step 6: Quick Actions
-
-- Provide large, fast actions:
-  - "I'm okay"
-  - "Call me"
-  - "Need an exit"
-  - "Home safe"
-- Actions should generate shareable messages for the selected circle.
-- Messages should be calm, clear, and not expose private screenshots.
-
-### Step 7: After-Date Debrief
-
-- When the date ends or becomes past due, prompt for a debrief.
-- Support voice and text.
-- Save:
-  - Full transcript
-  - Timeline event
-  - Tags
-  - Green flags
-  - Red flags/concerns
-  - What went well
-  - What felt off
-  - Next move suggestion
-- Mark the date as debriefed once complete.
+- Remove or fully isolate legacy score fields from active contracts:
+  - `sexPotential`
+  - `conversionAbility`
+  - `chemistry`
+- Migrate score history toward neutral pattern history so new code does not need
+  score-shaped placeholders.
+- Verify the production raw-screenshot purge path end to end with real beta
+  uploads, including failure logging and retry behavior.
+- Keep local iPhone screenshot review/resubmit working after backend raw images
+  are purged.
+- Add a Settings preference for automatically running Analyze new after
+  screenshot upload only after cost controls, privacy copy, rate limits, and
+  failure recovery are clear.
+- Add a clearer self-serve export/deletion path for beta users.
 
 ### Success Criteria
 
-- A beta tester can enter a date and understand exactly what to do next.
-- A tester can share a private Date Card link with a trusted person in under 60 seconds. **V1 implementation wired May 29, 2026; API deployed; needs TestFlight verification.**
-- A trusted person can open the link without an account, tap Got it, and have that status appear back in the sender's app. **Railway live smoke passed May 29, 2026; needs TestFlight verification from the iPhone app.**
+- UI and generated clients no longer depend on legacy score labels.
+- Raw backend screenshots are purged in production after successful analysis
+  while local review/resubmit still works on the user's iPhone.
+- No home, read, timeline, or sort surface ranks matches by legacy scores.
+- Automatic analysis can be turned on without surprising the user or silently
+  increasing model spend.
+
+## 1. Safe Date Flow Verification And Guided Polish
+
+**Goal:** Turn the existing date tools into one obvious guided path from "I have
+plans" to "my circle knows, I have a plan, and I can debrief after."
+
+### Remaining Work
+
+- Run a real iPhone/TestFlight smoke test for the full Date Card path:
+  - create or update a date plan;
+  - select up to 3 trusted-circle people;
+  - share the private Date Card link;
+  - open the link as a recipient without an account;
+  - tap Got it;
+  - confirm sender status updates in the app.
+- Make the match screen and home dashboard surface one clear next step when
+  `nextDateAt`, `nextDateLocation`, or date safety details exist.
+- Convert scattered date controls into a guided checklist/stepper:
+  - Date details
+  - Match review
+  - Circle setup
+  - Date Card
+  - Date Mode
+  - After-date debrief
+- Ensure Date Mode quick actions create calm, shareable circle messages and not
+  only local status updates.
+- Add an after-date prompt when the date ends, becomes past due, or Date Mode is
+  closed.
+
+### Success Criteria
+
+- A beta tester can create and share a private Date Card from TestFlight in
+  under 60 seconds.
+- A trusted person can open the link, confirm receipt, and have that status
+  visible to the sender.
 - A tester can turn on Date Mode without hunting through settings.
-- The app preserves the post-date memory in the timeline.
+- Quick actions are understandable under pressure.
+- The post-date debrief lands in timeline memory.
 
 ## 2. First-Run Onboarding
 
-**Goal:** Make the first session obvious.
+**Goal:** Make the first session obvious for a new beta tester.
 
-### Flow
+### Remaining Work
 
-- Welcome screen with one clear promise:
-  - "Import a dating screenshot. HeyTelli turns it into a private read, patterns, and safer next steps."
-- First task: import a profile or chat screenshot.
+- Add a first-launch path instead of relying only on the home empty state.
+- Lead with one promise:
+  - "Import a dating screenshot. HeyTelli turns it into a private read,
+    patterns, and safer next steps."
+- Make the first task screenshot import from Photos or Share to HeyTelli.
 - Explain the core loop:
   - Import screenshots
   - Get a read
   - Track patterns
   - Plan dates safely
   - Debrief after
-- Show privacy basics:
+- Explain the main app areas:
+  - Read
+  - Story
+  - Date
+  - Talk
+- Show privacy basics before the first import:
   - Raw screenshots are minimized after analysis where possible.
   - Circle shares do not include screenshots.
-  - The app is private by default.
+  - HeyTelli is private by default.
+- Store onboarding completion and allow the user to reopen the guide from
+  Settings or Trust Center.
 
 ### Success Criteria
 
 - New testers know where to start.
 - New testers understand screenshot sharing into HeyTelli.
 - New testers understand the difference between Read, Story, Date, and Talk.
+- New testers understand what HeyTelli does not share.
 
-## 3. Match Memory and Timeline Upgrade
+## 3. Match Memory And Timeline Upgrade
 
-**Goal:** Make HeyTelli feel like a private dating brain that remembers what changed.
+**Goal:** Make HeyTelli feel like a private dating brain that remembers what
+changed.
 
-### Features
+### Remaining Work
 
-- Timeline groups:
+- Group timeline events into readable sections:
   - Screenshots analyzed
   - Date scheduled
   - Date Card shared
@@ -176,87 +138,103 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
   - Green flag seen
   - Concern seen
   - Tag added/removed
-- "What changed since last time" summary.
-- Trend analysis over time:
+- Link timeline events back to the relevant read, transcript, screenshot batch,
+  tag event, Date Card, or debrief where available.
+- Add a "What changed since last time" summary.
+- Add trend analysis over time:
   - More consistent
   - More distant
   - More emotionally open
   - Planning energy rising/falling
   - Concerns repeating
-- Durable green flags and red flags should remain visible even if not present in the newest analysis.
-- Timeline should link back to transcript/read/debrief where appropriate.
-- Story Check should extract first-person claims into a private claim ledger and surface contradictions as evidence pairs with timestamps, never as a verdict.
-- Green flags should be durable, visible, and symmetric with saved concerns.
-- Cross-match pattern analysis should show repeated arcs across the user's own history with evidence, not labels.
+- Preserve important emotional moments after a match is archived or reopened.
 
 ### Success Criteria
 
 - A user can understand the history of a match without rereading screenshots.
-- Important emotional moments do not disappear after closing the match.
-- Tags, patterns, reads, and debriefs all feel connected.
+- Important moments do not disappear after closing the match.
+- Tags, patterns, reads, and debriefs feel connected.
 
-## 4. Dating Profile Compatibility
+## 4. Story Check, Durable Green Flags, And Cross-Match Patterns
 
-**Goal:** Use the user's own dating profile and stated preferences as context for match reads.
+**Goal:** Help the user compare evidence over time without turning HeyTelli into
+a verdict machine.
 
-### Inputs
+### Remaining Work
 
-- Up to 10 dating profile screenshots.
-- Optional typed profile text.
-- Optional "what I want" notes.
-- Optional dealbreakers and must-haves.
+- Build Story Check as a private claim ledger:
+  - first-person claims;
+  - date/time evidence;
+  - source event;
+  - confidence level;
+  - contradiction or follow-up prompts.
+- Surface contradictions as evidence pairs with timestamps, never as labels or
+  verdicts about the person.
+- Make green flags durable and visible alongside saved concerns.
+- Keep historical concerns visible even if the newest read is cleaner.
+- Add cross-match pattern analysis across the user's own history:
+  - repeated arcs;
+  - recurring emotional themes;
+  - repeated planning breakdowns;
+  - repeated boundary patterns.
 
-### Analysis
+### Success Criteria
 
-- Extract:
-  - How she presents herself
-  - Values she signals
-  - Lifestyle cues
-  - Relationship intent
-  - Potential mismatch areas
-  - Profile strengths
-  - Profile blind spots
-- Use this context when analyzing matches:
-  - "This match aligns with what your profile says you want."
+- Story Check helps the user remember what was said and when.
+- Green flags and concerns feel equally durable.
+- Cross-match analysis describes the user's repeated experiences, not other
+  people's character.
+
+## 5. Dating Profile Compatibility Integration
+
+**Goal:** Use the user's own profile and stated standards as context for match
+reads without becoming prescriptive.
+
+### Remaining Work
+
+- Wire saved dating-profile context into match analysis, reply prep, date brief,
+  and chat dossiers.
+- Add optional structured fields when needed:
+  - dealbreakers;
+  - must-haves;
+  - relationship intent;
+  - communication preferences.
+- Make profile context freshness visible after the user edits profile text or
+  uploads new profile screenshots.
+- Show alignment language carefully:
+  - "This seems aligned with what you said you want."
   - "This may be drifting from your stated standards."
-  - "This looks exciting, but it does not match your listed dealbreakers."
+  - "This is worth checking against your listed boundaries."
+- Avoid judgmental or deterministic copy.
 
 ### Success Criteria
 
 - Match reads become more personal to the user.
 - The app helps her stay anchored to her own standards.
-- Profile analysis does not become judgmental or prescriptive.
+- Profile context improves planning and reply suggestions without producing
+  verdicts.
 
-## Product Priority
+## 6. Vet Packet
 
-1. Privacy and Signal Foundation
-2. Safe Date Flow
-3. Story Check and Green Flags
-4. First-Run Onboarding
-5. Match Memory and Timeline Upgrade
-6. Dating Profile Compatibility
-7. Vet Packet
+**Goal:** Help the user do her own pre-date reality check without HeyTelli
+creating dossiers, labels, or background-check claims.
 
-## Vet Packet
-
-**Goal:** Help the user do her own pre-date reality check without HeyTelli creating dossiers, labels, or background-check claims.
-
-### Features
+### Remaining Work
 
 - Pull user-visible claims from Story Check:
-  - name
-  - employer
-  - role
-  - city
-  - school
-  - social handle
-  - named pet/family details when relevant
+  - name;
+  - employer;
+  - role;
+  - city;
+  - school;
+  - social handle;
+  - named pet/family details when relevant.
 - Generate one-tap search links the user can open herself:
-  - Google
-  - LinkedIn
-  - Instagram
-  - employer website
-  - NSOPW when state/name are available
+  - Google;
+  - LinkedIn;
+  - Instagram;
+  - employer website;
+  - NSOPW when state/name are available.
 - Let the user save private observations back to the match timeline.
 - Store observations, not scraped data.
 
@@ -268,4 +246,8 @@ This is the near-term product roadmap for turning HeyTelli from a useful beta in
 - No friend or public match pages.
 - No automatic sharing.
 
-The privacy and signal foundation comes first because every later feature depends on trust. Safe Date Flow follows because it ties together the most differentiated parts of HeyTelli: date planning, circle sharing, cover mode, check-ins, timeline memory, and post-date debrief.
+### Success Criteria
+
+- The user can run a pre-date reality check herself.
+- HeyTelli never claims to verify identity, safety, criminal history, or intent.
+- Saved observations remain private timeline memory.
