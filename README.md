@@ -288,7 +288,7 @@ beta privacy and terms wording.
 - [`docs/swarm-agents.md`](docs/swarm-agents.md): autonomous improvement-loop
   architecture and V1 boundaries.
 - [`docs/agents/`](docs/agents): repo-local specialist expectations for API,
-  Expo mobile, privacy review, and release verification.
+  Expo mobile, user web, privacy review, and release verification.
 - [`docs/specs/date-card.md`](docs/specs/date-card.md): Date Card recipient
   access constraints.
 - [`docs/beta-privacy-terms.md`](docs/beta-privacy-terms.md): beta-stage

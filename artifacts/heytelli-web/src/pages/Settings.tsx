@@ -1,10 +1,18 @@
 import { FormEvent, useState } from "react";
-import { LogOut, Save } from "lucide-react";
+import { LogOut, Palette, Save } from "lucide-react";
 import { PageHeader } from "@/components/State";
+import { WEB_COLOR_THEME_OPTIONS } from "@/lib/color-theme";
 import { useSession } from "@/lib/session-context";
 
 export default function Settings() {
-  const { session, apiBaseUrl, setApiBaseUrl, signOut } = useSession();
+  const {
+    session,
+    apiBaseUrl,
+    colorTheme,
+    setApiBaseUrl,
+    setColorTheme,
+    signOut,
+  } = useSession();
   const [apiBaseDraft, setApiBaseDraft] = useState(apiBaseUrl ?? "");
   const [saved, setSaved] = useState(false);
 
@@ -21,6 +29,31 @@ export default function Settings() {
       <div className="panel">
         <h2>{session?.user.displayName || session?.user.email}</h2>
         <p className="muted">{session?.user.email}</p>
+      </div>
+      <div className="panel">
+        <div className="panel-title">
+          <Palette size={18} aria-hidden="true" />
+          <h2>Color theme</h2>
+        </div>
+        <div className="theme-choice-grid" role="radiogroup" aria-label="Color theme">
+          {WEB_COLOR_THEME_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              className={`theme-choice ${colorTheme === option.value ? "is-active" : ""}`}
+              type="button"
+              role="radio"
+              aria-checked={colorTheme === option.value}
+              onClick={() => setColorTheme(option.value)}
+            >
+              <span className="theme-swatches" aria-hidden="true">
+                {option.swatches.map((swatch) => (
+                  <span key={swatch} style={{ background: swatch }} />
+                ))}
+              </span>
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
       <form className="panel form-stack" onSubmit={save}>
         <label>

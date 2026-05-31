@@ -36,7 +36,7 @@ In V1, the system has two meanings of "agent":
 | Role/risk policy | `scripts/src/improvement/swarmPlan.ts` | Maps labels, privacy risk, priority, and category to required roles, checks, and auto-merge policy. |
 | Executor | `scripts/src/improvement/executor.ts` | Claims planned work, creates a worktree, launches Codex, runs optional reviewer agents, typechecks, commits, pushes, opens a PR, and queues auto-merge when allowed. |
 | Trace spans | `lib/db/src/schema/improvementPipeline.ts`, `scripts/src/improvement/trace.ts` | Stores structured per-step spans for executor tool, agent, check, GitHub, and release activity. |
-| Agent profiles | `scripts/src/improvement/agentProfiles.ts`, `docs/agents/` | Defines repo-local specialist expectations for API, Expo, privacy, and release work. |
+| Agent profiles | `scripts/src/improvement/agentProfiles.ts`, `docs/agents/` | Defines repo-local specialist expectations for API, Expo, web parity, privacy, and release work. |
 | Hook gates | `scripts/src/improvement/hooks.ts` | Blocks dangerous custom commands and defines deterministic pre/post executor checks. |
 | Eval harness | `scripts/src/improvement/evals.ts` | Runs historical feedback category/risk/outcome evals against the improvement pipeline. |
 | Lifecycle monitor | `scripts/src/improvement/lifecycle.ts` | Watches PR-linked work items and moves them to `merged`, `closed`, or ongoing review/check states. |
@@ -75,6 +75,23 @@ In V1, the system has two meanings of "agent":
    DB state forward when PRs merge or close.
 10. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
    submit to TestFlight by default.
+
+## Mobile-Web Fidelity Rule
+
+For any issue or PR that changes a user-facing mobile workflow, setting, color
+theme, copy string, navigation concept, or API-backed behavior, the planner and
+implementation agent must check `artifacts/heytelli-web` too.
+
+If the browser can support the same behavior, update the web app in the same PR.
+If parity is not feasible, state the reason in the PR body or swarm completion
+comment. Native-only iOS flows such as share extensions, TestFlight delivery,
+and native share-sheet artifacts can remain mobile-only, but that decision
+should be explicit.
+
+The default prompt section now includes this rule even when no specialist
+profile is selected. The `expo_mobile` profile also brings in the `web_app`
+profile so mobile work gets the web test/typecheck/build expectations when
+feasible.
 
 ## What Happens When A User Sends Feedback
 
@@ -216,6 +233,7 @@ Profile docs live in:
 ```text
 docs/agents/api-server.md
 docs/agents/expo-mobile.md
+docs/agents/web-app.md
 docs/agents/privacy-review.md
 docs/agents/release-verification.md
 ```

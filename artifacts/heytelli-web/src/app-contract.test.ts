@@ -47,3 +47,16 @@ test("new consumer source avoids legacy internal product language", () => {
   const source = readSourceFiles().toLowerCase();
   assert.doesNotMatch(source, /bumble|sex potential|conversion ability|chemistry score/);
 });
+
+test("settings exposes the theme control used for mobile-web parity", () => {
+  const settings = read("src/pages/Settings.tsx");
+  const css = read("src/styles.css");
+
+  assert.match(settings, /WEB_COLOR_THEME_OPTIONS/);
+  assert.match(settings, /role="radiogroup"/);
+  assert.match(settings, /aria-label="Color theme"/);
+  assert.match(css, /\.theme-choice-grid/);
+  for (const theme of ["rose", "ocean", "sage", "plum", "sunset"]) {
+    assert.match(css, new RegExp(`data-color-theme="${theme}"`));
+  }
+});

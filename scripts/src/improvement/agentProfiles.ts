@@ -42,6 +42,23 @@ const PROFILES: AgentProfile[] = [
     ],
   },
   {
+    id: "web_app",
+    title: "User web app specialist",
+    appliesWhen:
+      "Consumer web, Android web, browser UI, or user-facing mobile changes that should stay in mobile-web fidelity when feasible.",
+    requiredCommands: [
+      "pnpm --filter @workspace/heytelli-web run test",
+      "pnpm --filter @workspace/heytelli-web run typecheck",
+      "pnpm --filter @workspace/heytelli-web run build",
+    ],
+    guardrails: [
+      "Check artifacts/heytelli-web for user-facing workflow, settings, theme, copy, and API-backed behavior parity when mobile changes land.",
+      "If web parity is not feasible in the same PR, explain why in the PR.",
+      "Do not repoint the landing/ beta signup deployment at the logged-in web app.",
+      "Do not expose model-provider API keys in browser code.",
+    ],
+  },
+  {
     id: "privacy_review",
     title: "Privacy reviewer",
     appliesWhen: "Any privacy, safety, auth, storage, or extra-review work.",
@@ -86,8 +103,13 @@ export function agentProfilesForWorkItem(
   ) {
     add("api_server");
   }
-  if (/\b(ios|expo|mobile|testflight|share|eas)\b/.test(text)) {
+  const isMobileWork = /\b(ios|expo|mobile|testflight|share|eas)\b/.test(text);
+  const isWebWork = /\b(web|browser|android|vite|heytelli-web)\b/.test(text);
+  if (isMobileWork) {
     add("expo_mobile");
+  }
+  if (isMobileWork || isWebWork) {
+    add("web_app");
   }
   if (
     workItem.riskTier === "extra_agent_review" ||
@@ -106,7 +128,10 @@ export function buildAgentProfilePromptSection(
   profiles: AgentProfile[],
 ): string {
   if (profiles.length === 0) {
-    return "Agent profiles: standard HeyTelli implementation profile.";
+    return [
+      "Agent profiles: standard HeyTelli implementation profile.",
+      "Mobile-web fidelity: for user-facing workflow, settings, theme, copy, and API-backed behavior changes, check artifacts/heytelli-web and update it when feasible; if not feasible, explain why in the PR.",
+    ].join("\n");
   }
   return [
     "Repo-local agent profiles to honor:",
