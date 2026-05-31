@@ -49,8 +49,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  detect-ios-build-scope:
+    name: Detect iOS build scope
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.scope.outputs.should_build }}
+      reason: ${{ steps.scope.outputs.reason }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 20
+
+      - name: Detect iOS-impacting changes
+        id: scope
+        env:
+          HEYTELLI_EVENT_BEFORE: ${{ github.event.before }}
+          HEYTELLI_EVENT_SHA: ${{ github.sha }}
+        run: node scripts/ci/ios-beta-build-scope.mjs
+
+      - name: Skip EAS build
+        if: steps.scope.outputs.should_build != 'true'
+        run: echo "::notice::Skipping EAS iOS build: ${{ steps.scope.outputs.reason }}"
+
   build:
     name: Build iOS beta with EAS
+    needs: detect-ios-build-scope
+    if: needs.detect-ios-build-scope.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

@@ -279,6 +279,11 @@ with `submit=false` only for deliberate smoke builds that should not reach
 TestFlight. Without `EXPO_TOKEN`, the workflow logs a notice and skips the EAS
 build instead of failing unrelated merges.
 
+The workflow also runs an early scope check. Web-only, docs-only, landing-only,
+or root-package-only pushes skip before dependency install and before EAS, so
+they do not queue a stale iOS build. Manual dispatch still bypasses this scope
+skip.
+
 ```bash
 cd artifacts/bumble-mobile
 pnpm dlx eas-cli@latest build -p ios --profile beta --non-interactive
