@@ -1,0 +1,124 @@
+name: Railway Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Railway service to deploy.
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - api
+          - improvement-worker
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/railway-deploy.yml"
+      - "artifacts/api-server/**"
+      - "lib/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "railway.json"
+      - "tsconfig.base.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: railway-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CI: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HEYTELLI_API_BASE_URL: https://heytelli-api-production.up.railway.app
+  RAILWAY_PROJECT_ID: 76fde7ef-f336-4a0d-902b-462d458f9a74
+  RAILWAY_ENVIRONMENT: production
+
+jobs:
+  deploy-api:
+    name: Deploy API
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'api'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      HEYTELLI_SMOKE_ADMIN_EMAIL: ${{ secrets.HEYTELLI_SMOKE_ADMIN_EMAIL }}
+      HEYTELLI_SMOKE_INVITE_CODE: ${{ secrets.HEYTELLI_SMOKE_INVITE_CODE }}
+      HEYTELLI_SMOKE_ADMIN_NAME: Railway Deploy Smoke
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Check deploy secrets
+        run: |
+          missing=0
+          for name in RAILWAY_TOKEN HEYTELLI_SMOKE_ADMIN_EMAIL HEYTELLI_SMOKE_INVITE_CODE; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Set the ${name} repository secret."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Deploy heytelli-api to Railway
+        run: |
+          railway up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service heytelli-api \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --ci \
+            --message "deploy heytelli-api ${GITHUB_SHA::7}"
+
+      - name: Smoke test API routes
+        run: node scripts/ci/railway-api-smoke.mjs
+
+  deploy-improvement-worker:
+    name: Deploy Improvement Worker
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'improvement-worker'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Check deploy secrets
+        run: |
+          if [[ -z "${RAILWAY_TOKEN}" ]]; then
+            echo "::error::Set the RAILWAY_TOKEN repository secret."
+            exit 1
+          fi
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Deploy heytelli-improvement-worker to Railway
+        run: |
+          railway up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service heytelli-improvement-worker \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --ci \
+            --message "deploy heytelli-improvement-worker ${GITHUB_SHA::7}"
