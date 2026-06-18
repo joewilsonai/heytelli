@@ -228,6 +228,15 @@ test("health snapshot summarizes queue and recent run state", () => {
         updatedAt: new Date("2026-05-30T20:00:00Z"),
       },
       {
+        status: "planned",
+        riskTier: "no_auto_merge",
+        priority: "p0",
+        decisionCategory: null,
+        frequencyCount: 1,
+        decisionReconsiderAfterCount: 3,
+        updatedAt: new Date("2026-05-30T20:10:00Z"),
+      },
+      {
         status: "changes_requested",
         riskTier: "extra_agent_review",
         priority: "p1",
@@ -258,7 +267,7 @@ test("health snapshot summarizes queue and recent run state", () => {
 
   assert.equal(snapshot.generatedAt, "2026-05-30T21:00:00.000Z");
   assert.equal(snapshot.signals.new, 1);
-  assert.equal(snapshot.workItems.planned, 1);
+  assert.equal(snapshot.workItems.planned, 2);
   assert.equal(snapshot.riskTiers.extra_agent_review, 1);
   assert.equal(snapshot.queue.waitingForTriage, 1);
   assert.equal(snapshot.queue.executable, 1);
@@ -299,6 +308,19 @@ test("control room snapshot exposes demo-safe agent and demand state", () => {
         frequencyCount: 2,
         decisionReconsiderAfterCount: 5,
         updatedAt: new Date("2026-06-18T21:30:00Z"),
+      },
+      {
+        id: 9,
+        title: "Feedback: blocked private context",
+        status: "planned",
+        category: "privacy",
+        riskTier: "no_auto_merge",
+        priority: "p0",
+        decisionCategory: null,
+        decisionDetails: null,
+        frequencyCount: 1,
+        decisionReconsiderAfterCount: 5,
+        updatedAt: new Date("2026-06-18T21:10:00Z"),
       },
     ],
     runs: [
@@ -355,6 +377,10 @@ test("control room snapshot exposes demo-safe agent and demand state", () => {
   assert.equal(snapshot.generatedAt, "2026-06-18T22:00:00.000Z");
   assert.equal(snapshot.queue.reconsiderCandidates, 1);
   assert.equal(snapshot.agentLanes.some((lane) => lane.id === "builder"), true);
+  assert.equal(
+    snapshot.agentLanes.find((lane) => lane.id === "builder")?.activeCount,
+    1,
+  );
   assert.equal(snapshot.reconsiderCandidates[0]?.id, 7);
   assert.equal(snapshot.recentWorkItems[0]?.id, 8);
   assert.equal(snapshot.recentWorkItems[0]?.featureCost?.actualUsd, 0.42);

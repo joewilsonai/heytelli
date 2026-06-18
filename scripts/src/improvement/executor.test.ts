@@ -7,18 +7,22 @@ import test from "node:test";
 import {
   buildPrBody,
   buildExecutorPrompt,
+  buildReviewerBlockedComment,
   buildResolvedWithoutPrComment,
   buildReviewerAgentPrompt,
   buildSwarmExecutorCommandPreview,
   buildSwarmExecutorDigest,
   acquireExecutorRunLock,
   executorPrBodyMarker,
+  extractReviewerAgentBlock,
   extractExistingImplementationResolution,
   gitEnv,
   issueLabelsAllowExecutor,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
   resolvedWithoutPrCommentMarker,
+  reviewerBlockedCommentMarker,
+  ReviewerAgentBlockedError,
   resolvedWithoutPrDecisionFromAgentOutput,
   removeExecutorScratchFiles,
   runAgent,
@@ -218,6 +222,12 @@ test("detects agent output that resolves an issue without a PR", () => {
   assert.equal(extractExistingImplementationResolution("ordinary output"), null);
   assert.equal(
     extractExistingImplementationResolution(
+      "- If already fixed, leave `RESOLVED_BY_EXISTING_IMPLEMENTATION: <short reason>` in your final response.",
+    ),
+    null,
+  );
+  assert.equal(
+    extractExistingImplementationResolution(
       "RESOLVED_BY_EXISTING_IMPLEMENTATION: ",
     ),
     "Current implementation already resolves this issue.",
@@ -313,6 +323,74 @@ test("builds reviewer agent prompts from sanitized repo-visible context", () => 
   assert.doesNotMatch(prompt, /raw transcript|555-1212|123 Main/i);
 });
 
+test("extracts blocking reviewer JSON from noisy agent output", () => {
+  const block = extractReviewerAgentBlock(
+    [
+      "reviewing diff...",
+      JSON.stringify({
+        blocking: true,
+        role: "privacy_reviewer",
+        summary: "REVIEW_BLOCKED: stale safety context",
+        privacyRisk: "medium",
+        findings: [
+          {
+            severity: "high",
+            file: "artifacts/api-server/src/routes/matches.ts",
+            line: 287,
+            message: "Date brief freshness misses safety context.",
+          },
+        ],
+        verification: "focused tests passed",
+      }),
+    ].join("\n"),
+    "privacy_reviewer",
+  );
+
+  assert.equal(block?.role, "privacy_reviewer");
+  assert.equal(block?.findings[0]?.severity, "high");
+  assert.equal(
+    block?.findings[0]?.file,
+    "artifacts/api-server/src/routes/matches.ts",
+  );
+  assert.match(block?.summary ?? "", /REVIEW_BLOCKED/);
+});
+
+test("builds an idempotent reviewer-blocked issue comment", () => {
+  const plan = planSwarmExecutorWorkItem(safeWorkItem);
+  assert.equal(plan.status, "executable");
+  if (plan.status !== "executable") return;
+
+  const marker = reviewerBlockedCommentMarker(safeWorkItem);
+  const comment = buildReviewerBlockedComment(
+    safeWorkItem,
+    plan,
+    "https://github.com/joewilsonai/heytelli/pull/91",
+    [
+      {
+        role: "privacy_reviewer",
+        summary: "REVIEW_BLOCKED: stale safety context",
+        privacyRisk: "medium",
+        verification: "focused tests passed",
+        findings: [
+          {
+            severity: "high",
+            file: "artifacts/api-server/src/routes/matches.ts",
+            line: 287,
+            message: "Date brief freshness misses safety context.",
+          },
+        ],
+      },
+    ],
+  );
+
+  assert.equal(marker, "heytelli-swarm-review-blocked:42:88");
+  assert.match(comment, /changes requested by reviewer agents/);
+  assert.match(comment, /privacy_reviewer \/ high/);
+  assert.match(comment, /Date brief freshness misses safety context/);
+  assert.match(comment, new RegExp(marker));
+  assert.doesNotMatch(comment, /raw transcript|555-1212|123 Main/i);
+});
+
 test("previews command sequence including auto-merge only when allowed", () => {
   const plan = planSwarmExecutorWorkItem(safeWorkItem);
   assert.equal(plan.status, "executable");
@@ -340,6 +418,10 @@ test("previews command sequence including auto-merge only when allowed", () => {
       "automerge",
     ],
   );
+  const agentCommand = commands.find((command) => command.kind === "agent");
+  assert.ok(agentCommand?.args.includes("features.apps=false"));
+  assert.ok(agentCommand?.args.includes("features.plugins=false"));
+  assert.ok(agentCommand?.args.includes("mcp_servers={}"));
 
   const guarded = planSwarmExecutorWorkItem({
     ...safeWorkItem,
@@ -494,6 +576,38 @@ test("passes a timeout to child agent execution", async () => {
   assert.deepEqual(result, { stdout: "", stderr: "" });
 });
 
+test("disables plugin MCP for fallback Codex child agents", async () => {
+  const calls: Array<{ command: string; args: string[]; stdin?: string }> = [];
+  const options = {
+    ...parseExecutorArgs([], {}),
+    agentTimeoutMs: 1234,
+  };
+
+  await runAgent(
+    "/tmp/worktree",
+    "prompt",
+    "/tmp/prompt.md",
+    options,
+    async (command, args, runOptions) => {
+      calls.push({ command, args, stdin: runOptions?.stdin });
+      return { stdout: "", stderr: "" };
+    },
+  );
+
+  assert.equal(calls[0]?.command, "codex");
+  assert.deepEqual(calls[0]?.args.slice(0, 5), [
+    "exec",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "--cd",
+    "/tmp/worktree",
+    "--config",
+  ]);
+  assert.ok(calls[0]?.args.includes("features.apps=false"));
+  assert.ok(calls[0]?.args.includes("features.plugins=false"));
+  assert.ok(calls[0]?.args.includes("mcp_servers={}"));
+  assert.equal(calls[0]?.stdin, "prompt");
+});
+
 test("runs configured reviewer agents with role-specific environment", async () => {
   const calls: Array<{
     role?: string;
@@ -592,6 +706,40 @@ test("reviewer agent failures block the executor", async () => {
       },
     ),
     /review blocked/,
+  );
+});
+
+test("blocking reviewer JSON becomes a structured changes-requested error", async () => {
+  const plan = planSwarmExecutorWorkItem({
+    ...safeWorkItem,
+    riskTier: "safe_auto_merge",
+  });
+  assert.equal(plan.status, "executable");
+  if (plan.status !== "executable") return;
+
+  await assert.rejects(
+    runReviewerAgents(
+      "/tmp/worktree",
+      safeWorkItem,
+      plan,
+      "https://github.com/joewilsonai/heytelli/pull/91",
+      {
+        ...parseExecutorArgs([], {}),
+        reviewerCommand: "reviewer",
+      },
+      async () => ({
+        stdout: JSON.stringify({
+          blocking: true,
+          role: "code_reviewer",
+          summary: "REVIEW_BLOCKED: tests are missing",
+          findings: [{ severity: "high", message: "Add a regression test." }],
+        }),
+        stderr: "",
+      }),
+    ),
+    (err) =>
+      err instanceof ReviewerAgentBlockedError &&
+      err.blocks[0]?.findings[0]?.message === "Add a regression test.",
   );
 });
 

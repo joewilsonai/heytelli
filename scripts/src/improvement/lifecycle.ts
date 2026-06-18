@@ -2,7 +2,9 @@ import { pathToFileURL } from "node:url";
 import { eq, inArray } from "drizzle-orm";
 import type { ImprovementWorkItemStatus } from "@workspace/db";
 import {
+  commentOnIssue,
   fetchGitHubPullRequest,
+  findIssueCommentByMarker,
   githubTokenFromEnv,
   type GitHubPullRequestSummary,
 } from "./github";
@@ -10,6 +12,7 @@ import {
 export type LifecycleWorkItem = {
   id: number;
   status: ImprovementWorkItemStatus;
+  githubIssueNumber: number | null;
   pullRequestNumber: number | null;
   pullRequestUrl: string | null;
 };
@@ -22,6 +25,7 @@ export type LifecycleOptions = {
   githubApiUrl?: string;
   limit: number;
   agentName: string;
+  commentOnIssues: boolean;
 };
 
 export type LifecycleRunCounts = {
@@ -31,6 +35,7 @@ export type LifecycleRunCounts = {
   closed: number;
   reviewing: number;
   failed: number;
+  commentsCreated: number;
   dryRun: boolean;
 };
 
@@ -79,6 +84,9 @@ export function parseLifecycleArgs(
       argValue(argv, "--agent-name") ||
       env.IMPROVEMENT_LIFECYCLE_AGENT_NAME ||
       "heytelli-swarm-lifecycle",
+    commentOnIssues:
+      !argv.includes("--no-comment") &&
+      envFlag(env.IMPROVEMENT_LIFECYCLE_COMMENT_ON_ISSUES, true),
   };
 }
 
@@ -104,6 +112,7 @@ export function buildLifecycleDigest(counts: LifecycleRunCounts): string {
     `Closed: ${counts.closed}`,
     `Still reviewing/checking: ${counts.reviewing}`,
     `Failed: ${counts.failed}`,
+    `Comments created: ${counts.commentsCreated}`,
   ].join("\n");
 }
 
@@ -115,8 +124,120 @@ function emptyCounts(dryRun: boolean): LifecycleRunCounts {
     closed: 0,
     reviewing: 0,
     failed: 0,
+    commentsCreated: 0,
     dryRun,
   };
+}
+
+export function lifecycleResultCommentMarker(
+  workItem: Pick<LifecycleWorkItem, "id" | "githubIssueNumber">,
+  nextStatus: ImprovementWorkItemStatus,
+): string {
+  return `heytelli-swarm-lifecycle:${workItem.id}:${workItem.githubIssueNumber ?? "no-issue"}:${nextStatus}`;
+}
+
+function decisionForLifecycleStatus(
+  workItem: Pick<LifecycleWorkItem, "pullRequestNumber">,
+  nextStatus: ImprovementWorkItemStatus,
+): {
+  decisionCategory?: "shipped" | "not_planned";
+  decisionDetails?: string;
+} {
+  if (nextStatus === "merged") {
+    return {
+      decisionCategory: "shipped",
+      decisionDetails: `Merged in PR #${workItem.pullRequestNumber}; release verification is running.`,
+    };
+  }
+  if (nextStatus === "closed") {
+    return {
+      decisionCategory: "not_planned",
+      decisionDetails: `PR #${workItem.pullRequestNumber} closed without merging, so this is not shipping right now.`,
+    };
+  }
+  return {};
+}
+
+export function buildLifecycleResultComment(input: {
+  workItem: Pick<
+    LifecycleWorkItem,
+    "id" | "githubIssueNumber" | "pullRequestNumber" | "pullRequestUrl"
+  >;
+  nextStatus: ImprovementWorkItemStatus;
+  pr: Pick<GitHubPullRequestSummary, "mergedAt" | "url">;
+  agentName: string;
+}): string {
+  const marker = lifecycleResultCommentMarker(input.workItem, input.nextStatus);
+  const prLine =
+    input.workItem.pullRequestNumber == null
+      ? input.pr.url
+      : `#${input.workItem.pullRequestNumber} (${input.pr.url})`;
+  const result =
+    input.nextStatus === "merged"
+      ? [
+          "Result: shipped/resolved.",
+          input.pr.mergedAt
+            ? `Merged at: ${input.pr.mergedAt}.`
+            : "Merged; release verification is running.",
+          "User-facing status: Settings feedback status will show this as shipped or resolved.",
+        ]
+      : [
+          "Result: not shipping right now.",
+          "Reason: the implementation PR closed without merging.",
+          "User-facing status: Settings feedback status will show this as not planned right now with a reconsideration note.",
+        ];
+
+  return [
+    "## HeyTelli swarm lifecycle",
+    "",
+    `Agent: ${input.agentName}`,
+    `Work item: #${input.workItem.id}`,
+    `PR: ${prLine}`,
+    ...result,
+    "",
+    "Only sanitized repo-visible lifecycle metadata was used.",
+    "",
+    `<!-- ${marker} -->`,
+  ].join("\n");
+}
+
+async function commentOnLifecycleResult(input: {
+  options: LifecycleOptions;
+  workItem: Pick<
+    LifecycleWorkItem,
+    "id" | "githubIssueNumber" | "pullRequestNumber" | "pullRequestUrl"
+  >;
+  nextStatus: ImprovementWorkItemStatus;
+  pr: GitHubPullRequestSummary;
+}): Promise<{ url: string; created: boolean } | null> {
+  if (!input.options.commentOnIssues || input.workItem.githubIssueNumber == null) {
+    return null;
+  }
+  const marker = lifecycleResultCommentMarker(input.workItem, input.nextStatus);
+  const existingComment = await findIssueCommentByMarker({
+    owner: input.options.owner,
+    repo: input.options.repo,
+    token: input.options.token,
+    issueNumber: input.workItem.githubIssueNumber,
+    apiUrl: input.options.githubApiUrl,
+    marker,
+  });
+  if (existingComment) return { url: existingComment.url, created: false };
+
+  const comment = await commentOnIssue({
+    owner: input.options.owner,
+    repo: input.options.repo,
+    token: input.options.token,
+    issueNumber: input.workItem.githubIssueNumber,
+    apiUrl: input.options.githubApiUrl,
+    body: buildLifecycleResultComment({
+      workItem: input.workItem,
+      nextStatus: input.nextStatus,
+      pr: input.pr,
+      agentName: input.options.agentName,
+    }),
+  });
+  return { url: comment.url, created: true };
 }
 
 export async function runSwarmLifecycle(
@@ -132,6 +253,7 @@ export async function runSwarmLifecycle(
     .select({
       id: improvementWorkItems.id,
       status: improvementWorkItems.status,
+      githubIssueNumber: improvementWorkItems.githubIssueNumber,
       pullRequestNumber: improvementWorkItems.pullRequestNumber,
       pullRequestUrl: improvementWorkItems.pullRequestUrl,
     })
@@ -171,21 +293,60 @@ export async function runSwarmLifecycle(
 
       await db
         .update(improvementWorkItems)
-        .set({ status: nextStatus, updatedAt: new Date() })
+        .set({
+          status: nextStatus,
+          ...decisionForLifecycleStatus(workItem, nextStatus),
+          updatedAt: new Date(),
+        })
         .where(eq(improvementWorkItems.id, workItem.id));
+
+      let lifecycleCommentUrl: string | null = null;
+      try {
+        const lifecycleComment = await commentOnLifecycleResult({
+          options,
+          workItem,
+          nextStatus,
+          pr,
+        });
+        lifecycleCommentUrl = lifecycleComment?.url ?? null;
+        if (lifecycleComment?.created) {
+          counts.commentsCreated += 1;
+        }
+      } catch (err) {
+        counts.failed += 1;
+        await db.insert(improvementRuns).values({
+          workItemId: workItem.id,
+          runType: "monitor",
+          agentName: options.agentName,
+          status: "failed",
+          summary:
+            err instanceof Error
+              ? `Lifecycle comment failed: ${err.message}`
+              : "Lifecycle comment failed",
+          logsUrl: workItem.pullRequestUrl,
+          metadata: {
+            prNumber: workItem.pullRequestNumber,
+            nextStatus,
+            retryable: true,
+          },
+          completedAt: new Date(),
+        });
+      }
+
       await db.insert(improvementRuns).values({
         workItemId: workItem.id,
         runType: nextStatus === "merged" ? "merge" : "review",
         agentName: options.agentName,
         status: "succeeded",
         summary: `PR #${workItem.pullRequestNumber} moved work item to ${nextStatus}.`,
-        logsUrl: workItem.pullRequestUrl,
+        logsUrl: lifecycleCommentUrl ?? workItem.pullRequestUrl,
         metadata: {
           prNumber: workItem.pullRequestNumber,
           prState: pr.state,
           mergedAt: pr.mergedAt,
           previousStatus: workItem.status,
           nextStatus,
+          lifecycleCommentUrl,
         },
         completedAt: new Date(),
       });

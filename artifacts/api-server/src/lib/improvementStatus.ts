@@ -509,7 +509,9 @@ export function buildImprovementHealthSnapshot(input: {
     queue: {
       waitingForTriage: signals.filter((signal) => signal.status === "new")
         .length,
-      executable: workItems.filter((item) => item.status === "planned").length,
+      executable: workItems.filter(
+        (item) => item.status === "planned" && item.riskTier !== "no_auto_merge",
+      ).length,
       inProgress: workItems.filter((item) =>
         ["building", "checks_running", "monitoring"].includes(item.status),
       ).length,
@@ -665,11 +667,11 @@ export function buildImprovementControlRoomSnapshot(input: {
       {
         id: "builder",
         label: "Builder",
-        activeCount: laneCount(input.workItems, [
-          "planned",
-          "building",
-          "checks_running",
-        ]),
+        activeCount: input.workItems.filter(
+          (item) =>
+            ["planned", "building", "checks_running"].includes(item.status) &&
+            item.riskTier !== "no_auto_merge",
+        ).length,
         description: "Implements scoped changes in generated worktrees.",
       },
       {

@@ -16,10 +16,21 @@ on:
         required: true
         default: "5"
         type: string
+  issues:
+    types:
+      - opened
+      - reopened
+      - labeled
+  pull_request:
+    types:
+      - closed
+  schedule:
+    - cron: "*/10 * * * *"
 
 permissions:
   contents: read
   issues: write
+  pull-requests: read
 
 concurrency:
   group: improvement-swarm
@@ -28,6 +39,11 @@ concurrency:
 jobs:
   run:
     name: Typecheck and run swarm
+    if: >-
+      ${{
+        github.event_name != 'issues' ||
+        contains(github.event.issue.labels.*.name, 'agent-ready')
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -36,8 +52,9 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.HEYTELLI_DATABASE_URL }}
       HEYTELLI_DATABASE_URL: ${{ secrets.HEYTELLI_DATABASE_URL }}
       IMPROVEMENT_SWARM_AGENT_NAME: github-actions-improvement-swarm
-      IMPROVEMENT_SWARM_LIMIT: ${{ inputs.limit || '5' }}
-      IMPROVEMENT_SWARM_DRY_RUN: ${{ inputs.mode != 'live' && 'true' || 'false' }}
+      IMPROVEMENT_SWARM_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '5' }}
+      IMPROVEMENT_SWARM_DRY_RUN: >-
+        ${{ github.event_name == 'workflow_dispatch' && inputs.mode != 'live' && 'true' || 'false' }}
 
     steps:
       - name: Checkout
@@ -76,3 +93,12 @@ jobs:
           fi
 
           pnpm --filter @workspace/scripts run improvement:swarm -- "$mode_arg" --limit "$IMPROVEMENT_SWARM_LIMIT"
+
+      - name: Run lifecycle monitor
+        run: |
+          mode_arg="--dry-run"
+          if [[ "${IMPROVEMENT_SWARM_DRY_RUN}" == "false" ]]; then
+            mode_arg="--live"
+          fi
+
+          pnpm --filter @workspace/scripts run improvement:lifecycle -- "$mode_arg" --limit "$IMPROVEMENT_SWARM_LIMIT"

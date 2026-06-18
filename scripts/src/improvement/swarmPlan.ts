@@ -91,11 +91,12 @@ export function priorityFromLabels(
 function effectiveRiskTier(input: SwarmPlanInput): ImprovementRiskTier {
   const labeledRisk = riskTierFromLabels(input.labels, input.riskTier);
   if (input.privacyRisk === "blocked") return "no_auto_merge";
-  if (input.priority === "p0") return "no_auto_merge";
+  if (labeledRisk === "no_auto_merge") return "no_auto_merge";
   if (input.category === "privacy" && input.privacyRisk === "high") {
     return "no_auto_merge";
   }
   if (input.category === "safety_issue") return "extra_agent_review";
+  if (input.priority === "p0") return "extra_agent_review";
   if (input.privacyRisk === "high") return "extra_agent_review";
   if (input.privacyRisk === "medium" && labeledRisk === "safe_auto_merge") {
     return "guarded_auto_merge";

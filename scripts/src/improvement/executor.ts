@@ -135,6 +135,54 @@ type CommandResult = {
   stderr: string;
 };
 
+class CommandExecutionError extends Error {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+
+  constructor(
+    message: string,
+    details: { stdout: string; stderr: string; exitCode: number | null },
+  ) {
+    super(message);
+    this.name = "CommandExecutionError";
+    this.stdout = details.stdout;
+    this.stderr = details.stderr;
+    this.exitCode = details.exitCode;
+  }
+}
+
+export type ReviewerAgentFinding = {
+  severity: string;
+  file?: string;
+  line?: number;
+  message: string;
+};
+
+export type ReviewerAgentBlock = {
+  role: SwarmAgentRole;
+  summary: string;
+  privacyRisk?: string;
+  verification?: string;
+  findings: ReviewerAgentFinding[];
+};
+
+export class ReviewerAgentBlockedError extends Error {
+  blocks: ReviewerAgentBlock[];
+  prUrl?: string;
+  prNumber?: number | null;
+  prCreated?: boolean;
+  branchCreated?: boolean;
+  reviewerAgentsRun?: number;
+  issueCommentUrl?: string | null;
+
+  constructor(blocks: ReviewerAgentBlock[], message?: string) {
+    super(message ?? buildReviewerBlockedMessage(blocks));
+    this.name = "ReviewerAgentBlockedError";
+    this.blocks = blocks;
+  }
+}
+
 type CommandRunner = (
   command: string,
   args: string[],
@@ -155,6 +203,14 @@ const DEFAULT_LIMIT = 3;
 const DEFAULT_AGENT_TIMEOUT_MS = 600_000;
 const DEFAULT_REVIEWER_TIMEOUT_MS = 300_000;
 const DEFAULT_REVIEWER_PARALLELISM = 1;
+const CODEX_CHILD_AGENT_CONFIG_ARGS = [
+  "--config",
+  "features.apps=false",
+  "--config",
+  "features.plugins=false",
+  "--config",
+  "mcp_servers={}",
+] as const;
 export const EXECUTOR_PROMPT_FILE_NAME = ".heytelli-swarm-prompt.md";
 export const EXECUTOR_LOCK_DIR_NAME = ".executor.lock";
 
@@ -204,6 +260,90 @@ function emptyCounts(dryRun: boolean): SwarmExecutorRunCounts {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+function commandOutputFromError(err: unknown): string {
+  if (err instanceof CommandExecutionError) {
+    return `${err.stdout}\n${err.stderr}`;
+  }
+  return errorMessage(err);
+}
+
+function cleanReviewerString(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  return value.trim().replace(/\s+/g, " ").slice(0, 700);
+}
+
+function reviewerFindingFromValue(value: unknown): ReviewerAgentFinding | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const message = cleanReviewerString(raw.message);
+  if (!message) return null;
+  const severity = cleanReviewerString(raw.severity, "medium").toLowerCase();
+  const file = cleanReviewerString(raw.file);
+  const line =
+    typeof raw.line === "number" && Number.isFinite(raw.line)
+      ? Math.max(1, Math.floor(raw.line))
+      : undefined;
+  return {
+    severity,
+    ...(file ? { file } : {}),
+    ...(line ? { line } : {}),
+    message,
+  };
+}
+
+function reviewerBlockFromJson(
+  value: unknown,
+  role: SwarmAgentRole,
+): ReviewerAgentBlock | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const blocking = raw.blocking === true;
+  const summary = cleanReviewerString(raw.summary);
+  if (!blocking && !/review_blocked/i.test(summary)) return null;
+  const findings = Array.isArray(raw.findings)
+    ? raw.findings
+        .map((finding) => reviewerFindingFromValue(finding))
+        .filter((finding): finding is ReviewerAgentFinding => Boolean(finding))
+        .slice(0, 10)
+    : [];
+  return {
+    role,
+    summary:
+      summary ||
+      `Reviewer ${role} requested changes before this can continue.`,
+    privacyRisk: cleanReviewerString(raw.privacyRisk) || undefined,
+    verification: cleanReviewerString(raw.verification) || undefined,
+    findings,
+  };
+}
+
+export function extractReviewerAgentBlock(
+  output: string,
+  role: SwarmAgentRole,
+): ReviewerAgentBlock | null {
+  for (const line of output.split(/\r?\n/).reverse()) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) continue;
+    try {
+      const block = reviewerBlockFromJson(JSON.parse(trimmed), role);
+      if (block) return block;
+    } catch {
+      // Reviewer tools may print progress logs; only standalone JSON matters.
+    }
+  }
+  return null;
+}
+
+function buildReviewerBlockedMessage(blocks: ReviewerAgentBlock[]): string {
+  const roles = blocks.map((block) => block.role).join(", ") || "reviewer";
+  const firstFinding = blocks
+    .flatMap((block) => block.findings)
+    .find((finding) => finding.message);
+  return firstFinding
+    ? `Reviewer blocked PR (${roles}): ${firstFinding.message}`
+    : `Reviewer blocked PR (${roles})`;
 }
 
 function slugify(value: string): string {
@@ -348,6 +488,12 @@ export function resolvedWithoutPrCommentMarker(
   return `heytelli-swarm-resolved-without-pr:${workItem.id}:${workItem.githubIssueNumber ?? "no-issue"}`;
 }
 
+export function reviewerBlockedCommentMarker(
+  workItem: Pick<SwarmExecutorWorkItem, "id" | "githubIssueNumber">,
+): string {
+  return `heytelli-swarm-review-blocked:${workItem.id}:${workItem.githubIssueNumber ?? "no-issue"}`;
+}
+
 export function planSwarmExecutorWorkItem(
   workItem: SwarmExecutorWorkItem,
   options: Pick<
@@ -489,9 +635,10 @@ export function buildPrBody(
 export function extractExistingImplementationResolution(
   output: string,
 ): string | null {
-  const match = output.match(
-    /RESOLVED_BY_EXISTING_IMPLEMENTATION:\s*([^\n\r]*)/i,
-  );
+  const matches = [...output.matchAll(
+    /^\s*RESOLVED_BY_EXISTING_IMPLEMENTATION:\s*([^\n\r]*)\s*$/gim,
+  )];
+  const match = matches.at(-1);
   if (!match) return null;
   const reason = match[1]?.trim();
   return reason || "Current implementation already resolves this issue.";
@@ -536,6 +683,49 @@ export function buildResolvedWithoutPrComment(
     "No private screenshots, transcripts, or dating details were included.",
     "",
     `<!-- ${resolvedWithoutPrCommentMarker(workItem)} -->`,
+    `<!-- heytelli-swarm-source-issue:${plan.issueNumber} -->`,
+  ].join("\n");
+}
+
+export function buildReviewerBlockedComment(
+  workItem: SwarmExecutorWorkItem,
+  plan: PlannedExecutorWorkItem,
+  prUrl: string,
+  blocks: ReviewerAgentBlock[],
+): string {
+  const findingLines = blocks.flatMap((block) => {
+    const findings = block.findings.length
+      ? block.findings
+      : [
+          {
+            severity: "medium",
+            message: block.summary,
+          } satisfies ReviewerAgentFinding,
+        ];
+    return findings.slice(0, 5).map((finding) => {
+      const location = finding.file
+        ? ` (${finding.file}${finding.line ? `:${finding.line}` : ""})`
+        : "";
+      return `- ${block.role} / ${finding.severity}${location}: ${finding.message}`;
+    });
+  });
+  return [
+    "## HeyTelli swarm review",
+    "",
+    `PR: ${prUrl}`,
+    "Status: changes requested by reviewer agents.",
+    "",
+    "The system paused this work instead of merging because a reviewer found an issue to fix first.",
+    "",
+    "### Findings",
+    ...(findingLines.length ? findingLines : ["- Reviewer requested changes."]),
+    "",
+    "### Next step",
+    "The executor should update the PR branch and rerun reviewers before this can ship.",
+    "",
+    "No private screenshots, transcripts, or dating details were included.",
+    "",
+    `<!-- ${reviewerBlockedCommentMarker(workItem)} -->`,
     `<!-- heytelli-swarm-source-issue:${plan.issueNumber} -->`,
   ].join("\n");
 }
@@ -635,6 +825,7 @@ export function buildSwarmExecutorCommandPreview(
         "--dangerously-bypass-approvals-and-sandbox",
         "--cd",
         worktreePath,
+        ...CODEX_CHILD_AGENT_CONFIG_ARGS,
         "-",
       ],
       cwd: worktreePath,
@@ -800,8 +991,9 @@ export async function runCommand(
         return;
       }
       rejectOnce(
-        new Error(
+        new CommandExecutionError(
           `${command} ${args.join(" ")} failed with exit code ${code ?? "unknown"}`,
+          { stdout, stderr, exitCode: code },
         ),
       );
     });
@@ -842,6 +1034,7 @@ export async function runAgent(
       "--dangerously-bypass-approvals-and-sandbox",
       "--cd",
       worktreePath,
+      ...CODEX_CHILD_AGENT_CONFIG_ARGS,
       "-",
     ],
     { cwd: worktreePath, stdin: prompt, timeoutMs: options.agentTimeoutMs },
@@ -868,19 +1061,39 @@ export async function runReviewerAgents(
   const parallelism = Math.max(1, options.reviewerParallelism);
   async function runRole(role: SwarmAgentRole): Promise<void> {
     const prompt = buildReviewerAgentPrompt({ role, workItem, plan, prUrl });
-    await runner("/bin/zsh", ["-lc", command], {
-      cwd: worktreePath,
-      stdin: prompt,
-      env: {
-        ...process.env,
-        HEYTELLI_SWARM_REVIEW_ROLE: role,
-        HEYTELLI_SWARM_REVIEW_PROMPT: prompt,
-        HEYTELLI_SWARM_PR_URL: prUrl,
-        HEYTELLI_SWARM_WORKTREE: worktreePath,
-      },
-      timeoutMs: options.reviewerTimeoutMs,
-    });
-    reviewed += 1;
+    try {
+      const result = await runner("/bin/zsh", ["-lc", command], {
+        cwd: worktreePath,
+        stdin: prompt,
+        env: {
+          ...process.env,
+          HEYTELLI_SWARM_REVIEW_ROLE: role,
+          HEYTELLI_SWARM_REVIEW_PROMPT: prompt,
+          HEYTELLI_SWARM_PR_URL: prUrl,
+          HEYTELLI_SWARM_WORKTREE: worktreePath,
+        },
+        timeoutMs: options.reviewerTimeoutMs,
+      });
+      const block = extractReviewerAgentBlock(
+        `${result.stdout}\n${result.stderr}`,
+        role,
+      );
+      reviewed += 1;
+      if (block) {
+        const blocked = new ReviewerAgentBlockedError([block]);
+        blocked.reviewerAgentsRun = reviewed;
+        throw blocked;
+      }
+    } catch (err) {
+      const block = extractReviewerAgentBlock(commandOutputFromError(err), role);
+      if (block) {
+        reviewed += 1;
+        const blocked = new ReviewerAgentBlockedError([block]);
+        blocked.reviewerAgentsRun = reviewed;
+        throw blocked;
+      }
+      throw err;
+    }
   }
   for (let index = 0; index < roles.length; index += parallelism) {
     await Promise.all(roles.slice(index, index + parallelism).map(runRole));
@@ -1137,6 +1350,34 @@ async function commentOnSourceIssue(
   return comment.url;
 }
 
+async function commentOnReviewerBlockedIssue(
+  workItem: SwarmExecutorWorkItem,
+  plan: PlannedExecutorWorkItem,
+  prUrl: string,
+  blocks: ReviewerAgentBlock[],
+  options: SwarmExecutorOptions,
+): Promise<string | null> {
+  const marker = reviewerBlockedCommentMarker(workItem);
+  const existing = await findIssueCommentByMarker({
+    owner: options.owner,
+    repo: options.repo,
+    token: options.token,
+    apiUrl: options.githubApiUrl,
+    issueNumber: plan.issueNumber,
+    marker,
+  });
+  if (existing) return existing.url;
+  const comment = await commentOnIssue({
+    owner: options.owner,
+    repo: options.repo,
+    token: options.token,
+    apiUrl: options.githubApiUrl,
+    issueNumber: plan.issueNumber,
+    body: buildReviewerBlockedComment(workItem, plan, prUrl, blocks),
+  });
+  return comment.url;
+}
+
 async function commentOnResolvedWithoutPrIssue(
   workItem: SwarmExecutorWorkItem,
   plan: PlannedExecutorWorkItem,
@@ -1217,6 +1458,10 @@ async function executeWorkItem(
   prNumber: number | null;
   issueCommentUrl?: string | null;
   resolution?: string;
+  reviewerBlocked?: {
+    blocks: ReviewerAgentBlock[];
+    issueCommentUrl: string | null;
+  };
   featureCostActual: FeatureCreationCostSummary;
 }> {
   const executionStartedAt = Date.now();
@@ -1412,9 +1657,59 @@ async function executeWorkItem(
   await step("github.issue_comment", "github", { prUrl: pr.url }, () =>
     commentOnSourceIssue(workItem, plan, pr.url, options),
   );
-  const reviewerAgentsRun = await step("agent.reviewers", "agent", {}, () =>
-    runReviewerAgents(worktreePath, workItem, plan, pr.url, options, runner),
-  );
+  let reviewerAgentsRun = 0;
+  try {
+    reviewerAgentsRun = await step("agent.reviewers", "agent", {}, () =>
+      runReviewerAgents(worktreePath, workItem, plan, pr.url, options, runner),
+    );
+  } catch (err) {
+    if (!(err instanceof ReviewerAgentBlockedError)) throw err;
+    const issueCommentUrl = await step(
+      "github.issue_reviewer_blocked_comment",
+      "github",
+      { prUrl: pr.url },
+      () =>
+        commentOnReviewerBlockedIssue(
+          workItem,
+          plan,
+          pr.url,
+          err.blocks,
+          options,
+        ),
+    );
+    if (!options.keepWorktree) {
+      await step("worktree.cleanup", "tool", { worktreePath }, () =>
+        removeWorktree(options.repoRoot, worktreePath, runner),
+      );
+      await step(
+        "git.local_branch_cleanup",
+        "tool",
+        { branchName: plan.branchName },
+        () => removeLocalBranch(options.repoRoot, plan.branchName, runner),
+      );
+    }
+    return {
+      outcome: "pull_request",
+      branchCreated: true,
+      prCreated: pr.created,
+      reviewerAgentsRun: err.reviewerAgentsRun ?? reviewerAgentsRun,
+      autoMergeQueued: false,
+      prUrl: pr.url,
+      prNumber: pr.number,
+      reviewerBlocked: { blocks: err.blocks, issueCommentUrl },
+      featureCostActual: buildActualFeatureCreationCost({
+        riskTier: workItem.riskTier,
+        priority: workItem.priority,
+        frequencyCount: workItem.frequencyCount,
+        estimate: featureCostEstimate,
+        reviewerRoles: reviewerRolesForRiskTier(workItem.riskTier),
+        agentOutputText: resolutionText,
+        reviewerAgentsRun: err.reviewerAgentsRun ?? reviewerAgentsRun,
+        traceDurationMs: Date.now() - executionStartedAt,
+        ciRuns: 1,
+      }),
+    };
+  }
 
   let autoMergeQueued = false;
   if (plan.autoMergeAllowed) {
@@ -1444,6 +1739,12 @@ async function executeWorkItem(
   if (!options.keepWorktree) {
     await step("worktree.cleanup", "tool", { worktreePath }, () =>
       removeWorktree(options.repoRoot, worktreePath, runner),
+    );
+    await step(
+      "git.local_branch_cleanup",
+      "tool",
+      { branchName: plan.branchName },
+      () => removeLocalBranch(options.repoRoot, plan.branchName, runner),
     );
   }
 
@@ -1633,9 +1934,12 @@ export async function runSwarmExecutor(
         await db
           .update(improvementWorkItems)
           .set({
-            status: plan.nextStatus,
+            status: executed.reviewerBlocked ? "changes_requested" : plan.nextStatus,
             pullRequestUrl: executed.prUrl,
             pullRequestNumber: executed.prNumber,
+            decisionDetails: executed.reviewerBlocked
+              ? buildReviewerBlockedMessage(executed.reviewerBlocked.blocks)
+              : undefined,
             updatedAt: new Date(),
           })
           .where(eq(improvementWorkItems.id, workItem.id));
@@ -1646,10 +1950,12 @@ export async function runSwarmExecutor(
         await db
           .update(improvementRuns)
           .set({
-            status: "succeeded",
+            status: executed.reviewerBlocked ? "blocked" : "succeeded",
             summary:
               executed.outcome === "resolved_without_pr"
                 ? `Swarm executor resolved issue #${plan.issueNumber} without a PR`
+                : executed.reviewerBlocked
+                  ? `Swarm executor opened PR for issue #${plan.issueNumber}, but reviewer agents requested changes`
                 : `Swarm executor opened PR for issue #${plan.issueNumber}`,
             logsUrl: executed.prUrl ?? executed.issueCommentUrl ?? plan.issueUrl,
             metadata: {
@@ -1661,6 +1967,10 @@ export async function runSwarmExecutor(
               issueCommentUrl: executed.issueCommentUrl,
               resolution: executed.resolution,
               reviewerAgentsRun: executed.reviewerAgentsRun,
+              reviewerBlocked: Boolean(executed.reviewerBlocked),
+              reviewerBlocks: executed.reviewerBlocked?.blocks,
+              reviewerIssueCommentUrl:
+                executed.reviewerBlocked?.issueCommentUrl ?? null,
               autoMergeQueued: executed.autoMergeQueued,
               featureCostEstimate,
               featureCostActual: executed.featureCostActual,

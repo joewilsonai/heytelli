@@ -4,10 +4,13 @@ import test from "node:test";
 import { buildImprovementDigest } from "./digest";
 import { createGitHubIssue } from "./github";
 import {
+  buildFeatureCostIssueSection,
+  estimateTriageFeatureCost,
   githubIssueRunDecision,
   mergeDuplicateWorkItem,
   planSignalTriage,
   shouldCreateGithubIssue,
+  withFeatureCostIssueSection,
 } from "./triage";
 
 test("plans actionable signal as sanitized github-ready work", () => {
@@ -98,6 +101,35 @@ test("dry-run plans count github issues that would be opened", () => {
 
   assert.equal(shouldCreateGithubIssue(plan), true);
   assert.ok(plan.issueDraft);
+});
+
+test("triage adds an early feature cost estimate to issue handoff", () => {
+  const plan = planSignalTriage({
+    id: 10,
+    fingerprint: "date-brief-request",
+    rawPayload: {
+      source: "in_app_feedback",
+      type: "Idea",
+      message: "Add a Date Brief before an upcoming date.",
+      surface: "settings",
+    },
+    sanitizedSummary: "Add a Date Brief before an upcoming date.",
+    sanitizedPayload: {
+      type: "Idea",
+      message: "Add a Date Brief before an upcoming date.",
+      surface: "settings",
+    },
+    privacyRisk: "low",
+  });
+
+  assert.ok(plan.issueDraft);
+  const estimate = estimateTriageFeatureCost(plan.workItem);
+  const draft = withFeatureCostIssueSection(plan.issueDraft, estimate);
+
+  assert.match(buildFeatureCostIssueSection(estimate), /AI Cost Estimate/);
+  assert.match(draft.body, /Estimated builder\/reviewer model cost/);
+  assert.match(draft.body, /Actual cost will be attached/);
+  assert.doesNotMatch(draft.body, /rawPayload|signalIds|raw conversation/i);
 });
 
 test("github client dry-run does not call fetch", async () => {
