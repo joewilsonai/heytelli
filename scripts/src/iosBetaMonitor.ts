@@ -158,11 +158,10 @@ export function latestBuildsUrl(appId: string, apiUrl = DEFAULT_ASC_API_URL): st
     "uploadedDate",
     "processingState",
     "expired",
-    "buildAudienceType",
   ].join(",");
-  return `${apiUrl}/v1/apps/${encodeURIComponent(
+  return `${apiUrl}/v1/builds?filter%5Bapp%5D=${encodeURIComponent(
     appId,
-  )}/builds?sort=-uploadedDate&limit=1&fields%5Bbuilds%5D=${encodeURIComponent(
+  )}&sort=-uploadedDate&limit=1&fields%5Bbuilds%5D=${encodeURIComponent(
     fields,
   )}`;
 }

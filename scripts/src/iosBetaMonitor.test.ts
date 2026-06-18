@@ -16,7 +16,8 @@ import {
 test("builds the App Store Connect latest TestFlight build URL", () => {
   const url = latestBuildsUrl("6773488324");
 
-  assert.match(url, /\/v1\/apps\/6773488324\/builds/);
+  assert.match(url, /\/v1\/builds/);
+  assert.match(url, /filter%5Bapp%5D=6773488324/);
   assert.match(url, /sort=-uploadedDate/);
   assert.match(url, /limit=1/);
   assert.match(url, /processingState/);
@@ -120,7 +121,8 @@ test("monitor fetches latest build when a JWT is supplied", async () => {
     credentials: null,
     now: new Date("2026-05-30T21:00:00Z"),
     fetchImpl: async (input, init) => {
-      assert.match(String(input), /\/v1\/apps\/6773488324\/builds/);
+      assert.match(String(input), /\/v1\/builds/);
+      assert.match(String(input), /filter%5Bapp%5D=6773488324/);
       assert.equal(
         (init?.headers as Record<string, string>).authorization,
         "Bearer jwt",
