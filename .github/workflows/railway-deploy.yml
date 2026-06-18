@@ -149,6 +149,7 @@ jobs:
               }
             }
           `;
+          const terminalSuccesses = new Set(["SUCCESS", "SKIPPED"]);
           const terminalFailures = new Set(["FAILED", "CRASHED", "REMOVED"]);
           const deadline = Date.now() + 15 * 60 * 1000;
 
@@ -179,7 +180,7 @@ jobs:
               continue;
             }
 
-            if (status === "SUCCESS") {
+            if (terminalSuccesses.has(status)) {
               process.exit(0);
             }
             if (terminalFailures.has(status)) {
