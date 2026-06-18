@@ -43,6 +43,16 @@ test("date brief prompt remains a private pre-date profile brief", () => {
   assert.match(chatRoute, /dateBriefContextHash/);
 });
 
+test("date brief freshness includes safety and saved pattern inputs", () => {
+  assert.match(matchesRoute, /dateSafetyPlan\?: unknown/);
+  assert.match(matchesRoute, /lastRedFlagRadar\?: unknown/);
+  assert.match(matchesRoute, /dateSafetyPlan: match\.dateSafetyPlan/);
+  assert.match(matchesRoute, /lastRedFlagRadar: match\.lastRedFlagRadar/);
+  assert.match(matchesRoute, /dateSafetyPlan: r\.dateSafetyPlan/);
+  assert.match(matchesRoute, /lastRedFlagRadar: r\.lastRedFlagRadar/);
+  assert.match(matchesRoute, /updates\.lastDateBrief = null/);
+});
+
 test("private object routes require auth and verify object ownership", () => {
   assert.match(storageRoute, /requireAuth/);
   assert.match(storageRoute, /assertObjectBelongsToUser/);
