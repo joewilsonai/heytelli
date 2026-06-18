@@ -246,6 +246,17 @@ export const FeedbackFollowUpStage = {
   blocked: 'blocked',
 } as const;
 
+export interface FeedbackTimelineEvent {
+  event: string;
+  label: string;
+  body: string;
+  createdAt: string;
+  /** @nullable */
+  agentName: string | null;
+  /** @nullable */
+  proof: string | null;
+}
+
 export interface UserFeedbackStatus {
   ticketId: number;
   stage: FeedbackFollowUpStage;
@@ -264,8 +275,18 @@ export interface UserFeedbackStatus {
   decisionDetails: string | null;
   /** @nullable */
   frequencyCount: number | null;
+  timeline: FeedbackTimelineEvent[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ImprovementHealthSnapshotQueue {
+  waitingForTriage: number;
+  executable: number;
+  inProgress: number;
+  reviewGated: number;
+  needsAttention: number;
+  reconsiderCandidates: number;
 }
 
 export type ImprovementHealthSnapshotSignals = {[key: string]: number};
@@ -278,15 +299,6 @@ export type ImprovementHealthSnapshotPriorities = {[key: string]: number};
 
 export type ImprovementHealthSnapshotRuns = {[key: string]: number};
 
-export type ImprovementHealthSnapshotQueue = {
-  waitingForTriage: number;
-  executable: number;
-  inProgress: number;
-  reviewGated: number;
-  needsAttention: number;
-  reconsiderCandidates: number;
-};
-
 export interface ImprovementHealthSnapshot {
   generatedAt: string;
   signals: ImprovementHealthSnapshotSignals;
@@ -297,6 +309,49 @@ export interface ImprovementHealthSnapshot {
   queue: ImprovementHealthSnapshotQueue;
   /** @nullable */
   lastRunAt: string | null;
+}
+
+export interface ImprovementControlRoomLane {
+  id: string;
+  label: string;
+  activeCount: number;
+  description: string;
+}
+
+export interface ImprovementControlRoomWorkItem {
+  id: number;
+  title: string;
+  status: ImprovementWorkItemStatus;
+  category: ImprovementCategory;
+  riskTier: ImprovementRiskTier;
+  priority: ImprovementPriority;
+  decisionCategory: ImprovementDecisionCategory | null;
+  /** @nullable */
+  decisionDetails: string | null;
+  frequencyCount: number;
+  decisionReconsiderAfterCount: number;
+  reconsiderReady: boolean;
+  updatedAt: string;
+}
+
+export interface ImprovementControlRoomRun {
+  runType: ImprovementRunType;
+  status: ImprovementRunStatus;
+  agentName: string;
+  summary: string;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
+export interface ImprovementControlRoomSnapshot {
+  generatedAt: string;
+  queue: ImprovementHealthSnapshotQueue;
+  agentLanes: ImprovementControlRoomLane[];
+  recentWorkItems: ImprovementControlRoomWorkItem[];
+  reconsiderCandidates: ImprovementControlRoomWorkItem[];
+  recentRuns: ImprovementControlRoomRun[];
+  demoScript: string[];
 }
 
 /**

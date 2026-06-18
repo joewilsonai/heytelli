@@ -6,7 +6,9 @@ import {
   buildImprovementWorkItemDraft,
   fingerprintImprovementSignal,
   normalizeImprovementSignalInput,
+  reconsiderThresholdForDecision,
   sanitizeImprovementPayload,
+  semanticClusterKeyForImprovement,
 } from "./improvementPipeline";
 
 test("rejects forbidden client context before raw payload is persisted", () => {
@@ -256,4 +258,36 @@ test("fingerprints repeated feedback by product surface and sanitized summary", 
     fingerprintImprovementSignal(first),
     fingerprintImprovementSignal(second),
   );
+});
+
+test("semantic cluster keys group equivalent theme color requests", () => {
+  const first = normalizeImprovementSignalInput({
+    source: "in_app_feedback",
+    type: "Idea",
+    message: "Can you add more color themes?",
+    surface: "settings",
+    technicalContextConsent: false,
+  });
+  const second = normalizeImprovementSignalInput({
+    source: "in_app_feedback",
+    type: "Idea",
+    message: "I want to change the app color and make it less pink.",
+    surface: "appearance",
+    technicalContextConsent: false,
+  });
+
+  assert.ok(first);
+  assert.ok(second);
+  assert.equal(
+    semanticClusterKeyForImprovement(first),
+    semanticClusterKeyForImprovement(second),
+  );
+  assert.equal(fingerprintImprovementSignal(first), fingerprintImprovementSignal(second));
+});
+
+test("decision reconsider thresholds vary by category", () => {
+  assert.equal(reconsiderThresholdForDecision("needs_more_signal"), 5);
+  assert.equal(reconsiderThresholdForDecision("out_of_scope"), 15);
+  assert.equal(reconsiderThresholdForDecision("privacy_or_safety"), 1_000_000);
+  assert.equal(reconsiderThresholdForDecision("already_available"), 0);
 });

@@ -35,6 +35,7 @@ import type {
   FunnelStats,
   GetCurrentUser200,
   HealthStatus,
+  ImprovementControlRoomSnapshot,
   ImprovementHealthSnapshot,
   ImprovementSignal,
   ImprovementSignalInput,
@@ -146,6 +147,11 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
+
+
 
 
 export const getLoginBetaUserUrl = () => {
@@ -290,6 +296,12 @@ export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUs
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+
+
+
+
+
+
 export const getListMatchesUrl = () => {
 
 
@@ -360,6 +372,11 @@ export function useListMatches<TData = Awaited<ReturnType<typeof listMatches>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
+
+
 
 
 export const getCreateMatchUrl = () => {
@@ -2891,6 +2908,83 @@ export function useGetImprovementHealth<TData = Awaited<ReturnType<typeof getImp
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetImprovementHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetImprovementControlRoomUrl = () => {
+
+
+
+
+  return `/api/admin/improvement/control-room`
+}
+
+/**
+ * @summary Get demo-safe autonomous improvement control-room state
+ */
+export const getImprovementControlRoom = async ( options?: RequestInit): Promise<ImprovementControlRoomSnapshot> => {
+
+  return customFetch<ImprovementControlRoomSnapshot>(getGetImprovementControlRoomUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetImprovementControlRoomQueryKey = () => {
+    return [
+    `/api/admin/improvement/control-room`
+    ] as const;
+    }
+
+
+export const getGetImprovementControlRoomQueryOptions = <TData = Awaited<ReturnType<typeof getImprovementControlRoom>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getImprovementControlRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetImprovementControlRoomQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getImprovementControlRoom>>> = ({ signal }) => getImprovementControlRoom({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getImprovementControlRoom>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetImprovementControlRoomQueryResult = NonNullable<Awaited<ReturnType<typeof getImprovementControlRoom>>>
+export type GetImprovementControlRoomQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Get demo-safe autonomous improvement control-room state
+ */
+
+export function useGetImprovementControlRoom<TData = Awaited<ReturnType<typeof getImprovementControlRoom>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getImprovementControlRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetImprovementControlRoomQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

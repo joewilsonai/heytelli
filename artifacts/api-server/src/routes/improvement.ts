@@ -17,6 +17,7 @@ import {
   sanitizeImprovementPayload,
 } from "../lib/improvementPipeline";
 import {
+  buildImprovementControlRoomSnapshot,
   buildImprovementHealthSnapshot,
   buildUserFeedbackStatuses,
 } from "../lib/improvementStatus";
@@ -96,25 +97,40 @@ router.get("/improvement/signals/mine", async (req, res): Promise<void> => {
       .orderBy(desc(improvementSignals.createdAt))
       .limit(20);
 
-    const workItems = await db
-      .select({
-        id: improvementWorkItems.id,
-        signalIds: improvementWorkItems.signalIds,
-        status: improvementWorkItems.status,
-        decisionCategory: improvementWorkItems.decisionCategory,
-        decisionDetails: improvementWorkItems.decisionDetails,
-        frequencyCount: improvementWorkItems.frequencyCount,
-        decisionReconsiderAfterCount:
-          improvementWorkItems.decisionReconsiderAfterCount,
-        pullRequestNumber: improvementWorkItems.pullRequestNumber,
-        createdAt: improvementWorkItems.createdAt,
-        updatedAt: improvementWorkItems.updatedAt,
-      })
-      .from(improvementWorkItems)
-      .orderBy(desc(improvementWorkItems.updatedAt))
-      .limit(200);
+    const [workItems, runs] = await Promise.all([
+      db
+        .select({
+          id: improvementWorkItems.id,
+          signalIds: improvementWorkItems.signalIds,
+          status: improvementWorkItems.status,
+          decisionCategory: improvementWorkItems.decisionCategory,
+          decisionDetails: improvementWorkItems.decisionDetails,
+          frequencyCount: improvementWorkItems.frequencyCount,
+          decisionReconsiderAfterCount:
+            improvementWorkItems.decisionReconsiderAfterCount,
+          pullRequestNumber: improvementWorkItems.pullRequestNumber,
+          createdAt: improvementWorkItems.createdAt,
+          updatedAt: improvementWorkItems.updatedAt,
+        })
+        .from(improvementWorkItems)
+        .orderBy(desc(improvementWorkItems.updatedAt))
+        .limit(200),
+      db
+        .select({
+          workItemId: improvementRuns.workItemId,
+          runType: improvementRuns.runType,
+          agentName: improvementRuns.agentName,
+          status: improvementRuns.status,
+          summary: improvementRuns.summary,
+          createdAt: improvementRuns.createdAt,
+          completedAt: improvementRuns.completedAt,
+        })
+        .from(improvementRuns)
+        .orderBy(desc(improvementRuns.createdAt))
+        .limit(500),
+    ]);
 
-    res.json(buildUserFeedbackStatuses(signals, workItems));
+    res.json(buildUserFeedbackStatuses(signals, workItems, runs));
   } catch (err) {
     req.log.error({ err }, "Improvement feedback status failed");
     res.status(500).json({ error: "Failed to load feedback status" });
@@ -184,6 +200,54 @@ router.get(
     ]);
 
     res.json(buildImprovementHealthSnapshot({ signals, workItems, runs }));
+  },
+);
+
+router.get(
+  "/admin/improvement/control-room",
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const [signals, workItems, runs] = await Promise.all([
+      db
+        .select({ status: improvementSignals.status })
+        .from(improvementSignals)
+        .orderBy(desc(improvementSignals.createdAt))
+        .limit(500),
+      db
+        .select({
+          id: improvementWorkItems.id,
+          title: improvementWorkItems.title,
+          status: improvementWorkItems.status,
+          category: improvementWorkItems.category,
+          riskTier: improvementWorkItems.riskTier,
+          priority: improvementWorkItems.priority,
+          decisionCategory: improvementWorkItems.decisionCategory,
+          decisionDetails: improvementWorkItems.decisionDetails,
+          frequencyCount: improvementWorkItems.frequencyCount,
+          decisionReconsiderAfterCount:
+            improvementWorkItems.decisionReconsiderAfterCount,
+          updatedAt: improvementWorkItems.updatedAt,
+        })
+        .from(improvementWorkItems)
+        .orderBy(desc(improvementWorkItems.updatedAt))
+        .limit(500),
+      db
+        .select({
+          runType: improvementRuns.runType,
+          status: improvementRuns.status,
+          agentName: improvementRuns.agentName,
+          summary: improvementRuns.summary,
+          createdAt: improvementRuns.createdAt,
+          completedAt: improvementRuns.completedAt,
+        })
+        .from(improvementRuns)
+        .orderBy(desc(improvementRuns.createdAt))
+        .limit(500),
+    ]);
+
+    res.json(
+      buildImprovementControlRoomSnapshot({ signals, workItems, runs }),
+    );
   },
 );
 

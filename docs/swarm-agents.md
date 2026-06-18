@@ -28,7 +28,7 @@ In V1, the system has two meanings of "agent":
 | In-app feedback helper | `artifacts/bumble-mobile/lib/improvement-feedback.ts` | Sends privacy-safe beta feedback to the API. |
 | API route | `artifacts/api-server/src/routes/improvement.ts` | Receives `/improvement/signals`, validates auth, stores private signal rows, exposes `/improvement/signals/mine`, and exposes admin reads/health. |
 | Sanitizer/classifier | `artifacts/api-server/src/lib/improvementPipeline.ts` | Normalizes feedback, removes private data, assigns category, priority, and risk tier, and creates safe GitHub issue drafts. |
-| Feedback status/health | `artifacts/api-server/src/lib/improvementStatus.ts` | Maps private signals/work items into user-safe follow-up statuses and admin health snapshots. |
+| Feedback status/health/control room | `artifacts/api-server/src/lib/improvementStatus.ts` | Maps private signals/work items/runs into user-safe follow-up timelines, admin health snapshots, and the demo-safe control room. |
 | DB schema | `lib/db/src/schema/improvementPipeline.ts` | Defines `improvement_signals`, `improvement_work_items`, and `improvement_runs`. |
 | Triage worker | `scripts/src/improvement/triage.ts` | Groups new signals into private work items and optionally opens sanitized GitHub issues. |
 | GitHub adapter | `scripts/src/improvement/github.ts` | Lists issues, creates issues, labels issues, removes labels, comments with deterministic markers, and closes resolved issues. |
@@ -40,6 +40,8 @@ In V1, the system has two meanings of "agent":
 | Hook gates | `scripts/src/improvement/hooks.ts` | Blocks dangerous custom commands and defines deterministic pre/post executor checks. |
 | Eval harness | `scripts/src/improvement/evals.ts` | Runs historical feedback category/risk/outcome evals against the improvement pipeline. |
 | Lifecycle monitor | `scripts/src/improvement/lifecycle.ts` | Watches PR-linked work items and moves them to `merged`, `closed`, or ongoing review/check states. |
+| Reconciler | `scripts/src/improvement/reconcile.ts` | Sweeps generated worktrees, local swarm branches, stale labels, and PR/DB state drift so cleanup is system-owned. |
+| Demo seed | `scripts/src/improvement/demoSeed.ts` | Creates privacy-safe synthetic feedback scenarios for replaying the feedback-to-feature loop in demos. |
 | TestFlight monitor | `scripts/src/iosBetaMonitor.ts` | Checks App Store Connect build processing state when ASC API credentials are configured. |
 | Local host wrapper | `scripts/run-local-swarm-host.sh` | Sources secrets, checks Mac readiness, runs planner, executor, lifecycle monitor, and beta monitor under `caffeinate`. |
 | Planner wrapper | `scripts/run-improvement-swarm.sh` | Sources secrets and runs `improvement:swarm`. |
@@ -76,7 +78,9 @@ In V1, the system has two meanings of "agent":
    checks and required reviewer agents. Otherwise it leaves the PR review-gated.
 9. The lifecycle monitor follows PR-linked work items after execution and moves
    DB state forward when PRs merge or close.
-10. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
+10. The reconciler runs before and after the local swarm loop to remove stale
+   generated worktrees/branches, clean stale labels, and repair PR/DB drift.
+11. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
    submit to TestFlight by default.
 
 ## Mobile-Web Fidelity Rule
@@ -120,10 +124,15 @@ GitHub issues. Broad issues may become child issues before implementation.
 executor.
 
 The app can read `/improvement/signals/mine` to show a user-safe follow-up
-status: received, accepted, planned, shipped, or blocked. That route does not
-return raw payloads, GitHub issue URLs, PR URLs, or private database context.
+status and timeline: received, accepted, planned, shipped, already available,
+not planned, or blocked. Timeline events are derived from sanitized signal
+state, grouped work item state, and improvement runs. That route does not return
+raw payloads, GitHub issue URLs, PR URLs, or private database context.
+
 Admins can read `/admin/improvement/health` for queue counts and recent run
-state.
+state, or `/admin/improvement/control-room` for the demo-safe control room:
+agent lanes, recent work, recent runs, reconsider candidates, and the short demo
+script.
 
 ## Work Storage
 
@@ -150,6 +159,15 @@ triage continues to merge their signal IDs into the existing work item and
 increase `frequencyCount`. Admin health exposes `reconsiderCandidates` when a
 not-planned decision reaches its reconsider threshold, so agents can use real
 demand to decide whether to reopen or re-scope the idea.
+
+New feedback fingerprints use a deterministic local semantic cluster key before
+hashing. Common phrasing variants such as "more color themes", "change app
+color", and "less pink" group into the same demand cluster without requiring a
+model call in the submission path.
+
+Reconsider thresholds are category-aware. `needs_more_signal`, `not_planned`,
+and `not_reproducible` reopen at lower demand; `out_of_scope` needs stronger
+demand; `privacy_or_safety` does not auto-reopen without explicit review.
 
 `improvement_runs` stores the audit trail for triage, research/planning,
 implementation, review, merge, deploy, monitor, and rollback events.

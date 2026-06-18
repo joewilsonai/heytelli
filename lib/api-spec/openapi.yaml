@@ -933,6 +933,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /admin/improvement/control-room:
+    get:
+      operationId: getImprovementControlRoom
+      tags: [improvement]
+      summary: Get demo-safe autonomous improvement control-room state
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Improvement control-room snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImprovementControlRoomSnapshot"
+        "403":
+          description: Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /admin/improvement/work-items:
     get:
       operationId: listImprovementWorkItems
@@ -1159,6 +1179,22 @@ components:
     FeedbackFollowUpStage:
       type: string
       enum: [received, accepted, planned, shipped, not_planned, blocked]
+    FeedbackTimelineEvent:
+      type: object
+      required:
+        - event
+        - label
+        - body
+        - createdAt
+        - agentName
+        - proof
+      properties:
+        event: { type: string }
+        label: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        agentName: { type: ["string", "null"] }
+        proof: { type: ["string", "null"] }
     UserFeedbackStatus:
       type: object
       required:
@@ -1174,6 +1210,7 @@ components:
         - decisionCategory
         - decisionDetails
         - frequencyCount
+        - timeline
         - createdAt
         - updatedAt
       properties:
@@ -1197,8 +1234,28 @@ components:
             - type: "null"
         decisionDetails: { type: ["string", "null"] }
         frequencyCount: { type: ["integer", "null"] }
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeedbackTimelineEvent"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    ImprovementHealthSnapshotQueue:
+      type: object
+      required:
+        - waitingForTriage
+        - executable
+        - inProgress
+        - reviewGated
+        - needsAttention
+        - reconsiderCandidates
+      properties:
+        waitingForTriage: { type: integer }
+        executable: { type: integer }
+        inProgress: { type: integer }
+        reviewGated: { type: integer }
+        needsAttention: { type: integer }
+        reconsiderCandidates: { type: integer }
     ImprovementHealthSnapshot:
       type: object
       required:
@@ -1228,22 +1285,102 @@ components:
           type: object
           additionalProperties: { type: integer }
         queue:
-          type: object
-          required:
-            - waitingForTriage
-            - executable
-            - inProgress
-            - reviewGated
-            - needsAttention
-            - reconsiderCandidates
-          properties:
-            waitingForTriage: { type: integer }
-            executable: { type: integer }
-            inProgress: { type: integer }
-            reviewGated: { type: integer }
-            needsAttention: { type: integer }
-            reconsiderCandidates: { type: integer }
+          $ref: "#/components/schemas/ImprovementHealthSnapshotQueue"
         lastRunAt: { type: ["string", "null"], format: date-time }
+    ImprovementControlRoomLane:
+      type: object
+      required: [id, label, activeCount, description]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        activeCount: { type: integer }
+        description: { type: string }
+    ImprovementControlRoomWorkItem:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - category
+        - riskTier
+        - priority
+        - decisionCategory
+        - decisionDetails
+        - frequencyCount
+        - decisionReconsiderAfterCount
+        - reconsiderReady
+        - updatedAt
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status:
+          $ref: "#/components/schemas/ImprovementWorkItemStatus"
+        category:
+          $ref: "#/components/schemas/ImprovementCategory"
+        riskTier:
+          $ref: "#/components/schemas/ImprovementRiskTier"
+        priority:
+          $ref: "#/components/schemas/ImprovementPriority"
+        decisionCategory:
+          oneOf:
+            - $ref: "#/components/schemas/ImprovementDecisionCategory"
+            - type: "null"
+        decisionDetails: { type: ["string", "null"] }
+        frequencyCount: { type: integer }
+        decisionReconsiderAfterCount: { type: integer }
+        reconsiderReady: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    ImprovementControlRoomRun:
+      type: object
+      required:
+        - runType
+        - status
+        - agentName
+        - summary
+        - createdAt
+        - completedAt
+      properties:
+        runType:
+          $ref: "#/components/schemas/ImprovementRunType"
+        status:
+          $ref: "#/components/schemas/ImprovementRunStatus"
+        agentName: { type: string }
+        summary: { type: string }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    ImprovementControlRoomSnapshot:
+      type: object
+      required:
+        - generatedAt
+        - queue
+        - agentLanes
+        - recentWorkItems
+        - reconsiderCandidates
+        - recentRuns
+        - demoScript
+      properties:
+        generatedAt: { type: string, format: date-time }
+        queue:
+          $ref: "#/components/schemas/ImprovementHealthSnapshotQueue"
+        agentLanes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImprovementControlRoomLane"
+        recentWorkItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImprovementControlRoomWorkItem"
+        reconsiderCandidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImprovementControlRoomWorkItem"
+        recentRuns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImprovementControlRoomRun"
+        demoScript:
+          type: array
+          items: { type: string }
     ImprovementSignalInput:
       type: object
       required: [source, type, message]

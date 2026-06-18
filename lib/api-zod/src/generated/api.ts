@@ -2089,6 +2089,14 @@ export const ListMyImprovementSignalsResponseItem = zod.object({
   "decisionCategory": zod.union([zod.enum(['already_available', 'shipped', 'not_planned', 'needs_more_signal', 'not_reproducible', 'privacy_or_safety', 'out_of_scope', 'duplicate', 'superseded']),zod.null()]),
   "decisionDetails": zod.string().nullable(),
   "frequencyCount": zod.number().nullable(),
+  "timeline": zod.array(zod.object({
+  "event": zod.string(),
+  "label": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "agentName": zod.string().nullable(),
+  "proof": zod.string().nullable()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -2135,6 +2143,65 @@ export const GetImprovementHealthResponse = zod.object({
   "reconsiderCandidates": zod.number()
 }),
   "lastRunAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Get demo-safe autonomous improvement control-room state
+ */
+export const GetImprovementControlRoomResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "queue": zod.object({
+  "waitingForTriage": zod.number(),
+  "executable": zod.number(),
+  "inProgress": zod.number(),
+  "reviewGated": zod.number(),
+  "needsAttention": zod.number(),
+  "reconsiderCandidates": zod.number()
+}),
+  "agentLanes": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "activeCount": zod.number(),
+  "description": zod.string()
+})),
+  "recentWorkItems": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),
+  "category": zod.enum(['bug', 'ux_confusion', 'feature_request', 'safety_issue', 'performance', 'reliability', 'privacy', 'copy', 'docs', 'test']),
+  "riskTier": zod.enum(['safe_auto_merge', 'guarded_auto_merge', 'extra_agent_review', 'no_auto_merge']),
+  "priority": zod.enum(['p0', 'p1', 'p2', 'p3']),
+  "decisionCategory": zod.union([zod.enum(['already_available', 'shipped', 'not_planned', 'needs_more_signal', 'not_reproducible', 'privacy_or_safety', 'out_of_scope', 'duplicate', 'superseded']),zod.null()]),
+  "decisionDetails": zod.string().nullable(),
+  "frequencyCount": zod.number(),
+  "decisionReconsiderAfterCount": zod.number(),
+  "reconsiderReady": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+})),
+  "reconsiderCandidates": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),
+  "category": zod.enum(['bug', 'ux_confusion', 'feature_request', 'safety_issue', 'performance', 'reliability', 'privacy', 'copy', 'docs', 'test']),
+  "riskTier": zod.enum(['safe_auto_merge', 'guarded_auto_merge', 'extra_agent_review', 'no_auto_merge']),
+  "priority": zod.enum(['p0', 'p1', 'p2', 'p3']),
+  "decisionCategory": zod.union([zod.enum(['already_available', 'shipped', 'not_planned', 'needs_more_signal', 'not_reproducible', 'privacy_or_safety', 'out_of_scope', 'duplicate', 'superseded']),zod.null()]),
+  "decisionDetails": zod.string().nullable(),
+  "frequencyCount": zod.number(),
+  "decisionReconsiderAfterCount": zod.number(),
+  "reconsiderReady": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+})),
+  "recentRuns": zod.array(zod.object({
+  "runType": zod.enum(['triage', 'research', 'implementation', 'review', 'merge', 'deploy', 'monitor', 'rollback']),
+  "status": zod.enum(['started', 'succeeded', 'failed', 'blocked']),
+  "agentName": zod.string(),
+  "summary": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})),
+  "demoScript": zod.array(zod.string())
 })
 
 

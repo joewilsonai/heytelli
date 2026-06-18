@@ -220,7 +220,7 @@ textarea:focus {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.25rem;
   min-height: calc(72px + env(safe-area-inset-bottom));
   padding: 0.55rem 0.65rem calc(0.55rem + env(safe-area-inset-bottom));
@@ -517,6 +517,98 @@ textarea:focus {
 .form-grid {
   display: grid;
   gap: 0.85rem;
+}
+
+.improvement-room {
+  gap: 0.9rem;
+}
+
+.factory-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.factory-metrics div {
+  display: grid;
+  gap: 0.28rem;
+  min-height: 104px;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.factory-metrics svg {
+  color: var(--accent-dark);
+}
+
+.factory-metrics span {
+  font-size: 1.85rem;
+  font-weight: 850;
+}
+
+.factory-metrics p {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.factory-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.factory-panel {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.lane-stack,
+.work-stack,
+.run-stack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.lane-row,
+.work-row,
+.run-row {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 72%, var(--surface-strong));
+}
+
+.lane-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.lane-row span,
+.work-row span,
+.run-row span {
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.work-row p,
+.run-row p {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.demo-script {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.demo-script li {
+  line-height: 1.45;
 }
 
 .form-stack label,
@@ -1091,6 +1183,19 @@ textarea:focus {
 
   .detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .factory-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .factory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .factory-grid.wide {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   }
 
   .span-2 {

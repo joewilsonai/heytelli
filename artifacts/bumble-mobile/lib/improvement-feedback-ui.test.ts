@@ -20,10 +20,14 @@ test("settings and match detail expose privacy-safe improvement feedback", () =>
   assert.match(settings, /FeedbackSheet/);
   assert.match(settings, /Send feedback/);
   assert.match(settings, /Feedback status/);
+  assert.match(settings, /Feedback timeline/);
   assert.match(settings, /listMyImprovementFeedbackStatuses/);
   assert.match(settings, /refreshFeedbackStatuses/);
   assert.match(settings, /No feedback sent from this phone yet/);
   assert.match(settings, /formatFeedbackStageLabel/);
+  assert.match(settings, /status\.timeline/);
+  assert.match(settings, /Proof/);
+  assert.match(settings, /Already available/);
   assert.match(settings, /Not planned/);
   assert.match(settings, /not_planned/);
   assert.match(matchDetail, /FeedbackSheet/);

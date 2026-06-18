@@ -27,6 +27,20 @@ test("registers the core user web app routes", () => {
   }
 });
 
+test("registers the AI-native improvement control room", () => {
+  const app = read("src/App.tsx");
+  const shell = read("src/components/AppShell.tsx");
+  const page = read("src/pages/ImprovementControlRoom.tsx");
+
+  assert.match(app, /path="\/improvements"/);
+  assert.match(shell, /Improvements/);
+  assert.match(page, /useGetImprovementControlRoom/);
+  assert.match(page, /Feedback-to-feature factory/);
+  assert.match(page, /Agent lanes/);
+  assert.match(page, /Reconsider queue/);
+  assert.match(page, /Demo script/);
+});
+
 test("includes Android-friendly screenshot upload controls", () => {
   const addMatch = read("src/pages/AddMatch.tsx");
   assert.match(addMatch, /type="file"/);
