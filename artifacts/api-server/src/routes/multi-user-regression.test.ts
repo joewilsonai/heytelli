@@ -50,6 +50,8 @@ test("date brief freshness includes safety and saved pattern inputs", () => {
   assert.match(matchesRoute, /lastRedFlagRadar: match\.lastRedFlagRadar/);
   assert.match(matchesRoute, /dateSafetyPlan: r\.dateSafetyPlan/);
   assert.match(matchesRoute, /lastRedFlagRadar: r\.lastRedFlagRadar/);
+  assert.match(chatRoute, /dateSafetyPlan: norm\.dateSafetyPlan/);
+  assert.match(chatRoute, /lastRedFlagRadar: norm\.lastRedFlagRadar/);
   assert.match(matchesRoute, /updates\.lastDateBrief = null/);
 });
 

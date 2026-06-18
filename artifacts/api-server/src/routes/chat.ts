@@ -748,9 +748,11 @@ Tone: direct, calm, and specific. No corporate hedging. No bullet padding. If a 
           eq(screenshots.matchId, matchId),
           eq(screenshots.extractionStatus, "done"),
         ),
-      );
+    );
     const contextHash = dateBriefContextHash({
       dateHistory: match.dateHistory,
+      dateSafetyPlan: norm.dateSafetyPlan,
+      lastRedFlagRadar: norm.lastRedFlagRadar,
       nextDateAt: match.nextDateAt,
       nextDateLocation: match.nextDateLocation,
       nextDateOutfit: match.nextDateOutfit,
