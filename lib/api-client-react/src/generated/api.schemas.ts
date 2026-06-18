@@ -195,6 +195,21 @@ export const ImprovementWorkItemStatus = {
   closed: 'closed',
 } as const;
 
+export type ImprovementDecisionCategory = typeof ImprovementDecisionCategory[keyof typeof ImprovementDecisionCategory];
+
+
+export const ImprovementDecisionCategory = {
+  already_available: 'already_available',
+  shipped: 'shipped',
+  not_planned: 'not_planned',
+  needs_more_signal: 'needs_more_signal',
+  not_reproducible: 'not_reproducible',
+  privacy_or_safety: 'privacy_or_safety',
+  out_of_scope: 'out_of_scope',
+  duplicate: 'duplicate',
+  superseded: 'superseded',
+} as const;
+
 export type ImprovementRunType = typeof ImprovementRunType[keyof typeof ImprovementRunType];
 
 
@@ -227,6 +242,7 @@ export const FeedbackFollowUpStage = {
   accepted: 'accepted',
   planned: 'planned',
   shipped: 'shipped',
+  not_planned: 'not_planned',
   blocked: 'blocked',
 } as const;
 
@@ -243,6 +259,11 @@ export interface UserFeedbackStatus {
   workItemStatus: ImprovementWorkItemStatus | null;
   /** @nullable */
   workItemId: number | null;
+  decisionCategory: ImprovementDecisionCategory | null;
+  /** @nullable */
+  decisionDetails: string | null;
+  /** @nullable */
+  frequencyCount: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -263,6 +284,7 @@ export type ImprovementHealthSnapshotQueue = {
   inProgress: number;
   reviewGated: number;
   needsAttention: number;
+  reconsiderCandidates: number;
 };
 
 export interface ImprovementHealthSnapshot {
@@ -354,6 +376,10 @@ export interface ImprovementWorkItem {
   pullRequestUrl: string | null;
   /** @nullable */
   pullRequestNumber: number | null;
+  decisionCategory: ImprovementDecisionCategory | null;
+  /** @nullable */
+  decisionDetails: string | null;
+  decisionReconsiderAfterCount: number;
   status: ImprovementWorkItemStatus;
   createdAt: string;
   updatedAt: string;

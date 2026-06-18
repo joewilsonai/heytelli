@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ImprovementCategory } from './improvementCategory';
+import type { ImprovementDecisionCategory } from './improvementDecisionCategory';
 import type { ImprovementPriority } from './improvementPriority';
 import type { ImprovementRiskTier } from './improvementRiskTier';
 import type { ImprovementWorkItemStatus } from './improvementWorkItemStatus';
@@ -32,6 +33,10 @@ export interface ImprovementWorkItem {
   pullRequestUrl: string | null;
   /** @nullable */
   pullRequestNumber: number | null;
+  decisionCategory: ImprovementDecisionCategory | null;
+  /** @nullable */
+  decisionDetails: string | null;
+  decisionReconsiderAfterCount: number;
   status: ImprovementWorkItemStatus;
   createdAt: Date;
   updatedAt: Date;

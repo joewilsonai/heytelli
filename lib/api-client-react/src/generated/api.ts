@@ -147,6 +147,7 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
+
 export const getLoginBetaUserUrl = () => {
 
 
@@ -289,8 +290,6 @@ export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUs
   return { ...query, queryKey: queryOptions.queryKey };
 }
 
-
-
 export const getListMatchesUrl = () => {
 
 
@@ -361,11 +360,6 @@ export function useListMatches<TData = Awaited<ReturnType<typeof listMatches>>, 
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
-
-
-
-
-
 
 
 export const getCreateMatchUrl = () => {

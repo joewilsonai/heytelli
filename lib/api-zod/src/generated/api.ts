@@ -2078,7 +2078,7 @@ export const CreateImprovementSignalBody = zod.object({
  */
 export const ListMyImprovementSignalsResponseItem = zod.object({
   "ticketId": zod.number(),
-  "stage": zod.enum(['received', 'accepted', 'planned', 'shipped', 'blocked']),
+  "stage": zod.enum(['received', 'accepted', 'planned', 'shipped', 'not_planned', 'blocked']),
   "message": zod.string(),
   "summary": zod.string(),
   "type": zod.string().nullable(),
@@ -2086,6 +2086,9 @@ export const ListMyImprovementSignalsResponseItem = zod.object({
   "signalStatus": zod.enum(['new', 'triaged', 'grouped', 'actionable', 'waiting_for_signal', 'blocked', 'resolved', 'ignored']),
   "workItemStatus": zod.union([zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),zod.null()]),
   "workItemId": zod.number().nullable(),
+  "decisionCategory": zod.union([zod.enum(['already_available', 'shipped', 'not_planned', 'needs_more_signal', 'not_reproducible', 'privacy_or_safety', 'out_of_scope', 'duplicate', 'superseded']),zod.null()]),
+  "decisionDetails": zod.string().nullable(),
+  "frequencyCount": zod.number().nullable(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -2128,7 +2131,8 @@ export const GetImprovementHealthResponse = zod.object({
   "executable": zod.number(),
   "inProgress": zod.number(),
   "reviewGated": zod.number(),
-  "needsAttention": zod.number()
+  "needsAttention": zod.number(),
+  "reconsiderCandidates": zod.number()
 }),
   "lastRunAt": zod.coerce.date().nullable()
 })
@@ -2154,6 +2158,9 @@ export const ListImprovementWorkItemsResponseItem = zod.object({
   "branchName": zod.string().nullable(),
   "pullRequestUrl": zod.string().nullable(),
   "pullRequestNumber": zod.number().nullable(),
+  "decisionCategory": zod.union([zod.enum(['already_available', 'shipped', 'not_planned', 'needs_more_signal', 'not_reproducible', 'privacy_or_safety', 'out_of_scope', 'duplicate', 'superseded']),zod.null()]),
+  "decisionDetails": zod.string().nullable(),
+  "decisionReconsiderAfterCount": zod.number(),
   "status": zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -2188,6 +2195,9 @@ export const GetImprovementWorkItemResponse = zod.object({
   "branchName": zod.string().nullable(),
   "pullRequestUrl": zod.string().nullable(),
   "pullRequestNumber": zod.number().nullable(),
+  "decisionCategory": zod.union([zod.enum(['already_available', 'shipped', 'not_planned', 'needs_more_signal', 'not_reproducible', 'privacy_or_safety', 'out_of_scope', 'duplicate', 'superseded']),zod.null()]),
+  "decisionDetails": zod.string().nullable(),
+  "decisionReconsiderAfterCount": zod.number(),
   "status": zod.enum(['draft', 'issue_created', 'researching', 'planned', 'building', 'reviewing', 'changes_requested', 'checks_running', 'merged', 'deployed', 'monitoring', 'rolled_back', 'closed']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()

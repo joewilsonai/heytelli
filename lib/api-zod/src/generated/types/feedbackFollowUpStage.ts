@@ -14,5 +14,6 @@ export const FeedbackFollowUpStage = {
   accepted: 'accepted',
   planned: 'planned',
   shipped: 'shipped',
+  not_planned: 'not_planned',
   blocked: 'blocked',
 } as const;

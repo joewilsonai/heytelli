@@ -1128,6 +1128,18 @@ components:
         - monitoring
         - rolled_back
         - closed
+    ImprovementDecisionCategory:
+      type: string
+      enum:
+        - already_available
+        - shipped
+        - not_planned
+        - needs_more_signal
+        - not_reproducible
+        - privacy_or_safety
+        - out_of_scope
+        - duplicate
+        - superseded
     ImprovementRunType:
       type: string
       enum:
@@ -1146,7 +1158,7 @@ components:
       enum: [started, succeeded, failed, blocked]
     FeedbackFollowUpStage:
       type: string
-      enum: [received, accepted, planned, shipped, blocked]
+      enum: [received, accepted, planned, shipped, not_planned, blocked]
     UserFeedbackStatus:
       type: object
       required:
@@ -1159,6 +1171,9 @@ components:
         - signalStatus
         - workItemStatus
         - workItemId
+        - decisionCategory
+        - decisionDetails
+        - frequencyCount
         - createdAt
         - updatedAt
       properties:
@@ -1176,6 +1191,12 @@ components:
             - $ref: "#/components/schemas/ImprovementWorkItemStatus"
             - type: "null"
         workItemId: { type: ["integer", "null"] }
+        decisionCategory:
+          oneOf:
+            - $ref: "#/components/schemas/ImprovementDecisionCategory"
+            - type: "null"
+        decisionDetails: { type: ["string", "null"] }
+        frequencyCount: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     ImprovementHealthSnapshot:
@@ -1214,12 +1235,14 @@ components:
             - inProgress
             - reviewGated
             - needsAttention
+            - reconsiderCandidates
           properties:
             waitingForTriage: { type: integer }
             executable: { type: integer }
             inProgress: { type: integer }
             reviewGated: { type: integer }
             needsAttention: { type: integer }
+            reconsiderCandidates: { type: integer }
         lastRunAt: { type: ["string", "null"], format: date-time }
     ImprovementSignalInput:
       type: object
@@ -1296,6 +1319,9 @@ components:
         - branchName
         - pullRequestUrl
         - pullRequestNumber
+        - decisionCategory
+        - decisionDetails
+        - decisionReconsiderAfterCount
         - status
         - createdAt
         - updatedAt
@@ -1321,6 +1347,12 @@ components:
         branchName: { type: ["string", "null"] }
         pullRequestUrl: { type: ["string", "null"] }
         pullRequestNumber: { type: ["integer", "null"] }
+        decisionCategory:
+          oneOf:
+            - $ref: "#/components/schemas/ImprovementDecisionCategory"
+            - type: "null"
+        decisionDetails: { type: ["string", "null"] }
+        decisionReconsiderAfterCount: { type: integer }
         status:
           $ref: "#/components/schemas/ImprovementWorkItemStatus"
         createdAt: { type: string, format: date-time }

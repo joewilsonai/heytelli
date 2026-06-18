@@ -12,4 +12,5 @@ export type ImprovementHealthSnapshotQueue = {
   inProgress: number;
   reviewGated: number;
   needsAttention: number;
+  reconsiderCandidates: number;
 };

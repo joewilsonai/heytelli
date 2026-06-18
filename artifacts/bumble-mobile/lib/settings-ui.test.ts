@@ -62,7 +62,7 @@ test("settings changelog has detailed latest build notes", () => {
   assert.match(changelog, /Feedback follow-up status/);
   assert.match(
     changelog,
-    /Settings now shows whether your feedback is received, planned, or shipped/,
+    /Settings now shows whether your feedback is received, planned, shipped, or not planned/,
   );
   assert.match(changelog, /Screenshot analysis refresh/);
   assert.match(changelog, /Analyze new now replaces/);

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FeedbackFollowUpStage } from './feedbackFollowUpStage';
+import type { ImprovementDecisionCategory } from './improvementDecisionCategory';
 import type { ImprovementSignalStatus } from './improvementSignalStatus';
 import type { ImprovementWorkItemStatus } from './improvementWorkItemStatus';
 
@@ -22,6 +23,11 @@ export interface UserFeedbackStatus {
   workItemStatus: ImprovementWorkItemStatus | null;
   /** @nullable */
   workItemId: number | null;
+  decisionCategory: ImprovementDecisionCategory | null;
+  /** @nullable */
+  decisionDetails: string | null;
+  /** @nullable */
+  frequencyCount: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

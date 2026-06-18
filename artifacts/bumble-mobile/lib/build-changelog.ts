@@ -13,7 +13,7 @@ export const BUILD_CHANGELOG_ENTRIES: BuildChangelogEntry[] = [
     date: "2026-05-31",
     title: "Feedback follow-up status",
     highlights: [
-      "Settings now shows whether your feedback is received, planned, or shipped.",
+      "Settings now shows whether your feedback is received, planned, shipped, or not planned.",
       "Feedback status refreshes after you send a new beta note.",
       "The improvement loop keeps private dating details out of engineering work.",
       "Build notes now call out the autonomous swarm and TestFlight recovery work.",

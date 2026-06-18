@@ -799,7 +799,8 @@ export default function SettingsScreen() {
             />
           </View>
           <Body muted style={{ marginTop: 4 }}>
-            Accepted feedback moves from received to planned to shipped here.
+            Accepted feedback moves from received to planned, shipped, or not
+            planned here.
           </Body>
           <View style={{ gap: 10, marginTop: 14 }}>
             {feedbackStatusError ? (
@@ -940,6 +941,8 @@ function formatFeedbackStageLabel(stage: FeedbackStatus["stage"]): string {
       return "Planned";
     case "shipped":
       return "Shipped";
+    case "not_planned":
+      return "Not planned";
     case "blocked":
       return "Needs privacy review";
   }
@@ -969,6 +972,12 @@ function feedbackStageStyle(
         icon: "check-circle",
         color: c.success,
         backgroundColor: c.successBg,
+      };
+    case "not_planned":
+      return {
+        icon: "slash",
+        color: c.mutedForeground,
+        backgroundColor: c.muted,
       };
     case "blocked":
       return { icon: "lock", color: c.destructive, backgroundColor: c.muted };

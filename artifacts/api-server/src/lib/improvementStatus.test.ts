@@ -34,6 +34,10 @@ test("maps user feedback into privacy-safe follow-up stages", () => {
         id: 44,
         signalIds: [10],
         status: "planned",
+        decisionCategory: null,
+        decisionDetails: null,
+        frequencyCount: 1,
+        decisionReconsiderAfterCount: 3,
         pullRequestNumber: null,
         createdAt,
         updatedAt,
@@ -54,14 +58,68 @@ test("feedback stage helper follows the work item lifecycle", () => {
   assert.equal(feedbackStageFor({ status: "new" }, null), "received");
   assert.equal(feedbackStageFor({ status: "triaged" }, null), "accepted");
   assert.equal(
-    feedbackStageFor({ status: "triaged" }, { status: "reviewing" }),
+    feedbackStageFor(
+      { status: "triaged" },
+      { status: "reviewing", decisionCategory: null },
+    ),
     "planned",
   );
   assert.equal(
-    feedbackStageFor({ status: "triaged" }, { status: "deployed" }),
+    feedbackStageFor(
+      { status: "triaged" },
+      { status: "deployed", decisionCategory: null },
+    ),
     "shipped",
   );
+  assert.equal(
+    feedbackStageFor(
+      { status: "resolved" },
+      { status: "closed", decisionCategory: "out_of_scope" },
+    ),
+    "not_planned",
+  );
   assert.equal(feedbackStageFor({ status: "blocked" }, null), "blocked");
+});
+
+test("user feedback status explains not-planned decisions", () => {
+  const createdAt = new Date("2026-06-18T20:00:00Z");
+  const [status] = buildUserFeedbackStatuses(
+    [
+      {
+        id: 20,
+        status: "resolved",
+        sanitizedSummary: "Please add a desktop-only admin dashboard.",
+        sanitizedPayload: { type: "Idea", surface: "settings" },
+        createdAt,
+        updatedAt: createdAt,
+      },
+    ],
+    [
+      {
+        id: 55,
+        signalIds: [20],
+        status: "closed",
+        decisionCategory: "out_of_scope",
+        decisionDetails: "Desktop admin work is outside the beta mobile scope.",
+        frequencyCount: 4,
+        decisionReconsiderAfterCount: 5,
+        pullRequestNumber: null,
+        createdAt,
+        updatedAt: createdAt,
+      },
+    ],
+  );
+
+  assert.equal(status?.stage, "not_planned");
+  assert.equal(status?.decisionCategory, "out_of_scope");
+  assert.equal(
+    status?.decisionDetails,
+    "Desktop admin work is outside the beta mobile scope.",
+  );
+  assert.equal(status?.frequencyCount, 4);
+  assert.match(status?.message ?? "", /Not planned right now/);
+  assert.match(status?.message ?? "", /outside the beta mobile scope/);
+  assert.match(status?.message ?? "", /If more beta users ask/);
 });
 
 test("health snapshot summarizes queue and recent run state", () => {
@@ -73,13 +131,28 @@ test("health snapshot summarizes queue and recent run state", () => {
         status: "planned",
         riskTier: "safe_auto_merge",
         priority: "p3",
+        decisionCategory: null,
+        frequencyCount: 1,
+        decisionReconsiderAfterCount: 3,
         updatedAt: new Date("2026-05-30T20:00:00Z"),
       },
       {
         status: "changes_requested",
         riskTier: "extra_agent_review",
         priority: "p1",
+        decisionCategory: null,
+        frequencyCount: 1,
+        decisionReconsiderAfterCount: 3,
         updatedAt: new Date("2026-05-30T20:30:00Z"),
+      },
+      {
+        status: "closed",
+        riskTier: "safe_auto_merge",
+        priority: "p3",
+        decisionCategory: "not_planned",
+        frequencyCount: 5,
+        decisionReconsiderAfterCount: 5,
+        updatedAt: new Date("2026-05-30T20:40:00Z"),
       },
     ],
     runs: [
@@ -100,6 +173,7 @@ test("health snapshot summarizes queue and recent run state", () => {
   assert.equal(snapshot.queue.executable, 1);
   assert.equal(snapshot.queue.reviewGated, 1);
   assert.equal(snapshot.queue.needsAttention, 1);
+  assert.equal(snapshot.queue.reconsiderCandidates, 1);
   assert.equal(snapshot.runs["implementation:failed"], 1);
   assert.equal(snapshot.lastRunAt, "2026-05-30T20:50:00.000Z");
 });

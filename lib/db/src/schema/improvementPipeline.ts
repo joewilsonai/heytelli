@@ -68,6 +68,16 @@ export type ImprovementWorkItemStatus =
   | "monitoring"
   | "rolled_back"
   | "closed";
+export type ImprovementDecisionCategory =
+  | "already_available"
+  | "shipped"
+  | "not_planned"
+  | "needs_more_signal"
+  | "not_reproducible"
+  | "privacy_or_safety"
+  | "out_of_scope"
+  | "duplicate"
+  | "superseded";
 export type ImprovementRunType =
   | "triage"
   | "research"
@@ -145,6 +155,11 @@ export const improvementWorkItems = pgTable("improvement_work_items", {
   branchName: text("branch_name"),
   pullRequestUrl: text("pull_request_url"),
   pullRequestNumber: integer("pull_request_number"),
+  decisionCategory: text("decision_category").$type<ImprovementDecisionCategory>(),
+  decisionDetails: text("decision_details"),
+  decisionReconsiderAfterCount: integer("decision_reconsider_after_count")
+    .notNull()
+    .default(5),
   status: text("status")
     .$type<ImprovementWorkItemStatus>()
     .notNull()

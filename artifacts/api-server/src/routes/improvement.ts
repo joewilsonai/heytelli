@@ -101,6 +101,11 @@ router.get("/improvement/signals/mine", async (req, res): Promise<void> => {
         id: improvementWorkItems.id,
         signalIds: improvementWorkItems.signalIds,
         status: improvementWorkItems.status,
+        decisionCategory: improvementWorkItems.decisionCategory,
+        decisionDetails: improvementWorkItems.decisionDetails,
+        frequencyCount: improvementWorkItems.frequencyCount,
+        decisionReconsiderAfterCount:
+          improvementWorkItems.decisionReconsiderAfterCount,
         pullRequestNumber: improvementWorkItems.pullRequestNumber,
         createdAt: improvementWorkItems.createdAt,
         updatedAt: improvementWorkItems.updatedAt,
@@ -157,6 +162,10 @@ router.get(
           status: improvementWorkItems.status,
           riskTier: improvementWorkItems.riskTier,
           priority: improvementWorkItems.priority,
+          decisionCategory: improvementWorkItems.decisionCategory,
+          frequencyCount: improvementWorkItems.frequencyCount,
+          decisionReconsiderAfterCount:
+            improvementWorkItems.decisionReconsiderAfterCount,
           updatedAt: improvementWorkItems.updatedAt,
         })
         .from(improvementWorkItems)

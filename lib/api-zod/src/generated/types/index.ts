@@ -43,6 +43,7 @@ export * from './getCurrentUser200';
 export * from './greenFlag';
 export * from './healthStatus';
 export * from './improvementCategory';
+export * from './improvementDecisionCategory';
 export * from './improvementFeedbackType';
 export * from './improvementHealthSnapshot';
 export * from './improvementHealthSnapshotPriorities';

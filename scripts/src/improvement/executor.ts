@@ -1581,6 +1581,8 @@ export async function runSwarmExecutor(
             status: "closed",
             pullRequestUrl: null,
             pullRequestNumber: null,
+            decisionCategory: "already_available",
+            decisionDetails: executed.resolution ?? null,
             updatedAt: new Date(),
           })
           .where(eq(improvementWorkItems.id, workItem.id));

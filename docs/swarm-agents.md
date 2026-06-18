@@ -135,10 +135,21 @@ that must not be copied into GitHub.
 - `status`: `draft`, `issue_created`, `researching`, `planned`, `building`,
   `reviewing`, `changes_requested`, `checks_running`, `merged`, `deployed`,
   `monitoring`, `rolled_back`, or `closed`.
+- `decisionCategory` and `decisionDetails`: why closed work was shipped,
+  already available, not planned, not reproducible, blocked by privacy/safety,
+  out of scope, duplicate, or superseded.
+- `decisionReconsiderAfterCount`: how many grouped requests should make a
+  closed/not-planned decision show up as a reconsideration candidate.
 - `githubIssueNumber` and `githubIssueUrl`: repo-visible sanitized handoff.
 - `branchName`, `pullRequestUrl`, and `pullRequestNumber`: executor output.
 - `riskTier`: controls whether work can auto-merge.
 - `signalIds` and `frequencyCount`: dedupe/frequency tracking.
+
+Closed work is not thrown away. If beta users keep sending the same request,
+triage continues to merge their signal IDs into the existing work item and
+increase `frequencyCount`. Admin health exposes `reconsiderCandidates` when a
+not-planned decision reaches its reconsider threshold, so agents can use real
+demand to decide whether to reopen or re-scope the idea.
 
 `improvement_runs` stores the audit trail for triage, research/planning,
 implementation, review, merge, deploy, monitor, and rollback events.
