@@ -23,6 +23,7 @@ import AddMatch from "@/pages/AddMatch";
 import MatchDetail from "@/pages/MatchDetail";
 import ChatPage from "@/pages/Chat";
 import Settings from "@/pages/Settings";
+import ImprovementControlRoom from "@/pages/ImprovementControlRoom";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="/add" component={AddMatch} />
         <Route path="/matches/:id" component={MatchDetail} />
         <Route path="/chat" component={ChatPage} />
+        <Route path="/improvements" component={ImprovementControlRoom} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>

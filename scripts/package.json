@@ -9,6 +9,8 @@
     "improvement:swarm": "tsx ./src/improvement/swarm.ts",
     "improvement:execute": "tsx ./src/improvement/executor.ts",
     "improvement:lifecycle": "tsx ./src/improvement/lifecycle.ts",
+    "improvement:reconcile": "tsx ./src/improvement/reconcile.ts",
+    "improvement:demo-seed": "tsx ./src/improvement/demoSeed.ts",
     "improvement:digest": "tsx ./src/improvement/digest.ts",
     "improvement:evals": "tsx ./src/improvement/evals.ts",
     "ios-beta:monitor": "tsx ./src/iosBetaMonitor.ts",

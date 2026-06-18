@@ -6,10 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ImprovementHealthSnapshotQueue = {
+export interface ImprovementHealthSnapshotQueue {
   waitingForTriage: number;
   executable: number;
   inProgress: number;
   reviewGated: number;
   needsAttention: number;
-};
+  reconsiderCandidates: number;
+}

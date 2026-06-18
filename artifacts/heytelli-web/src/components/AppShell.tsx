@@ -1,12 +1,20 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { MessageSquare, Plus, Settings, Sparkles, UsersRound } from "lucide-react";
+import {
+  Bot,
+  MessageSquare,
+  Plus,
+  Settings,
+  Sparkles,
+  UsersRound,
+} from "lucide-react";
 import { useSession } from "@/lib/session-context";
 
 const navItems = [
   { href: "/", label: "Matches", icon: UsersRound },
   { href: "/add", label: "Add", icon: Plus },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/improvements", label: "Improvements", icon: Bot },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

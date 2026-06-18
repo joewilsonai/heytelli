@@ -11,33 +11,18 @@ import type { ImprovementPriority } from './improvementPriority';
 import type { ImprovementRiskTier } from './improvementRiskTier';
 import type { ImprovementWorkItemStatus } from './improvementWorkItemStatus';
 
-export interface ImprovementWorkItem {
+export interface ImprovementControlRoomWorkItem {
   id: number;
-  fingerprint: string;
   title: string;
-  summary: string;
+  status: ImprovementWorkItemStatus;
   category: ImprovementCategory;
-  priority: ImprovementPriority;
   riskTier: ImprovementRiskTier;
-  impactScore: number;
-  confidenceScore: number;
-  frequencyCount: number;
-  signalIds: number[];
-  /** @nullable */
-  githubIssueUrl: string | null;
-  /** @nullable */
-  githubIssueNumber: number | null;
-  /** @nullable */
-  branchName: string | null;
-  /** @nullable */
-  pullRequestUrl: string | null;
-  /** @nullable */
-  pullRequestNumber: number | null;
+  priority: ImprovementPriority;
   decisionCategory: ImprovementDecisionCategory | null;
   /** @nullable */
   decisionDetails: string | null;
+  frequencyCount: number;
   decisionReconsiderAfterCount: number;
-  status: ImprovementWorkItemStatus;
-  createdAt: Date;
+  reconsiderReady: boolean;
   updatedAt: Date;
 }

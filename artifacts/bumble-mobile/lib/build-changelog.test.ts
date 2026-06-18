@@ -33,5 +33,8 @@ test("falls back to curated changelog when build metadata is absent or malformed
   });
 
   assert.equal(entry.title, "Feedback follow-up status");
-  assert.match(entry.highlights.join("\n"), /received, planned, or shipped/);
+  assert.match(
+    entry.highlights.join("\n"),
+    /received, planned, shipped, or not planned/,
+  );
 });

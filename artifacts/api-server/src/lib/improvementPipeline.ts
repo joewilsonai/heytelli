@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   ImprovementCategory,
+  ImprovementDecisionCategory,
   ImprovementPriority,
   ImprovementPrivacyRisk,
   ImprovementRiskTier,
@@ -346,16 +347,85 @@ export function sanitizeImprovementPayload(
   };
 }
 
-export function fingerprintImprovementSignal(
+function normalizeClusterText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(
+      /\b(?:the|a|an|and|or|to|for|me|my|it|is|was|can|you|i|want|please)\b/g,
+      " ",
+    )
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function surfaceCluster(surface: string | null, text: string): string {
+  const compact = `${surface ?? ""} ${text}`.toLowerCase();
+  if (/appearance|theme|color|colour|palette|pink|rose|ocean|sage|plum|sunset/.test(compact)) {
+    return "appearance";
+  }
+  if (/profile|bio|prompt|photo/.test(compact)) return "profile";
+  if (/date\s*card|datecard|share/.test(compact)) return "date-card";
+  if (/circle|trusted/.test(compact)) return "trusted-circle";
+  if (/settings/.test(compact)) return "settings";
+  if (/home|match/.test(compact)) return "matches";
+  return surface ? normalizeClusterText(surface).slice(0, 40) : "global";
+}
+
+function intentCluster(text: string): string {
+  if (
+    /color|colour|theme|palette|pink|rose|ocean|sage|plum|sunset/.test(text) &&
+    /add|more|change|choose|less|theme|color|colour|palette|pink/.test(text)
+  ) {
+    return "appearance-theme-color";
+  }
+  if (/feedback|request|suggestion/.test(text) && /status|follow|happen|ship|planned/.test(text)) {
+    return "feedback-follow-up-status";
+  }
+  if (/profile|bio|prompt|photo/.test(text) && /analysis|analyze|analyse|failed|refresh/.test(text)) {
+    return "profile-analysis";
+  }
+  return normalizeClusterText(text).slice(0, 160) || "feedback";
+}
+
+export function semanticClusterKeyForImprovement(
   signal: NormalizedImprovementSignal,
 ): string {
   const sanitized = sanitizeImprovementPayload(signal.rawPayload);
-  const bucket = [
+  const text = normalizeClusterText(sanitized.summary);
+  return [
     signal.source,
     signal.type.toLowerCase(),
-    signal.surface?.toLowerCase() ?? "global",
-    sanitized.summary.toLowerCase().slice(0, 160),
+    surfaceCluster(signal.surface, text),
+    intentCluster(text),
   ].join("|");
+}
+
+export function reconsiderThresholdForDecision(
+  category: ImprovementDecisionCategory,
+): number {
+  switch (category) {
+    case "already_available":
+    case "shipped":
+      return 0;
+    case "needs_more_signal":
+    case "not_planned":
+    case "not_reproducible":
+      return 5;
+    case "duplicate":
+    case "superseded":
+      return 8;
+    case "out_of_scope":
+      return 15;
+    case "privacy_or_safety":
+      return 1_000_000;
+  }
+}
+
+export function fingerprintImprovementSignal(
+  signal: NormalizedImprovementSignal,
+): string {
+  const bucket = semanticClusterKeyForImprovement(signal);
   return createHash("sha256").update(bucket).digest("hex");
 }
 

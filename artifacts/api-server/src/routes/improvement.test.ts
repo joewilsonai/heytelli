@@ -26,7 +26,9 @@ test("improvement admin routes require admin role", () => {
   assert.match(route, /\/admin\/improvement\/signals/);
   assert.match(route, /\/admin\/improvement\/work-items/);
   assert.match(route, /\/admin\/improvement\/health/);
+  assert.match(route, /\/admin\/improvement\/control-room/);
   assert.match(route, /buildImprovementHealthSnapshot/);
+  assert.match(route, /buildImprovementControlRoomSnapshot/);
 });
 
 test("improvement router is mounted", () => {

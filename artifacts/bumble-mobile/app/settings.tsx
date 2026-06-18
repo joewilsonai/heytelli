@@ -799,7 +799,8 @@ export default function SettingsScreen() {
             />
           </View>
           <Body muted style={{ marginTop: 4 }}>
-            Accepted feedback moves from received to planned to shipped here.
+            Accepted feedback moves from received to planned, shipped, or not
+            planned here.
           </Body>
           <View style={{ gap: 10, marginTop: 14 }}>
             {feedbackStatusError ? (
@@ -878,9 +879,71 @@ export default function SettingsScreen() {
                         fontWeight: "700",
                       }}
                     >
-                      {formatFeedbackStageLabel(status.stage)}
+                      {formatFeedbackStageLabel(
+                        status.stage,
+                        status.decisionCategory,
+                      )}
                     </Text>
                     <Body muted>{status.message}</Body>
+                    {status.timeline.length > 0 ? (
+                      <View style={{ gap: 8, marginTop: 4 }}>
+                        <SectionLabel>Feedback timeline</SectionLabel>
+                        {status.timeline.slice(-4).map((event, index) => (
+                          <View
+                            key={`${event.event}-${event.createdAt}-${index}`}
+                            style={{
+                              flexDirection: "row",
+                              gap: 8,
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                marginTop: 6,
+                                backgroundColor:
+                                  index === status.timeline.slice(-4).length - 1
+                                    ? style.color
+                                    : c.border,
+                              }}
+                            />
+                            <View style={{ flex: 1, gap: 2 }}>
+                              <Text
+                                style={{
+                                  color: c.foreground,
+                                  fontSize: 12,
+                                  fontWeight: "700",
+                                }}
+                              >
+                                {event.label} · {formatTimeAgo(event.createdAt)}
+                              </Text>
+                              <Text
+                                style={{
+                                  color: c.mutedForeground,
+                                  fontSize: 12,
+                                  lineHeight: 17,
+                                }}
+                              >
+                                {event.body}
+                              </Text>
+                              {event.proof ? (
+                                <Text
+                                  style={{
+                                    color: c.mutedForeground,
+                                    fontSize: 11,
+                                    fontWeight: "700",
+                                  }}
+                                >
+                                  Proof · {event.proof}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
                   </View>
                 );
               })
@@ -930,7 +993,10 @@ export default function SettingsScreen() {
   );
 }
 
-function formatFeedbackStageLabel(stage: FeedbackStatus["stage"]): string {
+function formatFeedbackStageLabel(
+  stage: FeedbackStatus["stage"],
+  decisionCategory?: FeedbackStatus["decisionCategory"],
+): string {
   switch (stage) {
     case "received":
       return "Received";
@@ -939,7 +1005,12 @@ function formatFeedbackStageLabel(stage: FeedbackStatus["stage"]): string {
     case "planned":
       return "Planned";
     case "shipped":
+      if (decisionCategory === "already_available") {
+        return "Already available";
+      }
       return "Shipped";
+    case "not_planned":
+      return "Not planned";
     case "blocked":
       return "Needs privacy review";
   }
@@ -969,6 +1040,12 @@ function feedbackStageStyle(
         icon: "check-circle",
         color: c.success,
         backgroundColor: c.successBg,
+      };
+    case "not_planned":
+      return {
+        icon: "slash",
+        color: c.mutedForeground,
+        backgroundColor: c.muted,
       };
     case "blocked":
       return { icon: "lock", color: c.destructive, backgroundColor: c.muted };

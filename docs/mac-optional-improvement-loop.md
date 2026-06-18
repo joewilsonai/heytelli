@@ -24,7 +24,9 @@ limits, see [`docs/swarm-agents.md`](./swarm-agents.md).
    readiness, reads `agent-ready` issues plus the private DB queue, comments
    with a checklist-only plan, executes planned low/medium-risk work in local
    git worktrees, opens PRs, and queues auto-merge only when the risk tier
-   allows it.
+   allows it. It also runs reconciliation before and after the swarm loop so
+   generated worktrees, local swarm branches, stale labels, and PR/DB drift are
+   cleaned up by the system.
 5. EAS cloud builds handle normal iOS beta builds and TestFlight submission.
 
 Keep GitHub-visible artifacts to product surface, platform/build metadata,
@@ -125,20 +127,27 @@ Run the live local swarm planner, executor, lifecycle monitor, and beta monitor:
 ./scripts/run-local-swarm-host.sh --live --limit 5
 ```
 
-The wrapper runs four steps in order:
+The wrapper runs six steps in order:
 
-1. `run-improvement-swarm.sh` turns safe `agent-ready` issues into private DB
+1. `improvement:reconcile` sweeps generated worktrees, local swarm branches,
+   stale swarm labels, and PR/DB drift before new planning starts.
+2. `run-improvement-swarm.sh` turns safe `agent-ready` issues into private DB
    work items with `planned` status. If a parent issue is too broad, the runner
    creates PR-sized child work items and child GitHub issues, comments back on
    the parent, removes `agent-ready` from the parent, and lets the child issues
    continue through the normal swarm flow.
-2. `run-swarm-executor.sh` claims `planned` work, creates an isolated worktree,
+3. `run-swarm-executor.sh` claims `planned` work, creates an isolated worktree,
    installs dependencies in that worktree, asks the local agent to implement
-   from sanitized context, typechecks, opens a PR, comments back on the source
-   issue, and queues auto-merge for `safe_auto_merge` work.
-3. `improvement:lifecycle` checks PR-linked work items and moves them to
+   from sanitized context, and typechecks. If the agent proves the request is
+   already implemented and leaves the worktree unchanged, the executor comments
+   on the issue, closes it as completed, and marks the DB work item `closed`
+   without a PR. Otherwise it opens a PR, comments back on the source issue,
+   and queues auto-merge for `safe_auto_merge` work.
+4. `improvement:lifecycle` checks PR-linked work items and moves them to
    `merged`, `closed`, or their current review/check state.
-4. `ios-beta:monitor` checks App Store Connect processing state when API
+5. `improvement:reconcile` runs again after lifecycle monitoring to clean up
+   terminal generated work and repair any newly visible drift.
+6. `ios-beta:monitor` checks App Store Connect processing state when API
    credentials are configured. If credentials are missing, it reports
    `not_configured` and does not block the swarm.
 
@@ -148,6 +157,11 @@ You can exercise the executor by itself:
 ./scripts/run-swarm-executor.sh --dry-run --limit 5
 ./scripts/run-swarm-executor.sh --live --limit 1
 ```
+
+The executor digest includes `Resolved without PR`. That count should rise
+when beta feedback asks for behavior already present in the current app. A
+nonzero `Failed` count means the local log and `/admin/improvement/health`
+should be checked before assuming the feedback is still waiting on agents.
 
 By default the executor uses:
 

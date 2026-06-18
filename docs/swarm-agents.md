@@ -28,18 +28,20 @@ In V1, the system has two meanings of "agent":
 | In-app feedback helper | `artifacts/bumble-mobile/lib/improvement-feedback.ts` | Sends privacy-safe beta feedback to the API. |
 | API route | `artifacts/api-server/src/routes/improvement.ts` | Receives `/improvement/signals`, validates auth, stores private signal rows, exposes `/improvement/signals/mine`, and exposes admin reads/health. |
 | Sanitizer/classifier | `artifacts/api-server/src/lib/improvementPipeline.ts` | Normalizes feedback, removes private data, assigns category, priority, and risk tier, and creates safe GitHub issue drafts. |
-| Feedback status/health | `artifacts/api-server/src/lib/improvementStatus.ts` | Maps private signals/work items into user-safe follow-up statuses and admin health snapshots. |
+| Feedback status/health/control room | `artifacts/api-server/src/lib/improvementStatus.ts` | Maps private signals/work items/runs into user-safe follow-up timelines, admin health snapshots, and the demo-safe control room. |
 | DB schema | `lib/db/src/schema/improvementPipeline.ts` | Defines `improvement_signals`, `improvement_work_items`, and `improvement_runs`. |
 | Triage worker | `scripts/src/improvement/triage.ts` | Groups new signals into private work items and optionally opens sanitized GitHub issues. |
-| GitHub adapter | `scripts/src/improvement/github.ts` | Lists issues, creates issues, labels issues, removes labels, and comments with deterministic markers. |
+| GitHub adapter | `scripts/src/improvement/github.ts` | Lists issues, creates issues, labels issues, removes labels, comments with deterministic markers, and closes resolved issues. |
 | Planner | `scripts/src/improvement/swarm.ts` | Turns `agent-ready` issues into DB-backed swarm plans, child issues, or recovery issues. |
 | Role/risk policy | `scripts/src/improvement/swarmPlan.ts` | Maps labels, privacy risk, priority, and category to required roles, checks, and auto-merge policy. |
-| Executor | `scripts/src/improvement/executor.ts` | Claims planned work, creates a worktree, launches Codex, runs optional reviewer agents, typechecks, commits, pushes, opens a PR, and queues auto-merge when allowed. |
+| Executor | `scripts/src/improvement/executor.ts` | Claims planned work, creates a worktree, launches Codex, resolves already-shipped requests without PRs, runs optional reviewer agents, typechecks, commits, pushes, opens PRs, and queues auto-merge when allowed. |
 | Trace spans | `lib/db/src/schema/improvementPipeline.ts`, `scripts/src/improvement/trace.ts` | Stores structured per-step spans for executor tool, agent, check, GitHub, and release activity. |
 | Agent profiles | `scripts/src/improvement/agentProfiles.ts`, `docs/agents/` | Defines repo-local specialist expectations for API, Expo, web parity, privacy, and release work. |
 | Hook gates | `scripts/src/improvement/hooks.ts` | Blocks dangerous custom commands and defines deterministic pre/post executor checks. |
 | Eval harness | `scripts/src/improvement/evals.ts` | Runs historical feedback category/risk/outcome evals against the improvement pipeline. |
 | Lifecycle monitor | `scripts/src/improvement/lifecycle.ts` | Watches PR-linked work items and moves them to `merged`, `closed`, or ongoing review/check states. |
+| Reconciler | `scripts/src/improvement/reconcile.ts` | Sweeps generated worktrees, local swarm branches, stale labels, and PR/DB state drift so cleanup is system-owned. |
+| Demo seed | `scripts/src/improvement/demoSeed.ts` | Creates privacy-safe synthetic feedback scenarios for replaying the feedback-to-feature loop in demos. |
 | TestFlight monitor | `scripts/src/iosBetaMonitor.ts` | Checks App Store Connect build processing state when ASC API credentials are configured. |
 | Local host wrapper | `scripts/run-local-swarm-host.sh` | Sources secrets, checks Mac readiness, runs planner, executor, lifecycle monitor, and beta monitor under `caffeinate`. |
 | Planner wrapper | `scripts/run-improvement-swarm.sh` | Sources secrets and runs `improvement:swarm`. |
@@ -65,7 +67,10 @@ In V1, the system has two meanings of "agent":
    - creates a recovery issue for blocked swarm work.
 6. The executor reads `planned` work items, verifies the source issue is still
    open and not blocked, creates an isolated worktree, writes a sanitized prompt,
-   runs Codex, runs typecheck, commits, pushes, opens a PR, and updates the DB.
+   runs Codex, runs typecheck, and either:
+   - comments and closes the issue if Codex proves the request is already
+     implemented and the worktree is unchanged; or
+   - commits, pushes, opens a PR, and updates the DB.
 7. If `HEYTELLI_SWARM_REVIEWER_COMMAND` is configured, the executor runs the
    required reviewer roles as separate local review commands against the
    worktree/PR context.
@@ -73,7 +78,9 @@ In V1, the system has two meanings of "agent":
    checks and required reviewer agents. Otherwise it leaves the PR review-gated.
 9. The lifecycle monitor follows PR-linked work items after execution and moves
    DB state forward when PRs merge or close.
-10. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
+10. The reconciler runs before and after the local swarm loop to remove stale
+   generated worktrees/branches, clean stale labels, and repair PR/DB drift.
+11. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
    submit to TestFlight by default.
 
 ## Mobile-Web Fidelity Rule
@@ -117,10 +124,15 @@ GitHub issues. Broad issues may become child issues before implementation.
 executor.
 
 The app can read `/improvement/signals/mine` to show a user-safe follow-up
-status: received, accepted, planned, shipped, or blocked. That route does not
-return raw payloads, GitHub issue URLs, PR URLs, or private database context.
+status and timeline: received, accepted, planned, shipped, already available,
+not planned, or blocked. Timeline events are derived from sanitized signal
+state, grouped work item state, and improvement runs. That route does not return
+raw payloads, GitHub issue URLs, PR URLs, or private database context.
+
 Admins can read `/admin/improvement/health` for queue counts and recent run
-state.
+state, or `/admin/improvement/control-room` for the demo-safe control room:
+agent lanes, recent work, recent runs, reconsider candidates, and the short demo
+script.
 
 ## Work Storage
 
@@ -132,10 +144,30 @@ that must not be copied into GitHub.
 - `status`: `draft`, `issue_created`, `researching`, `planned`, `building`,
   `reviewing`, `changes_requested`, `checks_running`, `merged`, `deployed`,
   `monitoring`, `rolled_back`, or `closed`.
+- `decisionCategory` and `decisionDetails`: why closed work was shipped,
+  already available, not planned, not reproducible, blocked by privacy/safety,
+  out of scope, duplicate, or superseded.
+- `decisionReconsiderAfterCount`: how many grouped requests should make a
+  closed/not-planned decision show up as a reconsideration candidate.
 - `githubIssueNumber` and `githubIssueUrl`: repo-visible sanitized handoff.
 - `branchName`, `pullRequestUrl`, and `pullRequestNumber`: executor output.
 - `riskTier`: controls whether work can auto-merge.
 - `signalIds` and `frequencyCount`: dedupe/frequency tracking.
+
+Closed work is not thrown away. If beta users keep sending the same request,
+triage continues to merge their signal IDs into the existing work item and
+increase `frequencyCount`. Admin health exposes `reconsiderCandidates` when a
+not-planned decision reaches its reconsider threshold, so agents can use real
+demand to decide whether to reopen or re-scope the idea.
+
+New feedback fingerprints use a deterministic local semantic cluster key before
+hashing. Common phrasing variants such as "more color themes", "change app
+color", and "less pink" group into the same demand cluster without requiring a
+model call in the submission path.
+
+Reconsider thresholds are category-aware. `needs_more_signal`, `not_planned`,
+and `not_reproducible` reopen at lower demand; `out_of_scope` needs stronger
+demand; `privacy_or_safety` does not auto-reopen without explicit review.
 
 `improvement_runs` stores the audit trail for triage, research/planning,
 implementation, review, merge, deploy, monitor, and rollback events.
@@ -237,6 +269,14 @@ docs/agents/web-app.md
 docs/agents/privacy-review.md
 docs/agents/release-verification.md
 ```
+
+If the agent responds with `RESOLVED_BY_EXISTING_IMPLEMENTATION: <reason>` and
+leaves no repository changes, the executor treats the work as successful:
+it posts an idempotent `heytelli-swarm-resolved-without-pr` issue comment,
+closes the source issue as completed, removes active/planned handoff labels,
+moves the work item to `closed`, and cleans up the local worktree/branch. If
+the agent claims that marker while leaving code changes, the executor blocks
+instead of committing contradictory output.
 
 The executor records structured trace spans in `improvement_trace_spans` for
 major tool, agent, check, GitHub, and cleanup steps. Trace metadata is

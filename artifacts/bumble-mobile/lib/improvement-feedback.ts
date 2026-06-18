@@ -31,13 +31,14 @@ export const feedbackFollowUpStages = [
   "accepted",
   "planned",
   "shipped",
+  "not_planned",
 ] as const;
 
 export function buildFeedbackReceiptMessage(signalId?: number | null): string {
   const ticket = signalId
     ? `Feedback #${signalId} is saved.`
     : "Feedback is saved.";
-  return `${ticket} If we accept it, Settings build notes will call out whether it is planned, shipping soon, or already shipped.`;
+  return `${ticket} If we accept it, Settings build notes will call out whether it is planned, shipping soon, already shipped, or not planned right now.`;
 }
 
 export function buildFeedbackTechnicalContext(

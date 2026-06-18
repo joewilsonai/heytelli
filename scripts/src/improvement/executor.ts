@@ -10,10 +10,12 @@ import type {
   ImprovementWorkItemStatus,
 } from "@workspace/db";
 import {
+  closeGitHubIssue,
   commentOnIssue,
   fetchGitHubIssue,
   findIssueCommentByMarker,
   githubTokenFromEnv,
+  removeIssueLabels,
   type GitHubIssueSummary,
 } from "./github";
 import {
@@ -98,6 +100,7 @@ export type SwarmExecutorRunCounts = {
   failed: number;
   branchesCreated: number;
   pullRequestsCreated: number;
+  resolvedWithoutPr: number;
   reviewerAgentsRun: number;
   autoMergesQueued: number;
   dbUpdated: number;
@@ -185,6 +188,7 @@ function emptyCounts(dryRun: boolean): SwarmExecutorRunCounts {
     failed: 0,
     branchesCreated: 0,
     pullRequestsCreated: 0,
+    resolvedWithoutPr: 0,
     reviewerAgentsRun: 0,
     autoMergesQueued: 0,
     dbUpdated: 0,
@@ -332,6 +336,12 @@ export function executorPrBodyMarker(
   return `heytelli-swarm-executor:${workItem.id}:${workItem.githubIssueNumber ?? "no-issue"}`;
 }
 
+export function resolvedWithoutPrCommentMarker(
+  workItem: Pick<SwarmExecutorWorkItem, "id" | "githubIssueNumber">,
+): string {
+  return `heytelli-swarm-resolved-without-pr:${workItem.id}:${workItem.githubIssueNumber ?? "no-issue"}`;
+}
+
 export function planSwarmExecutorWorkItem(
   workItem: SwarmExecutorWorkItem,
   options: Pick<
@@ -467,6 +477,60 @@ export function buildPrBody(
     `Closes #${plan.issueNumber}`,
     "",
     `<!-- ${executorPrBodyMarker(workItem)} -->`,
+  ].join("\n");
+}
+
+export function extractExistingImplementationResolution(
+  output: string,
+): string | null {
+  const match = output.match(
+    /RESOLVED_BY_EXISTING_IMPLEMENTATION:\s*([^\n\r]*)/i,
+  );
+  if (!match) return null;
+  const reason = match[1]?.trim();
+  return reason || "Current implementation already resolves this issue.";
+}
+
+export type ResolvedWithoutPrDecision =
+  | { status: "continue" }
+  | { status: "resolved-without-pr"; resolution: string }
+  | { status: "blocked"; reason: string; resolution: string };
+
+export function resolvedWithoutPrDecisionFromAgentOutput(
+  output: string,
+  worktreeState: { hasWorktreeChanges: boolean; hasHeadCommit: boolean },
+): ResolvedWithoutPrDecision {
+  const resolution = extractExistingImplementationResolution(output);
+  if (!resolution) return { status: "continue" };
+  if (worktreeState.hasWorktreeChanges || worktreeState.hasHeadCommit) {
+    return {
+      status: "blocked",
+      reason:
+        "Executor agent claimed resolved by existing implementation but left repository changes.",
+      resolution,
+    };
+  }
+  return { status: "resolved-without-pr", resolution };
+}
+
+export function buildResolvedWithoutPrComment(
+  workItem: SwarmExecutorWorkItem,
+  plan: PlannedExecutorWorkItem,
+  resolution: string,
+): string {
+  return [
+    "## HeyTelli swarm executor",
+    "",
+    "Resolved without PR.",
+    "",
+    `Reason: ${resolution}`,
+    "",
+    "The executor compared the sanitized issue against the current repository and found the requested behavior is already implemented, so no code changes were made.",
+    "",
+    "No private screenshots, transcripts, or dating details were included.",
+    "",
+    `<!-- ${resolvedWithoutPrCommentMarker(workItem)} -->`,
+    `<!-- heytelli-swarm-source-issue:${plan.issueNumber} -->`,
   ].join("\n");
 }
 
@@ -644,6 +708,7 @@ export function buildSwarmExecutorDigest(
     `Failed: ${counts.failed}`,
     `Branches created: ${counts.branchesCreated}`,
     `Pull requests created: ${counts.pullRequestsCreated}`,
+    `Resolved without PR: ${counts.resolvedWithoutPr}`,
     `Reviewer agents run: ${counts.reviewerAgentsRun}`,
     `Auto-merges queued: ${counts.autoMergesQueued}`,
     `DB rows updated: ${counts.dbUpdated}`,
@@ -747,13 +812,13 @@ export async function runAgent(
   promptPath: string,
   options: SwarmExecutorOptions,
   runner: CommandRunner,
-): Promise<void> {
+): Promise<CommandResult> {
   if (options.agentCommand) {
     const violations = validateAgentCommandSafety(options.agentCommand);
     if (violations.length > 0) {
       throw new Error(`Unsafe executor agent command: ${violations.join("; ")}`);
     }
-    await runner("/bin/zsh", ["-lc", options.agentCommand], {
+    return runner("/bin/zsh", ["-lc", options.agentCommand], {
       cwd: worktreePath,
       env: {
         ...process.env,
@@ -762,10 +827,9 @@ export async function runAgent(
       },
       timeoutMs: options.agentTimeoutMs,
     });
-    return;
   }
 
-  await runner(
+  return runner(
     "codex",
     [
       "exec",
@@ -880,16 +944,23 @@ async function worktreeHasHeadCommit(
   return Number.parseInt(result.stdout.trim() || "0", 10) > 0;
 }
 
+async function worktreeHasWorkingTreeChanges(
+  worktreePath: string,
+  runner: CommandRunner,
+): Promise<boolean> {
+  const status = await runner("git", ["status", "--porcelain"], {
+    cwd: worktreePath,
+  });
+  return Boolean(status.stdout.trim());
+}
+
 async function commitIfNeeded(
   worktreePath: string,
   workItem: SwarmExecutorWorkItem,
   baseBranch: string,
   runner: CommandRunner,
 ): Promise<void> {
-  const status = await runner("git", ["status", "--porcelain"], {
-    cwd: worktreePath,
-  });
-  if (status.stdout.trim()) {
+  if (await worktreeHasWorkingTreeChanges(worktreePath, runner)) {
     await runner("git", ["add", "-A"], { cwd: worktreePath });
     await runner(
       "git",
@@ -1060,6 +1131,33 @@ async function commentOnSourceIssue(
   return comment.url;
 }
 
+async function commentOnResolvedWithoutPrIssue(
+  workItem: SwarmExecutorWorkItem,
+  plan: PlannedExecutorWorkItem,
+  resolution: string,
+  options: SwarmExecutorOptions,
+): Promise<string | null> {
+  const marker = resolvedWithoutPrCommentMarker(workItem);
+  const existing = await findIssueCommentByMarker({
+    owner: options.owner,
+    repo: options.repo,
+    token: options.token,
+    apiUrl: options.githubApiUrl,
+    issueNumber: plan.issueNumber,
+    marker,
+  });
+  if (existing) return existing.url;
+  const comment = await commentOnIssue({
+    owner: options.owner,
+    repo: options.repo,
+    token: options.token,
+    apiUrl: options.githubApiUrl,
+    issueNumber: plan.issueNumber,
+    body: buildResolvedWithoutPrComment(workItem, plan, resolution),
+  });
+  return comment.url;
+}
+
 async function removeWorktree(
   repoRoot: string,
   worktreePath: string,
@@ -1076,6 +1174,17 @@ async function removeWorktree(
   });
 }
 
+async function removeLocalBranch(
+  repoRoot: string,
+  branchName: string,
+  runner: CommandRunner,
+): Promise<void> {
+  await runner("git", ["branch", "-D", branchName], {
+    cwd: repoRoot,
+    allowFailure: true,
+  });
+}
+
 async function executeWorkItem(
   workItem: SwarmExecutorWorkItem,
   plan: PlannedExecutorWorkItem,
@@ -1087,12 +1196,15 @@ async function executeWorkItem(
     recorder: ExecutorTraceRecorder | null;
   } | null = null,
 ): Promise<{
+  outcome: "pull_request" | "resolved_without_pr";
   branchCreated: boolean;
   prCreated: boolean;
   reviewerAgentsRun: number;
   autoMergeQueued: boolean;
-  prUrl: string;
+  prUrl: string | null;
   prNumber: number | null;
+  issueCommentUrl?: string | null;
+  resolution?: string;
 }> {
   const worktreePath = path.join(options.worktreeRoot, String(workItem.id));
   const prompt = buildExecutorPrompt(workItem, plan);
@@ -1162,7 +1274,7 @@ async function executeWorkItem(
   await step("pnpm.install", "tool", {}, () =>
     runner("pnpm", ["install", "--frozen-lockfile"], { cwd: worktreePath }),
   );
-  await step("agent.implementation", "agent", {}, () =>
+  const agentResult = await step("agent.implementation", "agent", {}, () =>
     runAgent(worktreePath, prompt, promptPath, options, runner),
   );
   for (const hook of hookPlan.post) {
@@ -1173,6 +1285,94 @@ async function executeWorkItem(
   await step("scratch.cleanup", "tool", {}, () =>
     removeExecutorScratchFiles(worktreePath),
   );
+
+  const resolutionText = `${agentResult.stdout}\n${agentResult.stderr}`;
+  if (extractExistingImplementationResolution(resolutionText)) {
+    const decision = await step(
+      "resolution.no_pr_check",
+      "check",
+      {},
+      async () =>
+        resolvedWithoutPrDecisionFromAgentOutput(resolutionText, {
+          hasWorktreeChanges: await worktreeHasWorkingTreeChanges(
+            worktreePath,
+            runner,
+          ),
+          hasHeadCommit: await worktreeHasHeadCommit(
+            worktreePath,
+            options.baseBranch,
+            runner,
+          ),
+        }),
+    );
+    if (decision.status === "blocked") {
+      throw new Error(decision.reason);
+    }
+    if (decision.status === "resolved-without-pr") {
+      const issueCommentUrl = await step(
+        "github.issue_resolved_without_pr_comment",
+        "github",
+        { issueNumber: plan.issueNumber },
+        () =>
+          commentOnResolvedWithoutPrIssue(
+            workItem,
+            plan,
+            decision.resolution,
+            options,
+          ),
+      );
+      await step(
+        "github.issue_close",
+        "github",
+        { issueNumber: plan.issueNumber },
+        () =>
+          closeGitHubIssue({
+            owner: options.owner,
+            repo: options.repo,
+            token: options.token,
+            apiUrl: options.githubApiUrl,
+            issueNumber: plan.issueNumber,
+          }),
+      );
+      await step(
+        "github.issue_label_cleanup",
+        "github",
+        { issueNumber: plan.issueNumber },
+        () =>
+          removeIssueLabels({
+            owner: options.owner,
+            repo: options.repo,
+            token: options.token,
+            apiUrl: options.githubApiUrl,
+            issueNumber: plan.issueNumber,
+            labels: ["agent-ready", "swarm-active", "swarm-planned"],
+          }),
+      );
+      if (!options.keepWorktree) {
+        await step("worktree.cleanup", "tool", { worktreePath }, () =>
+          removeWorktree(options.repoRoot, worktreePath, runner),
+        );
+        await step(
+          "git.local_branch_cleanup",
+          "tool",
+          { branchName: plan.branchName },
+          () => removeLocalBranch(options.repoRoot, plan.branchName, runner),
+        );
+      }
+      return {
+        outcome: "resolved_without_pr",
+        branchCreated: true,
+        prCreated: false,
+        reviewerAgentsRun: 0,
+        autoMergeQueued: false,
+        prUrl: null,
+        prNumber: null,
+        issueCommentUrl,
+        resolution: decision.resolution,
+      };
+    }
+  }
+
   await step("git.commit", "tool", {}, () =>
     commitIfNeeded(worktreePath, workItem, options.baseBranch, runner),
   );
@@ -1224,6 +1424,7 @@ async function executeWorkItem(
   }
 
   return {
+    outcome: "pull_request",
     branchCreated: true,
     prCreated: pr.created,
     reviewerAgentsRun,
@@ -1370,16 +1571,32 @@ export async function runSwarmExecutor(
       counts.pullRequestsCreated += executed.prCreated ? 1 : 0;
       counts.reviewerAgentsRun += executed.reviewerAgentsRun;
       counts.autoMergesQueued += executed.autoMergeQueued ? 1 : 0;
+      counts.resolvedWithoutPr +=
+        executed.outcome === "resolved_without_pr" ? 1 : 0;
 
-      await db
-        .update(improvementWorkItems)
-        .set({
-          status: plan.nextStatus,
-          pullRequestUrl: executed.prUrl,
-          pullRequestNumber: executed.prNumber,
-          updatedAt: new Date(),
-        })
-        .where(eq(improvementWorkItems.id, workItem.id));
+      if (executed.outcome === "resolved_without_pr") {
+        await db
+          .update(improvementWorkItems)
+          .set({
+            status: "closed",
+            pullRequestUrl: null,
+            pullRequestNumber: null,
+            decisionCategory: "already_available",
+            decisionDetails: executed.resolution ?? null,
+            updatedAt: new Date(),
+          })
+          .where(eq(improvementWorkItems.id, workItem.id));
+      } else {
+        await db
+          .update(improvementWorkItems)
+          .set({
+            status: plan.nextStatus,
+            pullRequestUrl: executed.prUrl,
+            pullRequestNumber: executed.prNumber,
+            updatedAt: new Date(),
+          })
+          .where(eq(improvementWorkItems.id, workItem.id));
+      }
       counts.dbUpdated += 1;
 
       if (run) {
@@ -1387,13 +1604,19 @@ export async function runSwarmExecutor(
           .update(improvementRuns)
           .set({
             status: "succeeded",
-            summary: `Swarm executor opened PR for issue #${plan.issueNumber}`,
-            logsUrl: executed.prUrl,
+            summary:
+              executed.outcome === "resolved_without_pr"
+                ? `Swarm executor resolved issue #${plan.issueNumber} without a PR`
+                : `Swarm executor opened PR for issue #${plan.issueNumber}`,
+            logsUrl: executed.prUrl ?? executed.issueCommentUrl ?? plan.issueUrl,
             metadata: {
               issueNumber: plan.issueNumber,
               branchName: plan.branchName,
+              outcome: executed.outcome,
               prUrl: executed.prUrl,
               prNumber: executed.prNumber,
+              issueCommentUrl: executed.issueCommentUrl,
+              resolution: executed.resolution,
               reviewerAgentsRun: executed.reviewerAgentsRun,
               autoMergeQueued: executed.autoMergeQueued,
             },

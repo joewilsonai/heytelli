@@ -7,15 +7,19 @@ import test from "node:test";
 import {
   buildPrBody,
   buildExecutorPrompt,
+  buildResolvedWithoutPrComment,
   buildReviewerAgentPrompt,
   buildSwarmExecutorCommandPreview,
   buildSwarmExecutorDigest,
   acquireExecutorRunLock,
   executorPrBodyMarker,
+  extractExistingImplementationResolution,
   gitEnv,
   issueLabelsAllowExecutor,
   parseExecutorArgs,
   planSwarmExecutorWorkItem,
+  resolvedWithoutPrCommentMarker,
+  resolvedWithoutPrDecisionFromAgentOutput,
   removeExecutorScratchFiles,
   runAgent,
   runCommand,
@@ -196,6 +200,87 @@ test("builds a private-data-safe executor prompt", () => {
   assert.match(body, /private repo/i);
   assert.match(body, /GitHub-visible/i);
   assert.doesNotMatch(body, /public GitHub|public handoff/i);
+});
+
+test("detects agent output that resolves an issue without a PR", () => {
+  assert.deepEqual(
+    extractExistingImplementationResolution(
+      [
+        "Some verification output.",
+        "RESOLVED_BY_EXISTING_IMPLEMENTATION: settings already offers six color themes.",
+        "More text.",
+      ].join("\n"),
+    ),
+    "settings already offers six color themes.",
+  );
+
+  assert.equal(extractExistingImplementationResolution("ordinary output"), null);
+  assert.equal(
+    extractExistingImplementationResolution(
+      "RESOLVED_BY_EXISTING_IMPLEMENTATION: ",
+    ),
+    "Current implementation already resolves this issue.",
+  );
+});
+
+test("only accepts resolved-without-PR output when the worktree is unchanged", () => {
+  assert.deepEqual(
+    resolvedWithoutPrDecisionFromAgentOutput(
+      "RESOLVED_BY_EXISTING_IMPLEMENTATION: already shipped",
+      {
+        hasWorktreeChanges: false,
+        hasHeadCommit: false,
+      },
+    ),
+    {
+      status: "resolved-without-pr",
+      resolution: "already shipped",
+    },
+  );
+
+  assert.deepEqual(
+    resolvedWithoutPrDecisionFromAgentOutput("No marker", {
+      hasWorktreeChanges: false,
+      hasHeadCommit: false,
+    }),
+    { status: "continue" },
+  );
+
+  assert.deepEqual(
+    resolvedWithoutPrDecisionFromAgentOutput(
+      "RESOLVED_BY_EXISTING_IMPLEMENTATION: already shipped",
+      {
+        hasWorktreeChanges: true,
+        hasHeadCommit: false,
+      },
+    ),
+    {
+      status: "blocked",
+      reason:
+        "Executor agent claimed resolved by existing implementation but left repository changes.",
+      resolution: "already shipped",
+    },
+  );
+});
+
+test("builds an idempotent resolved-without-PR issue comment", () => {
+  const plan = planSwarmExecutorWorkItem(safeWorkItem);
+  assert.equal(plan.status, "executable");
+  if (plan.status !== "executable") return;
+
+  const marker = resolvedWithoutPrCommentMarker(safeWorkItem);
+  const comment = buildResolvedWithoutPrComment(
+    safeWorkItem,
+    plan,
+    "settings already offers six color themes.",
+  );
+
+  assert.equal(marker, "heytelli-swarm-resolved-without-pr:42:88");
+  assert.match(comment, /Resolved without PR/);
+  assert.match(comment, /settings already offers six color themes/);
+  assert.match(comment, /No private screenshots/);
+  assert.match(comment, new RegExp(marker));
+  assert.doesNotMatch(comment, /raw transcript|555-1212|123 Main/i);
 });
 
 test("builds reviewer agent prompts from sanitized repo-visible context", () => {
@@ -393,7 +478,7 @@ test("passes a timeout to child agent execution", async () => {
     agentTimeoutMs: 1234,
   };
 
-  await runAgent(
+  const result = await runAgent(
     "/tmp/worktree",
     "prompt",
     "/tmp/prompt.md",
@@ -405,6 +490,7 @@ test("passes a timeout to child agent execution", async () => {
   );
 
   assert.deepEqual(calls, [{ command: "/bin/zsh", timeoutMs: 1234 }]);
+  assert.deepEqual(result, { stdout: "", stderr: "" });
 });
 
 test("runs configured reviewer agents with role-specific environment", async () => {
@@ -571,6 +657,7 @@ test("executor digest reports PR and merge progress", () => {
     failed: 0,
     branchesCreated: 1,
     pullRequestsCreated: 1,
+    resolvedWithoutPr: 1,
     reviewerAgentsRun: 2,
     autoMergesQueued: 1,
     dbUpdated: 3,
@@ -581,6 +668,7 @@ test("executor digest reports PR and merge progress", () => {
 
   assert.match(digest, /Mode: live/);
   assert.match(digest, /Pull requests created: 1/);
+  assert.match(digest, /Resolved without PR: 1/);
   assert.match(digest, /Reviewer agents run: 2/);
   assert.match(digest, /Auto-merges queued: 1/);
   assert.equal(swarmExecutorRunShouldFail(counts), false);
