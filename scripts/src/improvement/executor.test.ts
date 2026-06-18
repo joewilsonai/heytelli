@@ -37,6 +37,7 @@ const safeWorkItem = {
   category: "copy" as const,
   priority: "p3" as const,
   riskTier: "safe_auto_merge" as const,
+  frequencyCount: 1,
   status: "planned" as const,
   githubIssueNumber: 88,
   githubIssueUrl: "https://github.com/joewilsonai/heytelli/issues/88",

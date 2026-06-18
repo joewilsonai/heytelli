@@ -1295,6 +1295,47 @@ components:
         label: { type: string }
         activeCount: { type: integer }
         description: { type: string }
+    ImprovementControlRoomFeatureCostEffort:
+      type: object
+      required:
+        - agentRuns
+        - reviewerAgents
+        - traceDurationMs
+        - ciRuns
+        - releaseRuns
+        - retries
+      properties:
+        agentRuns: { type: integer }
+        reviewerAgents: { type: integer }
+        traceDurationMs: { type: integer }
+        ciRuns: { type: integer }
+        releaseRuns: { type: integer }
+        retries: { type: integer }
+    ImprovementControlRoomFeatureCost:
+      type: object
+      required:
+        - estimatedUsd
+        - actualUsd
+        - rangeLowUsd
+        - rangeHighUsd
+        - confidence
+        - costPerRequestUsd
+        - model
+        - totalTokens
+        - effort
+      properties:
+        estimatedUsd: { type: number }
+        actualUsd: { type: ["number", "null"] }
+        rangeLowUsd: { type: number }
+        rangeHighUsd: { type: number }
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        costPerRequestUsd: { type: number }
+        model: { type: string }
+        totalTokens: { type: integer }
+        effort:
+          $ref: "#/components/schemas/ImprovementControlRoomFeatureCostEffort"
     ImprovementControlRoomWorkItem:
       type: object
       required:
@@ -1309,6 +1350,7 @@ components:
         - frequencyCount
         - decisionReconsiderAfterCount
         - reconsiderReady
+        - featureCost
         - updatedAt
       properties:
         id: { type: integer }
@@ -1329,6 +1371,10 @@ components:
         frequencyCount: { type: integer }
         decisionReconsiderAfterCount: { type: integer }
         reconsiderReady: { type: boolean }
+        featureCost:
+          oneOf:
+            - $ref: "#/components/schemas/ImprovementControlRoomFeatureCost"
+            - type: "null"
         updatedAt: { type: string, format: date-time }
     ImprovementControlRoomRun:
       type: object

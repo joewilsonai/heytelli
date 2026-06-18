@@ -3,6 +3,7 @@ import {
   Bot,
   CheckCircle2,
   Clock3,
+  DollarSign,
   GitPullRequest,
   RefreshCw,
   RotateCcw,
@@ -34,6 +35,23 @@ function prettyToken(value: string | null | undefined): string {
     .split("_")
     .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatUsd(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Pending";
+  if (value < 0.01) return "<$0.01";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatDurationMs(value: number | undefined): string {
+  if (!value) return "0m";
+  const minutes = Math.max(1, Math.round(value / 60_000));
+  return `${minutes}m`;
 }
 
 export default function ImprovementControlRoom() {
@@ -150,6 +168,20 @@ export default function ImprovementControlRoom() {
                     {prettyToken(item.status)} · {prettyToken(item.category)} ·{" "}
                     {prettyToken(item.riskTier)}
                   </p>
+                  {item.featureCost ? (
+                    <div className="feature-cost-strip">
+                      <span>
+                        <DollarSign size={14} aria-hidden="true" />
+                        Est. {formatUsd(item.featureCost.estimatedUsd)}
+                      </span>
+                      <span>Actual {formatUsd(item.featureCost.actualUsd)}</span>
+                      <span>{prettyToken(item.featureCost.confidence)} confidence</span>
+                      <span>
+                        {item.featureCost.effort.reviewerAgents} reviews ·{" "}
+                        {formatDurationMs(item.featureCost.effort.traceDurationMs)}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
                 <span>{item.frequencyCount} asks</span>
               </article>

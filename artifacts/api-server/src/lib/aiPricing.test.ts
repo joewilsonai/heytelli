@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   estimateAiUsageCostUsd,
+  mergePricingRegistry,
   lookupModelPricing,
   type AiModelPricing,
 } from "./aiPricing";
@@ -70,5 +71,38 @@ test("returns zero for unknown pricing instead of guessing", () => {
       outputTokens: 10_000,
     }),
     0,
+  );
+});
+
+test("includes current non-zero defaults for agent coding models", () => {
+  const defaults = mergePricingRegistry();
+  const models = new Map(
+    defaults.map((item) => [`${item.provider}:${item.model}`, item]),
+  );
+
+  assert.deepEqual(models.get("openai:gpt-5.5"), {
+    provider: "openai",
+    model: "gpt-5.5",
+    inputCostPer1MTokens: 5,
+    outputCostPer1MTokens: 30,
+    cachedInputCostPer1MTokens: 0.5,
+    effectiveAt: "2026-06-18",
+  });
+  assert.deepEqual(models.get("openai:gpt-5.4"), {
+    provider: "openai",
+    model: "gpt-5.4",
+    inputCostPer1MTokens: 2.5,
+    outputCostPer1MTokens: 15,
+    cachedInputCostPer1MTokens: 0.25,
+    effectiveAt: "2026-06-18",
+  });
+  assert.equal(
+    estimateAiUsageCostUsd({
+      provider: "openai",
+      model: "gpt-5.3-codex",
+      inputTokens: 100_000,
+      outputTokens: 10_000,
+    }),
+    0.315,
   );
 });

@@ -600,6 +600,27 @@ textarea:focus {
   font-size: 0.86rem;
 }
 
+.feature-cost-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin-top: 0.58rem;
+}
+
+.feature-cost-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  min-height: 28px;
+  padding: 0.24rem 0.42rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 780;
+}
+
 .demo-script {
   display: grid;
   gap: 0.55rem;

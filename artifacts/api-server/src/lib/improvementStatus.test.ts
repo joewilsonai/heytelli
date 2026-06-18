@@ -305,8 +305,47 @@ test("control room snapshot exposes demo-safe agent and demand state", () => {
       {
         runType: "implementation",
         status: "succeeded",
+        workItemId: 8,
         agentName: "executor-agent",
         summary: "Opened a PR for the sanitized request.",
+        metadata: {
+          featureCostEstimate: {
+            estimatedUsd: 0.5,
+            actualUsd: null,
+            rangeLowUsd: 0.32,
+            rangeHighUsd: 0.78,
+            confidence: "low",
+            costPerRequestUsd: 0.25,
+            model: "gpt-5.3-codex",
+            totalTokens: 160000,
+            effort: {
+              agentRuns: 1,
+              reviewerAgents: 3,
+              traceDurationMs: 0,
+              ciRuns: 0,
+              releaseRuns: 0,
+              retries: 0,
+            },
+          },
+          featureCostActual: {
+            estimatedUsd: 0.5,
+            actualUsd: 0.42,
+            rangeLowUsd: 0.32,
+            rangeHighUsd: 0.78,
+            confidence: "medium",
+            costPerRequestUsd: 0.21,
+            model: "gpt-5.3-codex",
+            totalTokens: 125573,
+            effort: {
+              agentRuns: 1,
+              reviewerAgents: 2,
+              traceDurationMs: 120000,
+              ciRuns: 1,
+              releaseRuns: 1,
+              retries: 0,
+            },
+          },
+        },
         createdAt: new Date("2026-06-18T21:20:00Z"),
         completedAt: new Date("2026-06-18T21:25:00Z"),
       },
@@ -318,6 +357,12 @@ test("control room snapshot exposes demo-safe agent and demand state", () => {
   assert.equal(snapshot.agentLanes.some((lane) => lane.id === "builder"), true);
   assert.equal(snapshot.reconsiderCandidates[0]?.id, 7);
   assert.equal(snapshot.recentWorkItems[0]?.id, 8);
+  assert.equal(snapshot.recentWorkItems[0]?.featureCost?.actualUsd, 0.42);
+  assert.equal(snapshot.recentWorkItems[0]?.featureCost?.confidence, "medium");
+  assert.equal(
+    snapshot.recentWorkItems[0]?.featureCost?.effort.traceDurationMs,
+    120000,
+  );
   assert.equal(snapshot.recentRuns[0]?.agentName, "executor-agent");
   assert.match(snapshot.demoScript.join(" "), /beta user/i);
   assert.doesNotMatch(JSON.stringify(snapshot), /rawPayload|githubIssueUrl|pullRequestUrl/);

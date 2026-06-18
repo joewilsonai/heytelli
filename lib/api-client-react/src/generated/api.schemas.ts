@@ -318,6 +318,37 @@ export interface ImprovementControlRoomLane {
   description: string;
 }
 
+export interface ImprovementControlRoomFeatureCostEffort {
+  agentRuns: number;
+  reviewerAgents: number;
+  traceDurationMs: number;
+  ciRuns: number;
+  releaseRuns: number;
+  retries: number;
+}
+
+export type ImprovementControlRoomFeatureCostConfidence = typeof ImprovementControlRoomFeatureCostConfidence[keyof typeof ImprovementControlRoomFeatureCostConfidence];
+
+
+export const ImprovementControlRoomFeatureCostConfidence = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export interface ImprovementControlRoomFeatureCost {
+  estimatedUsd: number;
+  /** @nullable */
+  actualUsd: number | null;
+  rangeLowUsd: number;
+  rangeHighUsd: number;
+  confidence: ImprovementControlRoomFeatureCostConfidence;
+  costPerRequestUsd: number;
+  model: string;
+  totalTokens: number;
+  effort: ImprovementControlRoomFeatureCostEffort;
+}
+
 export interface ImprovementControlRoomWorkItem {
   id: number;
   title: string;
@@ -331,6 +362,7 @@ export interface ImprovementControlRoomWorkItem {
   frequencyCount: number;
   decisionReconsiderAfterCount: number;
   reconsiderReady: boolean;
+  featureCost: ImprovementControlRoomFeatureCost | null;
   updatedAt: string;
 }
 

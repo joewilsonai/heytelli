@@ -27,6 +27,11 @@ import {
   validateAgentCommandSafety,
   type HookCommand,
 } from "./hooks";
+import {
+  buildActualFeatureCreationCost,
+  estimateFeatureCreationCost,
+  type FeatureCreationCostSummary,
+} from "./featureCost";
 import { buildTraceSpan, traceIdForExecutorRun } from "./trace";
 import type { SwarmAgentRole } from "./swarmPlan";
 
@@ -37,6 +42,7 @@ export type SwarmExecutorWorkItem = {
   category: ImprovementCategory;
   priority: ImprovementPriority;
   riskTier: ImprovementRiskTier;
+  frequencyCount: number;
   status: ImprovementWorkItemStatus;
   githubIssueUrl: string | null;
   githubIssueNumber: number | null;
@@ -1195,6 +1201,12 @@ async function executeWorkItem(
     runId: number | null;
     recorder: ExecutorTraceRecorder | null;
   } | null = null,
+  featureCostEstimate: FeatureCreationCostSummary = estimateFeatureCreationCost({
+    riskTier: workItem.riskTier,
+    priority: workItem.priority,
+    frequencyCount: workItem.frequencyCount,
+    reviewerRoles: reviewerRolesForRiskTier(workItem.riskTier),
+  }),
 ): Promise<{
   outcome: "pull_request" | "resolved_without_pr";
   branchCreated: boolean;
@@ -1205,7 +1217,9 @@ async function executeWorkItem(
   prNumber: number | null;
   issueCommentUrl?: string | null;
   resolution?: string;
+  featureCostActual: FeatureCreationCostSummary;
 }> {
+  const executionStartedAt = Date.now();
   const worktreePath = path.join(options.worktreeRoot, String(workItem.id));
   const prompt = buildExecutorPrompt(workItem, plan);
   const promptPath = path.join(worktreePath, EXECUTOR_PROMPT_FILE_NAME);
@@ -1369,6 +1383,16 @@ async function executeWorkItem(
         prNumber: null,
         issueCommentUrl,
         resolution: decision.resolution,
+        featureCostActual: buildActualFeatureCreationCost({
+          riskTier: workItem.riskTier,
+          priority: workItem.priority,
+          frequencyCount: workItem.frequencyCount,
+          estimate: featureCostEstimate,
+          reviewerRoles: reviewerRolesForRiskTier(workItem.riskTier),
+          agentOutputText: resolutionText,
+          reviewerAgentsRun: 0,
+          traceDurationMs: Date.now() - executionStartedAt,
+        }),
       };
     }
   }
@@ -1431,6 +1455,17 @@ async function executeWorkItem(
     autoMergeQueued,
     prUrl: pr.url,
     prNumber: pr.number,
+    featureCostActual: buildActualFeatureCreationCost({
+      riskTier: workItem.riskTier,
+      priority: workItem.priority,
+      frequencyCount: workItem.frequencyCount,
+      estimate: featureCostEstimate,
+      reviewerRoles: reviewerRolesForRiskTier(workItem.riskTier),
+      agentOutputText: resolutionText,
+      reviewerAgentsRun,
+      traceDurationMs: Date.now() - executionStartedAt,
+      ciRuns: 1,
+    }),
   };
 }
 
@@ -1464,6 +1499,12 @@ export async function runSwarmExecutor(
     }
 
     let runId: number | null = null;
+    const featureCostEstimate = estimateFeatureCreationCost({
+      riskTier: workItem.riskTier,
+      priority: workItem.priority,
+      frequencyCount: workItem.frequencyCount,
+      reviewerRoles: reviewerRolesForRiskTier(workItem.riskTier),
+    });
     try {
       const sourceIssue = await fetchGitHubIssue({
         owner: options.owner,
@@ -1543,6 +1584,7 @@ export async function runSwarmExecutor(
             branchName: plan.branchName,
             riskTier: workItem.riskTier,
             autoMergeAllowed: plan.autoMergeAllowed,
+            featureCostEstimate,
           },
         })
         .returning();
@@ -1566,6 +1608,7 @@ export async function runSwarmExecutor(
         options,
         runner,
         trace,
+        featureCostEstimate,
       );
       counts.branchesCreated += executed.branchCreated ? 1 : 0;
       counts.pullRequestsCreated += executed.prCreated ? 1 : 0;
@@ -1619,6 +1662,8 @@ export async function runSwarmExecutor(
               resolution: executed.resolution,
               reviewerAgentsRun: executed.reviewerAgentsRun,
               autoMergeQueued: executed.autoMergeQueued,
+              featureCostEstimate,
+              featureCostActual: executed.featureCostActual,
             },
             completedAt: new Date(),
           })
@@ -1652,6 +1697,15 @@ export async function runSwarmExecutor(
           retryable,
           nextStatus: failureStatus,
           errorMessage: message,
+          featureCostEstimate,
+          featureCostActual: buildActualFeatureCreationCost({
+            riskTier: workItem.riskTier,
+            priority: workItem.priority,
+            frequencyCount: workItem.frequencyCount,
+            estimate: featureCostEstimate,
+            reviewerRoles: reviewerRolesForRiskTier(workItem.riskTier),
+            retries: retryable ? 1 : 0,
+          }),
         },
         completedAt: new Date(),
       } as const;
