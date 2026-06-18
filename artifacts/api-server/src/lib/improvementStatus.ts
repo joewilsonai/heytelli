@@ -88,10 +88,31 @@ export type ImprovementHealthWorkItem = {
 };
 
 export type ImprovementHealthRun = {
+  workItemId?: number;
   runType: ImprovementRunType;
   status: ImprovementRunStatus;
   createdAt: Date;
   completedAt: Date | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type ImprovementControlRoomFeatureCost = {
+  estimatedUsd: number;
+  actualUsd: number | null;
+  rangeLowUsd: number;
+  rangeHighUsd: number;
+  confidence: "low" | "medium" | "high";
+  costPerRequestUsd: number;
+  model: string;
+  totalTokens: number;
+  effort: {
+    agentRuns: number;
+    reviewerAgents: number;
+    traceDurationMs: number;
+    ciRuns: number;
+    releaseRuns: number;
+    retries: number;
+  };
 };
 
 export type ImprovementHealthSnapshot = {
@@ -124,6 +145,7 @@ export type ImprovementControlRoomWorkItem = {
   frequencyCount: number;
   decisionReconsiderAfterCount: number;
   reconsiderReady: boolean;
+  featureCost: ImprovementControlRoomFeatureCost | null;
   updatedAt: string;
 };
 
@@ -510,6 +532,75 @@ function laneCount(
   return workItems.filter((item) => statuses.includes(item.status)).length;
 }
 
+function money(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) && parsed >= 0
+    ? Number(parsed.toFixed(6))
+    : null;
+}
+
+function integer(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+}
+
+function costConfidence(value: unknown): "low" | "medium" | "high" {
+  return value === "high" || value === "medium" ? value : "low";
+}
+
+function costObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function parseFeatureCost(
+  value: unknown,
+): ImprovementControlRoomFeatureCost | null {
+  const raw = costObject(value);
+  if (!raw) return null;
+  const estimatedUsd = money(raw.estimatedUsd);
+  if (estimatedUsd == null) return null;
+  const effort = costObject(raw.effort);
+  return {
+    estimatedUsd,
+    actualUsd: money(raw.actualUsd),
+    rangeLowUsd: money(raw.rangeLowUsd) ?? estimatedUsd,
+    rangeHighUsd: money(raw.rangeHighUsd) ?? estimatedUsd,
+    confidence: costConfidence(raw.confidence),
+    costPerRequestUsd: money(raw.costPerRequestUsd) ?? estimatedUsd,
+    model: typeof raw.model === "string" ? raw.model : "unknown",
+    totalTokens: integer(raw.totalTokens),
+    effort: {
+      agentRuns: integer(effort?.agentRuns),
+      reviewerAgents: integer(effort?.reviewerAgents),
+      traceDurationMs: integer(effort?.traceDurationMs),
+      ciRuns: integer(effort?.ciRuns),
+      releaseRuns: integer(effort?.releaseRuns),
+      retries: integer(effort?.retries),
+    },
+  };
+}
+
+function featureCostByWorkItem(
+  runs: Array<ImprovementHealthRun>,
+): Map<number, ImprovementControlRoomFeatureCost> {
+  const byWorkItem = new Map<number, ImprovementControlRoomFeatureCost>();
+  for (const run of [...runs].sort(
+    (a, b) =>
+      (a.completedAt ?? a.createdAt).getTime() -
+      (b.completedAt ?? b.createdAt).getTime(),
+  )) {
+    if (!run.workItemId) continue;
+    const metadata = run.metadata ?? {};
+    const actual = parseFeatureCost(metadata.featureCostActual);
+    const estimate = parseFeatureCost(metadata.featureCostEstimate);
+    const next = actual ?? estimate;
+    if (next) byWorkItem.set(run.workItemId, next);
+  }
+  return byWorkItem;
+}
+
 function controlRoomWorkItem(
   item: ImprovementHealthWorkItem & {
     id: number;
@@ -517,6 +608,7 @@ function controlRoomWorkItem(
     category: string;
     decisionDetails: string | null;
   },
+  featureCosts: Map<number, ImprovementControlRoomFeatureCost>,
 ): ImprovementControlRoomWorkItem {
   return {
     id: item.id,
@@ -530,6 +622,7 @@ function controlRoomWorkItem(
     frequencyCount: item.frequencyCount,
     decisionReconsiderAfterCount: item.decisionReconsiderAfterCount,
     reconsiderReady: isReconsiderCandidate(item),
+    featureCost: featureCosts.get(item.id) ?? null,
     updatedAt: item.updatedAt.toISOString(),
   };
 }
@@ -548,10 +641,11 @@ export function buildImprovementControlRoomSnapshot(input: {
   now?: Date;
 }): ImprovementControlRoomSnapshot {
   const health = buildImprovementHealthSnapshot(input);
+  const featureCosts = featureCostByWorkItem(input.runs);
   const recentWorkItems = [...input.workItems]
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     .slice(0, 8)
-    .map(controlRoomWorkItem);
+    .map((item) => controlRoomWorkItem(item, featureCosts));
   return {
     generatedAt: health.generatedAt,
     queue: health.queue,

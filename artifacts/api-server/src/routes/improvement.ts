@@ -233,10 +233,12 @@ router.get(
         .limit(500),
       db
         .select({
+          workItemId: improvementRuns.workItemId,
           runType: improvementRuns.runType,
           status: improvementRuns.status,
           agentName: improvementRuns.agentName,
           summary: improvementRuns.summary,
+          metadata: improvementRuns.metadata,
           createdAt: improvementRuns.createdAt,
           completedAt: improvementRuns.completedAt,
         })

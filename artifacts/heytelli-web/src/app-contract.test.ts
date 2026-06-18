@@ -38,6 +38,8 @@ test("registers the AI-native improvement control room", () => {
   assert.match(page, /Feedback-to-feature factory/);
   assert.match(page, /Agent lanes/);
   assert.match(page, /Reconsider queue/);
+  assert.match(page, /featureCost/);
+  assert.match(page, /Actual/);
   assert.match(page, /Demo script/);
 });
 

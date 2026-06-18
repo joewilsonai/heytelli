@@ -2177,6 +2177,24 @@ export const GetImprovementControlRoomResponse = zod.object({
   "frequencyCount": zod.number(),
   "decisionReconsiderAfterCount": zod.number(),
   "reconsiderReady": zod.boolean(),
+  "featureCost": zod.union([zod.object({
+  "estimatedUsd": zod.number(),
+  "actualUsd": zod.number().nullable(),
+  "rangeLowUsd": zod.number(),
+  "rangeHighUsd": zod.number(),
+  "confidence": zod.enum(['low', 'medium', 'high']),
+  "costPerRequestUsd": zod.number(),
+  "model": zod.string(),
+  "totalTokens": zod.number(),
+  "effort": zod.object({
+  "agentRuns": zod.number(),
+  "reviewerAgents": zod.number(),
+  "traceDurationMs": zod.number(),
+  "ciRuns": zod.number(),
+  "releaseRuns": zod.number(),
+  "retries": zod.number()
+})
+}),zod.null()]),
   "updatedAt": zod.coerce.date()
 })),
   "reconsiderCandidates": zod.array(zod.object({
@@ -2191,6 +2209,24 @@ export const GetImprovementControlRoomResponse = zod.object({
   "frequencyCount": zod.number(),
   "decisionReconsiderAfterCount": zod.number(),
   "reconsiderReady": zod.boolean(),
+  "featureCost": zod.union([zod.object({
+  "estimatedUsd": zod.number(),
+  "actualUsd": zod.number().nullable(),
+  "rangeLowUsd": zod.number(),
+  "rangeHighUsd": zod.number(),
+  "confidence": zod.enum(['low', 'medium', 'high']),
+  "costPerRequestUsd": zod.number(),
+  "model": zod.string(),
+  "totalTokens": zod.number(),
+  "effort": zod.object({
+  "agentRuns": zod.number(),
+  "reviewerAgents": zod.number(),
+  "traceDurationMs": zod.number(),
+  "ciRuns": zod.number(),
+  "releaseRuns": zod.number(),
+  "retries": zod.number()
+})
+}),zod.null()]),
   "updatedAt": zod.coerce.date()
 })),
   "recentRuns": zod.array(zod.object({

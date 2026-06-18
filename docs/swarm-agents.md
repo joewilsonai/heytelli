@@ -36,6 +36,7 @@ In V1, the system has two meanings of "agent":
 | Role/risk policy | `scripts/src/improvement/swarmPlan.ts` | Maps labels, privacy risk, priority, and category to required roles, checks, and auto-merge policy. |
 | Executor | `scripts/src/improvement/executor.ts` | Claims planned work, creates a worktree, launches Codex, resolves already-shipped requests without PRs, runs optional reviewer agents, typechecks, commits, pushes, opens PRs, and queues auto-merge when allowed. |
 | Trace spans | `lib/db/src/schema/improvementPipeline.ts`, `scripts/src/improvement/trace.ts` | Stores structured per-step spans for executor tool, agent, check, GitHub, and release activity. |
+| Feature cost ledger | `scripts/src/improvement/featureCost.ts`, `artifacts/api-server/src/lib/improvementStatus.ts` | Estimates model-dollar cost before implementation, records actual agent token/effort cost after execution, and exposes cost summaries in the admin control room. |
 | Agent profiles | `scripts/src/improvement/agentProfiles.ts`, `docs/agents/` | Defines repo-local specialist expectations for API, Expo, web parity, privacy, and release work. |
 | Hook gates | `scripts/src/improvement/hooks.ts` | Blocks dangerous custom commands and defines deterministic pre/post executor checks. |
 | Eval harness | `scripts/src/improvement/evals.ts` | Runs historical feedback category/risk/outcome evals against the improvement pipeline. |
@@ -74,13 +75,16 @@ In V1, the system has two meanings of "agent":
 7. If `HEYTELLI_SWARM_REVIEWER_COMMAND` is configured, the executor runs the
    required reviewer roles as separate local review commands against the
    worktree/PR context.
-8. If the risk tier allows it, the executor queues GitHub auto-merge after PR
+8. The executor records a `featureCostEstimate` when implementation starts and a
+   `featureCostActual` when it succeeds or fails. Actuals use observed Codex
+   token totals when present, plus reviewer counts and execution duration.
+9. If the risk tier allows it, the executor queues GitHub auto-merge after PR
    checks and required reviewer agents. Otherwise it leaves the PR review-gated.
-9. The lifecycle monitor follows PR-linked work items after execution and moves
+10. The lifecycle monitor follows PR-linked work items after execution and moves
    DB state forward when PRs merge or close.
-10. The reconciler runs before and after the local swarm loop to remove stale
+11. The reconciler runs before and after the local swarm loop to remove stale
    generated worktrees/branches, clean stale labels, and repair PR/DB drift.
-11. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
+12. Mobile changes merged to `main` trigger the iOS beta workflow. Push builds
    submit to TestFlight by default.
 
 ## Mobile-Web Fidelity Rule
@@ -171,6 +175,12 @@ demand; `privacy_or_safety` does not auto-reopen without explicit review.
 
 `improvement_runs` stores the audit trail for triage, research/planning,
 implementation, review, merge, deploy, monitor, and rollback events.
+
+Implementation runs can include `featureCostEstimate` and `featureCostActual`
+metadata. These summaries contain model name, estimated/actual dollars, token
+counts, confidence, cost per requesting user, reviewer counts, duration, and
+retry/release counters. They do not store raw prompts, raw agent output, private
+feedback, screenshots, transcripts, or credentials.
 
 ## Labels And Gates
 
