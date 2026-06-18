@@ -30,6 +30,31 @@ test("chat routes keep conversations and prompts inside the active user tenant",
   assert.match(chatRoute, /insert\(conversations\)[\s\S]*userId/);
 });
 
+test("date brief prompt remains a private pre-date profile brief", () => {
+  assert.match(chatRoute, /UNTRUSTED DATA/);
+  assert.match(chatRoute, /function dateBriefDisplayName/);
+  assert.match(chatRoute, /# Date \$\{dateBriefDisplayName\(norm\.name\)\} Brief/);
+  assert.match(chatRoute, /## What I like about them/);
+  assert.match(chatRoute, /## Red and yellow flags/);
+  assert.match(chatRoute, /## Boundaries to hold/);
+  assert.match(chatRoute, /## Open questions/);
+  assert.match(chatRoute, /## Safety and check-in/);
+  assert.match(chatRoute, /lastDateBrief/);
+  assert.match(chatRoute, /dateBriefContextHash/);
+});
+
+test("date brief freshness includes safety and saved pattern inputs", () => {
+  assert.match(matchesRoute, /dateSafetyPlan\?: unknown/);
+  assert.match(matchesRoute, /lastRedFlagRadar\?: unknown/);
+  assert.match(matchesRoute, /dateSafetyPlan: match\.dateSafetyPlan/);
+  assert.match(matchesRoute, /lastRedFlagRadar: match\.lastRedFlagRadar/);
+  assert.match(matchesRoute, /dateSafetyPlan: r\.dateSafetyPlan/);
+  assert.match(matchesRoute, /lastRedFlagRadar: r\.lastRedFlagRadar/);
+  assert.match(chatRoute, /dateSafetyPlan: norm\.dateSafetyPlan/);
+  assert.match(chatRoute, /lastRedFlagRadar: norm\.lastRedFlagRadar/);
+  assert.match(matchesRoute, /updates\.lastDateBrief = null/);
+});
+
 test("private object routes require auth and verify object ownership", () => {
   assert.match(storageRoute, /requireAuth/);
   assert.match(storageRoute, /assertObjectBelongsToUser/);

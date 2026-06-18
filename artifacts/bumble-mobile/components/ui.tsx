@@ -534,14 +534,17 @@ export function Body({
   children,
   muted,
   style,
+  selectable,
 }: {
   children: React.ReactNode;
   muted?: boolean;
   style?: TextStyle;
+  selectable?: boolean;
 }) {
   const c = useColors();
   return (
     <Text
+      selectable={selectable}
       style={[
         {
           fontSize: 14,

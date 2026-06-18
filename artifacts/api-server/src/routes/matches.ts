@@ -286,6 +286,8 @@ const DATE_BRIEF_STALE_MS = 5 * 24 * 60 * 60 * 1000;
 
 export function dateBriefContextHash(input: {
   dateHistory: unknown;
+  dateSafetyPlan?: unknown;
+  lastRedFlagRadar?: unknown;
   nextDateAt: Date | string | null;
   nextDateLocation: string | null;
   nextDateOutfit: string | null;
@@ -299,8 +301,24 @@ export function dateBriefContextHash(input: {
   const stableDateHistory = normalizeDateHistory(input.dateHistory)
     .map((e) => ({ when: e.when, location: e.location, recap: e.recap }))
     .sort((a, b) => a.when.localeCompare(b.when));
+  const dateSafetyPlan = normalizePersistedDateSafetyPlan(input.dateSafetyPlan);
+  const radar =
+    input.lastRedFlagRadar &&
+    typeof input.lastRedFlagRadar === "object" &&
+    !Array.isArray(input.lastRedFlagRadar)
+      ? (input.lastRedFlagRadar as Record<string, unknown>)
+      : null;
   const normalized = {
     dateHistory: stableDateHistory,
+    dateSafetyPlan,
+    lastRedFlagRadar: radar
+      ? {
+          overallRead:
+            typeof radar.overallRead === "string" ? radar.overallRead : null,
+          redFlags: Array.isArray(radar.redFlags) ? radar.redFlags : [],
+          greenFlags: Array.isArray(radar.greenFlags) ? radar.greenFlags : [],
+        }
+      : null,
     nextDateAt:
       input.nextDateAt instanceof Date
         ? input.nextDateAt.toISOString()
@@ -617,6 +635,8 @@ async function loadMatchDetail(matchId: number, userId: number) {
   const freshnessCounts = computeFreshness(transcript.length, shots);
   const currentHash = dateBriefContextHash({
     dateHistory: match.dateHistory,
+    dateSafetyPlan: match.dateSafetyPlan,
+    lastRedFlagRadar: match.lastRedFlagRadar,
     nextDateAt: match.nextDateAt,
     nextDateLocation: match.nextDateLocation,
     nextDateOutfit: match.nextDateOutfit,
@@ -1261,6 +1281,8 @@ router.get("/matches", async (req, res): Promise<void> => {
       const freshnessCounts = computeFreshness(turns.length, shotsForMatch);
       const currentHash = dateBriefContextHash({
         dateHistory: r.dateHistory,
+        dateSafetyPlan: r.dateSafetyPlan,
+        lastRedFlagRadar: r.lastRedFlagRadar,
         nextDateAt: r.nextDateAt,
         nextDateLocation: r.nextDateLocation,
         nextDateOutfit: r.nextDateOutfit,
@@ -1473,6 +1495,7 @@ router.patch("/matches/:id", async (req, res): Promise<void> => {
       : { dateSafetyPlan: existing.dateSafetyPlan, timelineEvent: null };
     if (safetyPlanTouched) {
       updates.dateSafetyPlan = dateSafetyPlanPatch.dateSafetyPlan;
+      updates.lastDateBrief = null;
     }
 
     if (Object.keys(updates).length === 0) {

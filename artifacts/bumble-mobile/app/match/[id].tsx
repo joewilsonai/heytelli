@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -145,6 +146,11 @@ const MATCH_DETAIL_SECTIONS: Array<{
   { id: "date", label: "Date", icon: "calendar" },
   { id: "talk", label: "Talk", icon: "message-circle" },
 ];
+
+function buildDateBriefTitle(name: string): string {
+  const person = name.trim().split(/\s+/)[0]?.trim();
+  return person ? `Date ${person} Brief` : "Date Brief";
+}
 
 function initialMatchDetailSection(
   match: MatchDetail,
@@ -4007,14 +4013,20 @@ function NextDateCard({
 }) {
   const c = useColors();
   const [briefLoading, setBriefLoading] = useState(false);
+  const [briefCopied, setBriefCopied] = useState(false);
   const [clearing, setClearing] = useState(false);
 
   const savedBrief = match.lastDateBrief;
+  const briefTitle = buildDateBriefTitle(match.name);
   const freshness = match.dateBriefFreshness;
   const pendingAnalysis =
     match.pendingScreenshotCount + match.failedScreenshotCount;
   const hasUnanalyzedScreens =
     match.analysisFreshness !== "current" && pendingAnalysis > 0;
+
+  useEffect(() => {
+    setBriefCopied(false);
+  }, [savedBrief?.generatedAt]);
 
   const loadBrief = async () => {
     setBriefLoading(true);
@@ -4025,6 +4037,19 @@ function NextDateCard({
       Alert.alert("Couldn't generate brief", e?.message ?? "Try again.");
     } finally {
       setBriefLoading(false);
+    }
+  };
+
+  const copySavedBrief = async () => {
+    if (!savedBrief) return;
+    try {
+      await Clipboard.setStringAsync(savedBrief.brief);
+      setBriefCopied(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+    } catch {
+      Alert.alert("Couldn't copy brief", "Try again.");
     }
   };
 
@@ -4209,20 +4234,30 @@ function NextDateCard({
               alignItems: "center",
               justifyContent: "space-between",
               gap: 8,
-              marginBottom: 8,
             }}
           >
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "600",
-                color: c.mutedForeground,
-                textTransform: "uppercase",
-                letterSpacing: 0,
-              }}
-            >
-              Prep brief · {briefAgeLabel}
-            </Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: c.foreground,
+                }}
+              >
+                {briefTitle}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "600",
+                  color: c.mutedForeground,
+                  textTransform: "uppercase",
+                  letterSpacing: 0,
+                }}
+              >
+                Saved {briefAgeLabel}
+              </Text>
+            </View>
             {briefStatusWarning ? (
               <View
                 style={{
@@ -4275,9 +4310,20 @@ function NextDateCard({
               </View>
             )}
           </View>
-          <Body style={{ fontSize: 13, lineHeight: 19 }}>
+          <Body
+            selectable
+            style={{ marginTop: 10, fontSize: 13, lineHeight: 19 }}
+          >
             {savedBrief.brief}
           </Body>
+          <Button
+            label={briefCopied ? "Copied" : "Copy"}
+            icon="copy"
+            onPress={copySavedBrief}
+            variant="ghost"
+            small
+            style={{ alignSelf: "flex-start", marginTop: 12 }}
+          />
         </View>
       )}
     </Card>
