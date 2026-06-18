@@ -31,10 +31,10 @@ In V1, the system has two meanings of "agent":
 | Feedback status/health | `artifacts/api-server/src/lib/improvementStatus.ts` | Maps private signals/work items into user-safe follow-up statuses and admin health snapshots. |
 | DB schema | `lib/db/src/schema/improvementPipeline.ts` | Defines `improvement_signals`, `improvement_work_items`, and `improvement_runs`. |
 | Triage worker | `scripts/src/improvement/triage.ts` | Groups new signals into private work items and optionally opens sanitized GitHub issues. |
-| GitHub adapter | `scripts/src/improvement/github.ts` | Lists issues, creates issues, labels issues, removes labels, and comments with deterministic markers. |
+| GitHub adapter | `scripts/src/improvement/github.ts` | Lists issues, creates issues, labels issues, removes labels, comments with deterministic markers, and closes resolved issues. |
 | Planner | `scripts/src/improvement/swarm.ts` | Turns `agent-ready` issues into DB-backed swarm plans, child issues, or recovery issues. |
 | Role/risk policy | `scripts/src/improvement/swarmPlan.ts` | Maps labels, privacy risk, priority, and category to required roles, checks, and auto-merge policy. |
-| Executor | `scripts/src/improvement/executor.ts` | Claims planned work, creates a worktree, launches Codex, runs optional reviewer agents, typechecks, commits, pushes, opens a PR, and queues auto-merge when allowed. |
+| Executor | `scripts/src/improvement/executor.ts` | Claims planned work, creates a worktree, launches Codex, resolves already-shipped requests without PRs, runs optional reviewer agents, typechecks, commits, pushes, opens PRs, and queues auto-merge when allowed. |
 | Trace spans | `lib/db/src/schema/improvementPipeline.ts`, `scripts/src/improvement/trace.ts` | Stores structured per-step spans for executor tool, agent, check, GitHub, and release activity. |
 | Agent profiles | `scripts/src/improvement/agentProfiles.ts`, `docs/agents/` | Defines repo-local specialist expectations for API, Expo, web parity, privacy, and release work. |
 | Hook gates | `scripts/src/improvement/hooks.ts` | Blocks dangerous custom commands and defines deterministic pre/post executor checks. |
@@ -65,7 +65,10 @@ In V1, the system has two meanings of "agent":
    - creates a recovery issue for blocked swarm work.
 6. The executor reads `planned` work items, verifies the source issue is still
    open and not blocked, creates an isolated worktree, writes a sanitized prompt,
-   runs Codex, runs typecheck, commits, pushes, opens a PR, and updates the DB.
+   runs Codex, runs typecheck, and either:
+   - comments and closes the issue if Codex proves the request is already
+     implemented and the worktree is unchanged; or
+   - commits, pushes, opens a PR, and updates the DB.
 7. If `HEYTELLI_SWARM_REVIEWER_COMMAND` is configured, the executor runs the
    required reviewer roles as separate local review commands against the
    worktree/PR context.
@@ -237,6 +240,14 @@ docs/agents/web-app.md
 docs/agents/privacy-review.md
 docs/agents/release-verification.md
 ```
+
+If the agent responds with `RESOLVED_BY_EXISTING_IMPLEMENTATION: <reason>` and
+leaves no repository changes, the executor treats the work as successful:
+it posts an idempotent `heytelli-swarm-resolved-without-pr` issue comment,
+closes the source issue as completed, removes active/planned handoff labels,
+moves the work item to `closed`, and cleans up the local worktree/branch. If
+the agent claims that marker while leaving code changes, the executor blocks
+instead of committing contradictory output.
 
 The executor records structured trace spans in `improvement_trace_spans` for
 major tool, agent, check, GitHub, and cleanup steps. Trace metadata is

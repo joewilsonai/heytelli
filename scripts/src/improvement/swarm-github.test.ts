@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   addIssueLabels,
+  closeGitHubIssue,
   commentOnIssue,
   fetchGitHubIssue,
   findIssueCommentByMarker,
@@ -240,6 +241,47 @@ test("fetches an issue summary without exposing body text", async () => {
     number: 12,
     title: "Feedback: confusing flow",
     state: "open",
+    labels: ["feedback"],
+  });
+});
+
+test("closes a resolved issue with a completed state reason", async () => {
+  const issue = await closeGitHubIssue({
+    owner: "joewilsonai",
+    repo: "heytelli",
+    token: "token",
+    issueNumber: 12,
+    fetchImpl: async (input, init) => {
+      assert.equal(
+        String(input),
+        "https://api.github.com/repos/joewilsonai/heytelli/issues/12",
+      );
+      assert.equal(init?.method, "PATCH");
+      assert.equal(
+        init?.body,
+        JSON.stringify({ state: "closed", state_reason: "completed" }),
+      );
+      return new Response(
+        JSON.stringify({
+          html_url: "https://github.com/joewilsonai/heytelli/issues/12",
+          number: 12,
+          title: "Feedback: confusing flow",
+          state: "closed",
+          labels: [{ name: "feedback" }],
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    },
+  });
+
+  assert.deepEqual(issue, {
+    url: "https://github.com/joewilsonai/heytelli/issues/12",
+    number: 12,
+    title: "Feedback: confusing flow",
+    state: "closed",
     labels: ["feedback"],
   });
 });

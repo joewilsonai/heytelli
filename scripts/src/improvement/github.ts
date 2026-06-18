@@ -72,6 +72,8 @@ export type CommentOnIssueOptions = GitHubIssueOptions & {
   body: string;
 };
 
+export type CloseGitHubIssueOptions = GitHubIssueOptions;
+
 export type FindIssueCommentByMarkerOptions = GitHubIssueOptions & {
   marker: string;
 };
@@ -399,6 +401,33 @@ export async function fetchGitHubIssue({
     apiUrl,
     fetchImpl,
     path: repoIssuePath(owner, repo, issueNumber),
+  })) as {
+    html_url?: unknown;
+    number?: unknown;
+    title?: unknown;
+    state?: unknown;
+    labels?: unknown;
+  };
+  return issueSummaryFromResponse(data);
+}
+
+export async function closeGitHubIssue({
+  owner,
+  repo,
+  token,
+  issueNumber,
+  apiUrl,
+  fetchImpl = fetch,
+}: CloseGitHubIssueOptions): Promise<GitHubIssueSummary> {
+  const data = (await githubJsonRequest({
+    owner,
+    repo,
+    token,
+    apiUrl,
+    fetchImpl,
+    path: repoIssuePath(owner, repo, issueNumber),
+    method: "PATCH",
+    body: { state: "closed", state_reason: "completed" },
   })) as {
     html_url?: unknown;
     number?: unknown;
