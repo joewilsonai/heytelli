@@ -112,6 +112,24 @@ test("Date brief stays available when Analyze new is shown", async () => {
   assert.match(card, /onPress=\{loadBrief\}/);
 });
 
+test("Date brief can be copied from the person profile", async () => {
+  const screen = await readFile(
+    path.join(root, "artifacts/bumble-mobile/app/match/[id].tsx"),
+    "utf8",
+  );
+  const card =
+    screen.match(
+      /function NextDateCard\([\s\S]*?\nfunction PostDateDebriefCard/,
+    )?.[0] ?? "";
+
+  assert.match(screen, /import \* as Clipboard from "expo-clipboard"/);
+  assert.match(screen, /function buildDateBriefTitle/);
+  assert.match(card, /const briefTitle = buildDateBriefTitle\(match\.name\)/);
+  assert.match(card, /Clipboard\.setStringAsync\(savedBrief\.brief\)/);
+  assert.match(card, /label=\{briefCopied \? "Copied" : "Copy"\}/);
+  assert.match(card, /icon="copy"/);
+});
+
 test("match detail is split into jumpable sections instead of one long feed", async () => {
   const screen = await readFile(
     path.join(root, "artifacts/bumble-mobile/app/match/[id].tsx"),

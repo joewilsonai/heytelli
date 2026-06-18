@@ -30,6 +30,19 @@ test("chat routes keep conversations and prompts inside the active user tenant",
   assert.match(chatRoute, /insert\(conversations\)[\s\S]*userId/);
 });
 
+test("date brief prompt remains a private pre-date profile brief", () => {
+  assert.match(chatRoute, /UNTRUSTED DATA/);
+  assert.match(chatRoute, /function dateBriefDisplayName/);
+  assert.match(chatRoute, /# Date \$\{dateBriefDisplayName\(norm\.name\)\} Brief/);
+  assert.match(chatRoute, /## What I like about them/);
+  assert.match(chatRoute, /## Red and yellow flags/);
+  assert.match(chatRoute, /## Boundaries to hold/);
+  assert.match(chatRoute, /## Open questions/);
+  assert.match(chatRoute, /## Safety and check-in/);
+  assert.match(chatRoute, /lastDateBrief/);
+  assert.match(chatRoute, /dateBriefContextHash/);
+});
+
 test("private object routes require auth and verify object ownership", () => {
   assert.match(storageRoute, /requireAuth/);
   assert.match(storageRoute, /assertObjectBelongsToUser/);
