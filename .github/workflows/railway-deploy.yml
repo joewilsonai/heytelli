@@ -116,9 +116,45 @@ jobs:
 
       - name: Deploy heytelli-improvement-worker to Railway
         run: |
+          railway link \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service heytelli-improvement-worker \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --json
+
           railway up \
             --project "$RAILWAY_PROJECT_ID" \
             --service heytelli-improvement-worker \
             --environment "$RAILWAY_ENVIRONMENT" \
-            --ci \
+            --detach \
             --message "deploy heytelli-improvement-worker ${GITHUB_SHA::7}"
+
+      - name: Wait for worker build
+        run: |
+          deadline=$((SECONDS + 900))
+
+          while (( SECONDS < deadline )); do
+            status_json="$(railway deployment list \
+              --service heytelli-improvement-worker \
+              --environment "$RAILWAY_ENVIRONMENT" \
+              --limit 1 \
+              --json)"
+            status="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(data[0]?.status || "UNKNOWN");' "$status_json")"
+            deployment_id="$(node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(data[0]?.id || "");' "$status_json")"
+
+            echo "worker deployment ${deployment_id:-unknown}: $status"
+
+            case "$status" in
+              SUCCESS)
+                exit 0
+                ;;
+              FAILED|CRASHED|REMOVED)
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          echo "::error::Timed out waiting for heytelli-improvement-worker Railway deployment."
+          exit 1
