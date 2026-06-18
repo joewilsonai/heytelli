@@ -4,10 +4,12 @@ import {
   createImprovementSignal,
   listMyImprovementSignals,
   type ImprovementFeedbackType,
-  type UserFeedbackStatus,
 } from "@workspace/api-client-react";
 
+import { normalizeFeedbackStatuses } from "./feedback-status.ts";
+
 export type FeedbackType = ImprovementFeedbackType;
+export type { FeedbackStatus } from "./feedback-status.ts";
 
 export const feedbackTypes: FeedbackType[] = [
   "Bug",
@@ -80,8 +82,6 @@ export async function submitImprovementFeedback({
   });
 }
 
-export type FeedbackStatus = UserFeedbackStatus;
-
 export async function listMyImprovementFeedbackStatuses() {
-  return listMyImprovementSignals();
+  return normalizeFeedbackStatuses(await listMyImprovementSignals());
 }
