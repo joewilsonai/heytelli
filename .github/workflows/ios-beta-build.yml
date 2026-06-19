@@ -43,6 +43,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: ios-beta-build-${{ github.ref }}
@@ -194,6 +195,8 @@ jobs:
         if: steps.expo-token.outputs.configured == 'true'
         working-directory: artifacts/bumble-mobile
         run: |
+          set +e
+          EAS_LOG_PATH="${RUNNER_TEMP}/heytelli-eas-ios-build.log"
           args=(
             build
             --platform ios
@@ -208,4 +211,68 @@ jobs:
             args+=(--auto-submit)
           fi
 
-          pnpm dlx eas-cli@latest "${args[@]}"
+          pnpm dlx eas-cli@latest "${args[@]}" 2>&1 | tee "${EAS_LOG_PATH}"
+          status="${PIPESTATUS[0]}"
+          set -e
+
+          if grep -Eiq "PLA Update available|Program License Agreement" "${EAS_LOG_PATH}"; then
+            echo "HEYTELLI_IOS_BETA_FAILURE_REASON=Apple Developer Program License Agreement requires Account Holder action." >> "${GITHUB_ENV}"
+            echo "HEYTELLI_IOS_BETA_FAILURE_OWNER_ACTION=true" >> "${GITHUB_ENV}"
+          fi
+
+          exit "${status}"
+
+      - name: Report iOS beta failure to GitHub
+        if: failure() && steps.expo-token.outputs.configured == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Release blocker: iOS beta build failed"
+          reason="${HEYTELLI_IOS_BETA_FAILURE_REASON:-iOS beta build job failed. Inspect the workflow logs and repair code or release configuration if possible.}"
+          owner_action="${HEYTELLI_IOS_BETA_FAILURE_OWNER_ACTION:-false}"
+          owner_action_note=""
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          commit_title="${GITHUB_WORKFLOW}"
+
+          gh label create release-blocker --color B60205 --description "Blocks beta release or deploy verification" || true
+          gh label create ios-beta --color 1D76DB --description "iOS beta build and TestFlight release work" || true
+          gh label create needs-owner-action --color D93F0B --description "Requires account owner or manual external action" || true
+          gh label create agent-ready --color 0E8A16 --description "Safe for the improvement agents to investigate" || true
+
+          labels=(--label release-blocker --label ios-beta)
+          if [[ "${owner_action}" == "true" ]]; then
+            labels+=(--label needs-owner-action)
+            owner_action_note="This is not agent-fixable until the Account Holder completes the required external action."
+          else
+            labels+=(--label agent-ready)
+          fi
+
+          body="$(
+            cat <<BODY
+          ## iOS beta build failed
+
+          Reason: ${reason}
+
+          Run: ${run_url}
+          Commit: ${GITHUB_SHA}
+          Title: ${commit_title}
+
+          ${owner_action_note}
+
+          <!-- heytelli-ios-beta-build-failure -->
+          BODY
+          )"
+
+          existing="$(
+            gh issue list \
+              --state open \
+              --search "repo:${GITHUB_REPOSITORY} in:title \"${title}\"" \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
+
+          if [[ -n "${existing}" ]]; then
+            gh issue comment "${existing}" --body "${body}"
+          else
+            gh issue create --title "${title}" --body "${body}" "${labels[@]}"
+          fi

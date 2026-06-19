@@ -59,17 +59,17 @@ test("requires specialist review for guarded product bugs", () => {
   assert.equal(canAutoMergeSwarmPlan(plan), true);
 });
 
-test("blocks auto-merge for safety privacy and p0 work", () => {
+test("keeps blocked privacy work research-only", () => {
   const plan = buildSwarmPlan({
-    category: "safety_issue",
+    category: "privacy",
     priority: "p0",
-    riskTier: "safe_auto_merge",
+    riskTier: "extra_agent_review",
     privacyRisk: "high",
     labels: [
       "feedback",
-      "safety_issue",
+      "privacy",
       "priority:p0",
-      "risk:safe_auto_merge",
+      "risk:extra_agent_review",
       "agent-ready",
     ],
   });
@@ -78,6 +78,35 @@ test("blocks auto-merge for safety privacy and p0 work", () => {
   assert.deepEqual(plan.requiredAgentRoles, ["researcher", "product_reviewer"]);
   assert.equal(plan.autoMergePolicy.mode, "no_auto_merge");
   assert.equal(canAutoMergeSwarmPlan(plan), false);
+});
+
+test("escalates p0 feature work into extra-review builder lanes", () => {
+  const plan = buildSwarmPlan({
+    category: "feature_request",
+    priority: "p0",
+    riskTier: "safe_auto_merge",
+    privacyRisk: "low",
+    labels: [
+      "feedback",
+      "feature_request",
+      "priority:p0",
+      "risk:safe_auto_merge",
+      "agent-ready",
+    ],
+  });
+
+  assert.equal(plan.riskTier, "extra_agent_review");
+  assert.deepEqual(plan.requiredAgentRoles, [
+    "researcher",
+    "builder",
+    "privacy_reviewer",
+    "safety_reviewer",
+    "backend_api_reviewer",
+    "code_reviewer",
+    "test_reviewer",
+  ]);
+  assert.equal(plan.autoMergePolicy.mode, "multi_review_then_auto_merge");
+  assert.equal(canAutoMergeSwarmPlan(plan), true);
 });
 
 test("escalates medium privacy safe labels into guarded auto-merge", () => {

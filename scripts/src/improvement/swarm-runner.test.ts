@@ -98,7 +98,36 @@ test("uses GitHub issue labels as risk and priority overrides", () => {
 
   assert.equal(result.status, "planned");
   if (result.status !== "planned") return;
+  assert.equal(result.plan.riskTier, "extra_agent_review");
+  assert.equal(result.plan.autoMergePolicy.allowed, true);
+  assert.match(
+    buildSwarmPlanComment(result, "heytelli-swarm-runner"),
+    /\$[0-9]+\.[0-9]{2}/,
+  );
+});
+
+test("keeps explicit no-auto labels out of builder execution", () => {
+  const result = planSwarmWorkItem(
+    { ...baseWorkItem, priority: "p0", riskTier: "extra_agent_review" },
+    {
+      ...baseIssue,
+      labels: [
+        "feedback",
+        "privacy",
+        "priority:p0",
+        "risk:no_auto_merge",
+        "agent-ready",
+      ],
+    },
+  );
+
+  assert.equal(result.status, "planned");
+  if (result.status !== "planned") return;
   assert.equal(result.plan.riskTier, "no_auto_merge");
+  assert.deepEqual(result.plan.requiredAgentRoles, [
+    "researcher",
+    "product_reviewer",
+  ]);
   assert.equal(result.plan.autoMergePolicy.allowed, false);
 });
 

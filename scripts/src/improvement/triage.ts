@@ -13,6 +13,10 @@ import {
   type ImprovementWorkItemDraft,
 } from "@workspace/api-server/src/lib/improvementPipeline";
 import { buildImprovementDigest, type ImprovementDigestCounts } from "./digest";
+import {
+  estimateFeatureCreationCost,
+  type FeatureCreationCostSummary,
+} from "./featureCost";
 import { createGitHubIssue, githubTokenFromEnv } from "./github";
 
 export type TriageSignal = {
@@ -134,6 +138,46 @@ export function githubIssueRunDecision(input: {
   return input.openedThisRun < input.maxGithubIssuesPerRun
     ? "open"
     : "defer-run-cap";
+}
+
+type CostEstimateWorkItem = Pick<
+  ImprovementWorkItemDraft | ImprovementWorkItem,
+  "riskTier" | "priority" | "frequencyCount"
+>;
+
+export function estimateTriageFeatureCost(
+  workItem: CostEstimateWorkItem,
+): FeatureCreationCostSummary {
+  return estimateFeatureCreationCost({
+    riskTier: workItem.riskTier,
+    priority: workItem.priority,
+    frequencyCount: workItem.frequencyCount,
+  });
+}
+
+export function buildFeatureCostIssueSection(
+  estimate: FeatureCreationCostSummary,
+): string {
+  const range = `$${estimate.rangeLowUsd.toFixed(2)}-$${estimate.rangeHighUsd.toFixed(2)}`;
+  return [
+    "",
+    "## AI Cost Estimate",
+    `Estimated builder/reviewer model cost: $${estimate.estimatedUsd.toFixed(2)} (${range}).`,
+    `Model: ${estimate.model}. Confidence: ${estimate.confidence}.`,
+    `Demand-adjusted cost per beta request: $${estimate.costPerRequestUsd.toFixed(2)}.`,
+    "",
+    "Actual cost will be attached after the agent work completes.",
+  ].join("\n");
+}
+
+export function withFeatureCostIssueSection(
+  draft: GithubIssueDraft,
+  estimate: FeatureCreationCostSummary,
+): GithubIssueDraft {
+  return {
+    ...draft,
+    body: `${draft.body}${buildFeatureCostIssueSection(estimate)}`,
+  };
 }
 
 export function planSignalTriage(signal: TriageSignal): PlannedSignalTriage {
@@ -356,6 +400,7 @@ export async function runImprovementTriage(
     } else {
       counts.duplicatesGrouped += 1;
     }
+    const featureCostEstimate = estimateTriageFeatureCost(workItem);
 
     const shouldOpenIssue =
       options.createGithubIssues &&
@@ -369,7 +414,10 @@ export async function runImprovementTriage(
           owner: options.owner,
           repo: options.repo,
           token: options.token,
-          draft: plan.issueDraft,
+          draft: withFeatureCostIssueSection(
+            plan.issueDraft,
+            featureCostEstimate,
+          ),
           dryRun: options.dryRun,
           dedupeKey: plan.fingerprint,
           apiUrl: options.githubApiUrl,
@@ -402,6 +450,7 @@ export async function runImprovementTriage(
             createGithubIssues: options.createGithubIssues,
             signalIds: plan.workItem.signalIds,
             retryable: true,
+            featureCostEstimate,
           },
           completedAt: new Date(),
         });
@@ -429,6 +478,7 @@ export async function runImprovementTriage(
         dryRun: options.dryRun,
         createGithubIssues: options.createGithubIssues,
         signalIds: plan.workItem.signalIds,
+        featureCostEstimate,
       },
       completedAt: new Date(),
     });

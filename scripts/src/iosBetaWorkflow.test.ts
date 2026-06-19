@@ -31,3 +31,18 @@ test("push iOS beta workflow skips non-mobile package-only changes before EAS", 
   );
   assert.match(workflow, /Skip EAS build[\s\S]*?run:\s+\|/);
 });
+
+test("iOS beta workflow reports failed release jobs to GitHub issues", () => {
+  assert.match(workflow, /issues: write/);
+  assert.match(workflow, /EAS_LOG_PATH="\$\{RUNNER_TEMP\}\/heytelli-eas-ios-build\.log"/);
+  assert.match(workflow, /tee "\$\{EAS_LOG_PATH\}"/);
+  assert.match(workflow, /PLA Update available\|Program License Agreement/);
+  assert.match(
+    workflow,
+    /HEYTELLI_IOS_BETA_FAILURE_REASON=Apple Developer Program License Agreement requires Account Holder action\./,
+  );
+  assert.match(workflow, /Release blocker: iOS beta build failed/);
+  assert.match(workflow, /gh issue create --title "\$\{title\}" --body "\$\{body\}" "\$\{labels\[@\]\}"/);
+  assert.match(workflow, /--label needs-owner-action/);
+  assert.match(workflow, /--label agent-ready/);
+});

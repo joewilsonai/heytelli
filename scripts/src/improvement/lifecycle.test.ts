@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildLifecycleResultComment,
   buildLifecycleDigest,
+  lifecycleResultCommentMarker,
   parseLifecycleArgs,
   workItemStatusFromPullRequest,
 } from "./lifecycle";
@@ -53,6 +55,10 @@ test("parses lifecycle monitor options", () => {
   assert.equal(options.agentName, "monitor");
   assert.equal(options.owner, "joe");
   assert.equal(options.repo, "private-repo");
+  assert.equal(options.commentOnIssues, true);
+
+  const quietOptions = parseLifecycleArgs(["--no-comment"]);
+  assert.equal(quietOptions.commentOnIssues, false);
 });
 
 test("lifecycle digest summarizes post-merge progress", () => {
@@ -63,11 +69,56 @@ test("lifecycle digest summarizes post-merge progress", () => {
     closed: 1,
     reviewing: 1,
     failed: 0,
+    commentsCreated: 1,
     dryRun: false,
   });
 
   assert.match(digest, /Mode: live/);
   assert.match(digest, /Merged: 1/);
   assert.match(digest, /Closed: 1/);
+  assert.match(digest, /Comments created: 1/);
   assert.doesNotMatch(digest, /rawPayload|screenshot|transcript/);
+});
+
+test("builds sanitized lifecycle comments for shipped and not-planned outcomes", () => {
+  const workItem = {
+    id: 43,
+    githubIssueNumber: 113,
+    pullRequestNumber: 114,
+    pullRequestUrl: "https://github.com/joewilsonai/heytelli/pull/114",
+  };
+
+  assert.equal(
+    lifecycleResultCommentMarker(workItem, "merged"),
+    "heytelli-swarm-lifecycle:43:113:merged",
+  );
+
+  const shipped = buildLifecycleResultComment({
+    workItem,
+    nextStatus: "merged",
+    pr: {
+      url: workItem.pullRequestUrl,
+      mergedAt: "2026-06-18T23:51:09Z",
+    },
+    agentName: "monitor",
+  });
+
+  assert.match(shipped, /Result: shipped\/resolved/);
+  assert.match(shipped, /Settings feedback status will show this as shipped/);
+  assert.match(shipped, /heytelli-swarm-lifecycle:43:113:merged/);
+  assert.doesNotMatch(shipped, /transcripts|raw dating details/i);
+
+  const notPlanned = buildLifecycleResultComment({
+    workItem,
+    nextStatus: "closed",
+    pr: {
+      url: workItem.pullRequestUrl,
+      mergedAt: null,
+    },
+    agentName: "monitor",
+  });
+
+  assert.match(notPlanned, /Result: not shipping right now/);
+  assert.match(notPlanned, /closed without merging/);
+  assert.match(notPlanned, /not planned right now/);
 });

@@ -11,6 +11,10 @@ import type {
 } from "@workspace/db";
 import type { GithubIssueDraft } from "@workspace/api-server/src/lib/improvementPipeline";
 import {
+  estimateFeatureCreationCost,
+  type FeatureCreationCostSummary,
+} from "./featureCost";
+import {
   addIssueLabels,
   commentOnIssue,
   createGitHubIssue,
@@ -57,6 +61,7 @@ export type PlannedSwarmWorkItem = {
   summary: string;
   labels: string[];
   plan: SwarmPlan;
+  featureCostEstimate: FeatureCreationCostSummary;
 };
 
 export type SkippedSwarmWorkItem = {
@@ -181,6 +186,12 @@ const RECOVERY_KEEP_LABELS = new Set([
   "reliability",
   "test",
 ]);
+const RISK_LABELS: Record<ImprovementRiskTier, string> = {
+  safe_auto_merge: "risk:safe_auto_merge",
+  guarded_auto_merge: "risk:guarded_auto_merge",
+  extra_agent_review: "risk:extra_agent_review",
+  no_auto_merge: "risk:no_auto_merge",
+};
 
 function envFlag(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === "") return defaultValue;
@@ -250,6 +261,33 @@ export function roleToRunType(role: SwarmAgentRole): ImprovementRunType {
 
 function labelSet(labels: string[]): Set<string> {
   return new Set(labels.map((label) => label.trim().toLowerCase()));
+}
+
+function riskLabelForTier(riskTier: ImprovementRiskTier): string {
+  return RISK_LABELS[riskTier];
+}
+
+function staleRiskLabelsForTier(riskTier: ImprovementRiskTier): string[] {
+  const expected = riskLabelForTier(riskTier);
+  return Object.values(RISK_LABELS).filter((label) => label !== expected);
+}
+
+function reviewerRolesForSwarmPlan(plan: SwarmPlan): SwarmAgentRole[] {
+  return plan.requiredAgentRoles.filter(
+    (role) => role !== "researcher" && role !== "builder",
+  );
+}
+
+function estimateSwarmFeatureCost(
+  workItem: SwarmWorkItemCandidate,
+  plan: SwarmPlan,
+): FeatureCreationCostSummary {
+  return estimateFeatureCreationCost({
+    riskTier: plan.riskTier,
+    priority: workItem.priority,
+    frequencyCount: workItem.frequencyCount ?? 1,
+    reviewerRoles: reviewerRolesForSwarmPlan(plan),
+  });
 }
 
 function cleanTask(value: string): string | null {
@@ -658,6 +696,7 @@ export function planSwarmWorkItem(
   });
   const breakdown = buildSwarmBreakdown(workItem, issue, plan);
   if (breakdown) return breakdown;
+  const featureCostEstimate = estimateSwarmFeatureCost(workItem, plan);
 
   return {
     status: "planned",
@@ -669,6 +708,7 @@ export function planSwarmWorkItem(
     summary: workItem.summary,
     labels: issue.labels,
     plan,
+    featureCostEstimate,
   };
 }
 
@@ -744,6 +784,7 @@ export function buildSwarmPlanComment(
   const checks = planned.plan.requiredChecks
     .map((check) => `- ${check}`)
     .join("\n");
+  const estimate = planned.featureCostEstimate;
   return [
     "## HeyTelli swarm plan",
     "",
@@ -758,6 +799,10 @@ export function buildSwarmPlanComment(
     "",
     "### Required checks",
     checks,
+    "",
+    "### Cost estimate",
+    `Estimated model cost: $${estimate.estimatedUsd.toFixed(2)} ($${estimate.rangeLowUsd.toFixed(2)}-$${estimate.rangeHighUsd.toFixed(2)}).`,
+    `Model: ${estimate.model}. Confidence: ${estimate.confidence}. Actual cost will be attached after the agent work completes.`,
     "",
     "### Guardrails",
     planned.plan.reason,
@@ -868,7 +913,10 @@ export async function runImprovementSwarm(
             token: options.token,
             issueNumber: issue.number,
             apiUrl: options.githubApiUrl,
-            labels: ["swarm-planned"],
+            labels: [
+              "swarm-planned",
+              riskLabelForTier(alreadyPlannedWorkItem.riskTier),
+            ],
           });
           counts.swarmLabelsAdded += plannedLabels.length;
           const removed = await removeIssueLabels({
@@ -878,8 +926,15 @@ export async function runImprovementSwarm(
             issueNumber: issue.number,
             apiUrl: options.githubApiUrl,
             labels: options.consumeAgentReadyLabel
-              ? ["agent-ready", "swarm-active"]
-              : ["swarm-active"],
+              ? [
+                  "agent-ready",
+                  "swarm-active",
+                  ...staleRiskLabelsForTier(alreadyPlannedWorkItem.riskTier),
+                ]
+              : [
+                  "swarm-active",
+                  ...staleRiskLabelsForTier(alreadyPlannedWorkItem.riskTier),
+                ],
           });
           counts.agentReadyLabelsRemoved += removed.filter(
             (label) => label.toLowerCase() === "agent-ready",
@@ -1211,6 +1266,7 @@ export async function runImprovementSwarm(
         .update(improvementWorkItems)
         .set({
           status: "planned",
+          riskTier: planned.plan.riskTier,
           updatedAt: new Date(),
         })
         .where(eq(improvementWorkItems.id, planned.workItemId));
@@ -1231,6 +1287,7 @@ export async function runImprovementSwarm(
           autoMergePolicy: planned.plan.autoMergePolicy,
           requiredAgentRoles: planned.plan.requiredAgentRoles,
           requiredChecks: planned.plan.requiredChecks,
+          featureCostEstimate: planned.featureCostEstimate,
         },
         completedAt: new Date(),
       });
@@ -1241,7 +1298,7 @@ export async function runImprovementSwarm(
         token: options.token,
         issueNumber: planned.issueNumber,
         apiUrl: options.githubApiUrl,
-        labels: ["swarm-planned"],
+        labels: ["swarm-planned", riskLabelForTier(planned.plan.riskTier)],
       });
       counts.swarmLabelsAdded += plannedLabels.length;
 
@@ -1253,8 +1310,15 @@ export async function runImprovementSwarm(
           issueNumber: planned.issueNumber,
           apiUrl: options.githubApiUrl,
           labels: options.consumeAgentReadyLabel
-            ? ["agent-ready", "swarm-active"]
-            : ["swarm-active"],
+            ? [
+                "agent-ready",
+                "swarm-active",
+                ...staleRiskLabelsForTier(planned.plan.riskTier),
+              ]
+            : [
+                "swarm-active",
+                ...staleRiskLabelsForTier(planned.plan.riskTier),
+              ],
         });
         counts.agentReadyLabelsRemoved += removed.filter(
           (label) => label.toLowerCase() === "agent-ready",

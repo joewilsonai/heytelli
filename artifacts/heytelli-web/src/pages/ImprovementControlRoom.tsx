@@ -97,7 +97,7 @@ export default function ImprovementControlRoom() {
         <div>
           <Bot size={18} aria-hidden="true" />
           <span>{formatCount(snapshot?.queue.executable)}</span>
-          <p>Agent-ready</p>
+          <p>Builder-ready</p>
         </div>
         <div>
           <GitPullRequest size={18} aria-hidden="true" />
